@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;800&family=Open+Sans:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+    <style>
+      :root {
+        --navy: #0B2B46;
+        --cyan: #5DCDF5;
+        --white: #FFFFFF;
+        --gray: #F5F5F5;
+      }
+      body {
+        font-family: 'Open Sans', sans-serif;
+        background-color: var(--gray);
+        color: var(--navy);
+        margin: 0;
+        padding: 20px;
+      }
+      header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+      }
+      h1 {
+        font-family: 'Montserrat', sans-serif;
+        text-transform: uppercase;
+        margin: 0;
+        color: var(--navy);
+      }
+      .btn {
+        background-color: var(--cyan);
+        color: var(--navy);
+        border: none;
+        padding: 10px 20px;
+        font-family: 'Open Sans', sans-serif;
+        font-weight: 700;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: opacity 0.2s;
+        text-decoration: none;
+        display: inline-block;
+      }
+      .btn:hover {
+        opacity: 0.8;
+      }
+      .btn-secondary {
+        background-color: var(--navy);
+        color: var(--white);
+      }
+      .btn-small {
+        padding: 5px 10px;
+        font-size: 0.8em;
+      }
+      .card {
+        background-color: var(--white);
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 15px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      }
+      .card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+      }
+      .card-title {
+        font-family: 'Montserrat', sans-serif;
+        font-size: 1.2em;
+        margin: 0;
+      }
+      .badge {
+        background-color: var(--navy);
+        color: var(--cyan);
+        padding: 3px 8px;
+        border-radius: 12px;
+        font-size: 0.8em;
+        font-weight: 700;
+      }
+      .links a {
+        color: var(--cyan);
+        text-decoration: none;
+        font-weight: 700;
+        margin-right: 15px;
+      }
+      .links a:hover {
+        text-decoration: underline;
+      }
+      .actions {
+        margin-top: 15px;
+        padding-top: 15px;
+        border-top: 1px solid var(--gray);
+      }
+      
+      /* Modal Styles */
+      #wizardModal {
+        display: none;
+        position: fixed;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(11, 43, 70, 0.8);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+      }
+      .modal-content {
+        background: var(--white);
+        padding: 30px;
+        border-radius: 8px;
+        width: 100%;
+        max-width: 500px;
+        max-height: 90vh;
+        overflow-y: auto;
+      }
+      .form-group { margin-bottom: 15px; }
+      label { display: block; font-weight: bold; margin-bottom: 5px; }
+      input, select { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
+      
+      .loader {
+        display: none;
+        border: 4px solid var(--gray);
+        border-top: 4px solid var(--cyan);
+        border-radius: 50%;
+        width: 30px;
+        height: 30px;
+        animation: spin 1s linear infinite;
+        margin: 10px auto;
+      }
+      @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+      
+      #globalMessage {
+        padding: 10px;
+        margin-bottom: 20px;
+        border-radius: 4px;
+        display: none;
+        font-weight: bold;
+        text-align: center;
+      }
+      .msg-success { background-color: #d4edda; color: #155724; }
+      .msg-error { background-color: #f8d7da; color: #721c24; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Mngaia Engine</h1>
+      <button class="btn" onclick="openWizard()">+ Launch New Session</button>
+    </header>
+    
+    <div id="globalMessage"></div>
+    <div id="loader" class="loader" style="display: block;"></div>
+    <div id="dashboard"></div>
+
+    <!-- Wizard Modal -->
+    <div id="wizardModal">
+      <div class="modal-content">
+        <h2 style="font-family: 'Montserrat', sans-serif; color: var(--navy); margin-top: 0;">Launch Session</h2>
+        
+        <div class="form-group">
+          <label>Session Name / Topic</label>
+          <input type="text" id="w_sessionName" placeholder="e.g., November Kickoff" required>
+        </div>
+        <div class="form-group">
+          <label>Date</label>
+          <input type="date" id="w_date">
+        </div>
+        <div class="form-group">
+          <label>Format</label>
+          <select id="w_format">
+            <option>Newsletter (Rich Media)</option>
+            <option>Webpage / Google Site</option>
+            <option>Training Module (Multimodal)</option>
+            <option>Email Campaign</option>
+            <option>Resource Kit</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Audience</label>
+          <input type="text" id="w_audience" value="Community Members">
+        </div>
+        <div class="form-group">
+          <label>Brand Identity</label>
+          <select id="w_brand">
+            <option value="None">None / Default</option>
+            <option value="MNGAIA" selected>MNGAIA</option>
+          </select>
+        </div>
+        
+        <div id="w_loader" class="loader"></div>
+        <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
+          <button class="btn btn-secondary" onclick="closeWizard()">Cancel</button>
+          <button class="btn" id="w_submit" onclick="submitWizard()">Deploy Workspace</button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // Load Dashboard
+      function loadDashboard() {
+        document.getElementById('loader').style.display = 'block';
+        document.getElementById('dashboard').innerHTML = '';
+        google.script.run
+          .withSuccessHandler(renderDashboard)
+          .withFailureHandler(showError)
+          .getDashboardData();
+      }
+
+      function renderDashboard(data) {
+        document.getElementById('loader').style.display = 'none';
+        const container = document.getElementById('dashboard');
+        
+        if (data.length === 0) {
+          container.innerHTML = '<p>No sessions found. Click "Launch New Session" to begin.</p>';
+          return;
+        }
+
+        data.forEach(session => {
+          const card = document.createElement('div');
+          card.className = 'card';
+          card.innerHTML = `
+            <div class="card-header">
+              <h3 class="card-title">${session.sessionName}</h3>
+              <span class="badge">${session.status}</span>
+            </div>
+            <div class="links">
+              ${session.planningDocUrl ? `<a href="${session.planningDocUrl}" target="_blank">📝 Planning Doc</a>` : ''}
+              ${session.decisionDocUrl ? `<a href="${session.decisionDocUrl}" target="_blank">🧠 Decision Doc</a>` : ''}
+              ${session.dbUrl ? `<a href="${session.dbUrl}" target="_blank">🗄️ Project DB</a>` : ''}
+              ${session.folderUrl ? `<a href="${session.folderUrl}" target="_blank">📁 Drive Folder</a>` : ''}
+            </div>
+            <div class="actions">
+              <button class="btn btn-secondary btn-small" onclick="generateDecision(${session.rowNumber}, this)">Generate Decision Doc</button>
+              <button class="btn btn-secondary btn-small" onclick="synthesize(${session.rowNumber}, this)">Synthesize Research</button>
+            </div>
+          `;
+          container.appendChild(card);
+        });
+      }
+
+      // Action Handlers
+      function generateDecision(rowNum, btn) {
+        btn.textContent = 'Generating...';
+        btn.disabled = true;
+        google.script.run
+          .withSuccessHandler(() => { showMessage('Decision Doc generated successfully!'); loadDashboard(); })
+          .withFailureHandler(err => { showError(err); btn.textContent = 'Generate Decision Doc'; btn.disabled = false; })
+          .webTriggerDecisionDoc(rowNum);
+      }
+
+      function synthesize(rowNum, btn) {
+        btn.textContent = 'Synthesizing...';
+        btn.disabled = true;
+        google.script.run
+          .withSuccessHandler(() => { showMessage('Synthesis complete!'); loadDashboard(); })
+          .withFailureHandler(err => { showError(err); btn.textContent = 'Synthesize Research'; btn.disabled = false; })
+          .webTriggerSynthesis(rowNum);
+      }
+
+      // Wizard Handlers
+      function openWizard() { document.getElementById('wizardModal').style.display = 'flex'; }
+      function closeWizard() { document.getElementById('wizardModal').style.display = 'none'; }
+      
+      function submitWizard() {
+        const name = document.getElementById('w_sessionName').value;
+        if (!name) return alert("Session Name required");
+        
+        document.getElementById('w_submit').disabled = true;
+        document.getElementById('w_loader').style.display = 'block';
+        
+        const options = {
+          sessionName: name,
+          date: document.getElementById('w_date').value,
+          format: document.getElementById('w_format').value,
+          audience: document.getElementById('w_audience').value,
+          brand: document.getElementById('w_brand').value
+        };
+
+        google.script.run
+          .withSuccessHandler(() => {
+            closeWizard();
+            showMessage('Workspace deployed successfully!');
+            document.getElementById('w_submit').disabled = false;
+            document.getElementById('w_loader').style.display = 'none';
+            loadDashboard();
+          })
+          .withFailureHandler(err => {
+            alert('Error: ' + err.message);
+            document.getElementById('w_submit').disabled = false;
+            document.getElementById('w_loader').style.display = 'none';
+          })
+          .processWizardUI(options);
+      }
+
+      // UI Helpers
+      function showMessage(msg) {
+        const el = document.getElementById('globalMessage');
+        el.textContent = msg;
+        el.className = 'msg-success';
+        el.style.display = 'block';
+        setTimeout(() => el.style.display = 'none', 5000);
+      }
+      function showError(err) {
+        const el = document.getElementById('globalMessage');
+        el.textContent = 'Error: ' + err.message;
+        el.className = 'msg-error';
+        el.style.display = 'block';
+      }
+
+      // Initialize
+      window.onload = loadDashboard;
+    </script>
+  </body>
+</html>

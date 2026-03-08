@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        padding: 20px;
+        color: #333;
+      }
+      h2 {
+        color: #1a73e8;
+        font-size: 1.4rem;
+        margin-top: 0;
+        margin-bottom: 5px;
+      }
+      .subtitle {
+        color: #666;
+        font-size: 0.9rem;
+        margin-top: 0;
+        margin-bottom: 20px;
+      }
+      .form-group {
+        margin-bottom: 15px;
+      }
+      label {
+        display: block;
+        font-weight: bold;
+        margin-bottom: 5px;
+        font-size: 0.9rem;
+      }
+      select, input[type="text"], input[type="date"] {
+        width: 100%;
+        padding: 8px;
+        box-sizing: border-box;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        font-family: inherit;
+      }
+      button {
+        background-color: #1a73e8;
+        color: white;
+        padding: 12px 15px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        width: 100%;
+        font-size: 1rem;
+        font-weight: bold;
+        margin-top: 10px;
+        transition: background-color 0.2s;
+      }
+      button:hover {
+        background-color: #1557b0;
+      }
+      button:disabled {
+        background-color: #a0c1f2;
+        cursor: not-allowed;
+      }
+      #status {
+        margin-top: 15px;
+        font-size: 0.9em;
+        color: #555;
+        text-align: center;
+      }
+      .spinner {
+        display: none;
+        margin: 15px auto;
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid #1a73e8;
+        border-radius: 50%;
+        width: 24px;
+        height: 24px;
+        animation: spin 1s linear infinite;
+      }
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+    </style>
+  </head>
+  <body>
+    <h2>Launch New Session</h2>
+    <p class="subtitle">Deploy a new content project workspace.</p>
+    
+    <div class="form-group">
+      <label for="sessionName">Session Name / Topic</label>
+      <input type="text" id="sessionName" placeholder="e.g., November Leadership Kickoff" required>
+    </div>
+
+    <div class="form-group">
+      <label for="date">Target Date</label>
+      <input type="date" id="date">
+    </div>
+
+    <div class="form-group">
+      <label for="format">Output Format</label>
+      <select id="format">
+        <option value="Newsletter (Rich Media)">Newsletter (Rich Media)</option>
+        <option value="Webpage / Google Site">Webpage / Google Site</option>
+        <option value="Training Module (Multimodal)">Training Module (Multimodal)</option>
+        <option value="Email Campaign">Email Campaign</option>
+        <option value="Resource Kit">Resource Kit</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label for="audience">Target Audience</label>
+      <input type="text" id="audience" placeholder="e.g., Internal Team, Customers" value="Community Members">
+    </div>
+
+    <div class="form-group">
+      <label for="brand">Brand Identity</label>
+      <select id="brand">
+        <option value="None">None / Default</option>
+        <option value="MNGAIA">MNGAIA</option>
+      </select>
+    </div>
+
+    <button id="submitBtn" onclick="submitWizard()">Scaffold Project Workspace</button>
+    <div class="spinner" id="spinner"></div>
+    <div id="status"></div>
+
+    <script>
+      function submitWizard() {
+        const sessionName = document.getElementById('sessionName').value;
+        if (!sessionName) {
+          alert("Please enter a Session Name.");
+          return;
+        }
+
+        const btn = document.getElementById('submitBtn');
+        const spinner = document.getElementById('spinner');
+        const status = document.getElementById('status');
+        
+        btn.disabled = true;
+        spinner.style.display = 'block';
+        status.textContent = 'Building folders and copying templates...';
+
+        const options = {
+          sessionName: sessionName,
+          date: document.getElementById('date').value,
+          format: document.getElementById('format').value,
+          audience: document.getElementById('audience').value,
+          brand: document.getElementById('brand').value
+        };
+
+        google.script.run
+          .withSuccessHandler(function(url) {
+            status.innerHTML = `✅ Workspace deployed!<br><br><a href="${url}" target="_blank" style="color:#1a73e8; font-weight:bold;">Open Planning Doc</a><br><br><span style="font-size:0.8em;">(You can close this window)</span>`;
+            spinner.style.display = 'none';
+            btn.textContent = 'Done!';
+          })
+          .withFailureHandler(function(error) {
+            status.innerHTML = '❌ Error: ' + error.message;
+            spinner.style.display = 'none';
+            btn.disabled = false;
+          })
+          .processWizardUI(options);
+      }
+    </script>
+  </body>
+</html>

@@ -34,9 +34,9 @@
       text-align: center;
     }
     .hero-label { color: var(--cyan); font-size: 0.75rem; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 12px; }
-    .hero-title { font-family: 'Montserrat', sans-serif; font-size: 2rem; color: var(--white); line-height: 1.25; margin-bottom: 10px; }
+    .hero-title { font-family: 'Montserrat', sans-serif; font-size: 2rem; color: var(--white); line-height: 1.25; margin-bottom: 10px; text-transform: uppercase; }
     .hero-meta { color: rgba(255,255,255,0.65); font-size: 0.88rem; display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
-    .hero-meta span::before { content: '·'; margin-right: 8px; opacity: 0.5; }
+    .hero-meta span::before { content: '✨'; margin-right: 8px; color: var(--cyan); opacity: 1; }
     .hero-meta span:first-child::before { content: ''; margin: 0; }
 
     /* ── Layout ── */
@@ -307,11 +307,13 @@
       // Hero
       document.getElementById('heroTitle').textContent = m.name || 'Session';
       var metaItems = [];
-      if (m.theme) metaItems.push(m.theme);
-      if (m.date)  metaItems.push(m.date);
-      if (m.format)metaItems.push(m.format);
+      if (m.theme) metaItems.push({ text: m.theme, type: 'theme' });
+      if (m.date)  metaItems.push({ text: m.date, type: 'date' });
+      if (m.format)metaItems.push({ text: m.format, type: 'format' });
       document.getElementById('heroMeta').innerHTML = metaItems.map(function(t, i) {
-        return '<span' + (i === 0 ? ' style="margin-left:0;"' : '') + '>' + esc(t) + '</span>';
+        var style = i === 0 ? 'margin-left:0;' : '';
+        if (t.type === 'date') style += 'color:var(--cyan);font-weight:700;';
+        return '<span' + (style ? ' style="' + style + '"' : '') + '>' + esc(t.text) + '</span>';
       }).join('');
 
       document.title = (m.name || 'Session') + ' — Learning Library';

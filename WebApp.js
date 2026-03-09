@@ -188,6 +188,57 @@ function webRegenerateBrief(sessionId) {
   return { ok: true };
 }
 
+// ─── Collaborator API ─────────────────────────────────────────────────────────
+
+/**
+ * Returns current Editor collaborators for a session's Drive folder.
+ * @param {string} sessionId
+ * @returns {{ email: string, name: string }[]}
+ */
+function webGetCollaborators(sessionId) {
+  return CollaboratorService.getEditors(sessionId);
+}
+
+/**
+ * Adds collaborators as Editors to the session Drive folder.
+ * @param {string} sessionId
+ * @param {string[]} emails
+ * @returns {{ added: number, errors: string[] }}
+ */
+function webAddCollaborators(sessionId, emails) {
+  return CollaboratorService.addEditors(sessionId, emails);
+}
+
+/**
+ * Removes a collaborator's Editor access from the session Drive folder.
+ * @param {string} sessionId
+ * @param {string} email
+ */
+function webRemoveCollaborator(sessionId, email) {
+  return CollaboratorService.removeEditor(sessionId, email);
+}
+
+// ─── Permission API ───────────────────────────────────────────────────────────
+
+/**
+ * Checks Drive sharing access for all resources in a session.
+ * Returns which files are publicly embeddable and which are restricted.
+ * @param {string} sessionId
+ * @returns {{ name, url, embedType, access, fileId?, ok }[]}
+ */
+function webCheckPermissions(sessionId) {
+  return PermissionService.checkResources(sessionId);
+}
+
+/**
+ * Sets "Anyone with the link can view" on a list of Drive file IDs.
+ * @param {string[]} fileIds
+ * @returns {{ fixed: number, errors: string[] }}
+ */
+function webFixPermissions(fileIds) {
+  return PermissionService.fixPermissions(fileIds);
+}
+
 // ─── Drive Folder Browser ─────────────────────────────────────────────────────
 
 /**

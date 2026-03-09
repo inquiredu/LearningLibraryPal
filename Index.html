@@ -118,6 +118,49 @@
     <div id="sessions-grid" class="sessions-grid" style="display:none;"></div>
   </div>
 
+  <!-- Collaborators Modal -->
+  <div id="collabModal" class="modal-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>👥 Collaborators</h2>
+        <button class="modal-close" onclick="closeCollabModal()">×</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size:0.82rem;color:var(--muted);margin-bottom:14px;">Collaborators get <strong>Editor access</strong> to the session Drive folder and everything inside it — research files, drafts, Gems, and the Project Database.</p>
+        <div id="collab-current" style="margin-bottom:16px;"></div>
+        <div class="form-group" style="margin-bottom:0;">
+          <label>Add Collaborators</label>
+          <input type="text" id="collab-emails" placeholder="alice@example.com, bob@example.com">
+          <div style="font-size:0.73rem;color:var(--muted);margin-top:4px;">Comma-separated email addresses.</div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <div class="spinner" id="collab-spinner" style="display:none;width:20px;height:20px;"></div>
+        <span style="flex:1;font-size:0.78rem;color:var(--muted);" id="collab-status"></span>
+        <button class="btn btn-outline btn-sm" onclick="closeCollabModal()">Close</button>
+        <button class="btn btn-primary btn-sm" onclick="addCollaborators()">Add Access</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Permission Checker Modal -->
+  <div id="permModal" class="modal-overlay">
+    <div class="modal" style="max-width:680px;">
+      <div class="modal-header">
+        <h2>🔍 Check Embed Access</h2>
+        <button class="modal-close" onclick="closePermModal()">×</button>
+      </div>
+      <div class="modal-body" id="permModalBody">
+        <div class="draft-loading">Checking file permissions...</div>
+      </div>
+      <div class="modal-footer" id="permModalFooter" style="display:none;">
+        <span style="flex:1;font-size:0.78rem;color:var(--muted);" id="perm-status"></span>
+        <button class="btn btn-outline btn-sm" onclick="closePermModal()">Close</button>
+        <button class="btn btn-primary btn-sm" id="fixPermBtn" onclick="fixAllPermissions()" style="display:none;">Fix All Restricted</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Resources Modal -->
   <div id="resourcesModal" class="modal-overlay">
     <div class="modal">
@@ -246,11 +289,13 @@
           '</div>' +
           '<div class="session-card-actions">' +
             '<button class="btn btn-dark btn-sm" onclick="openResourcesModal(\'' + s.id + '\')">📁 Add Resources</button>' +
+            '<button class="btn btn-dark btn-sm" onclick="openCollabModal(\'' + s.id + '\')">👥 Collaborators</button>' +
             (!s.hasBrief ? '<button class="btn btn-dark btn-sm" onclick="regenerateBrief(\'' + s.id + '\', this)">✨ Generate Brief</button>' : '') +
             '<button class="btn btn-dark btn-sm" onclick="runSynthesis(\'' + s.id + '\', this)">🔬 Synthesize</button>' +
             '<button class="btn btn-dark btn-sm" onclick="runGems(\'' + s.id + '\', this)">💎 Generate Gems</button>' +
             (s.hasGems ? '<button class="btn btn-dark btn-sm" onclick="openGemLinksModal(\'' + s.id + '\')">🔗 Set Gem Links</button>' : '') +
             '<button class="btn btn-dark btn-sm" onclick="openEmailModal(\'' + s.id + '\')">📧 Draft Email</button>' +
+            '<button class="btn btn-dark btn-sm" onclick="openPermModal(\'' + s.id + '\')">🔍 Check Access</button>' +
             '<button class="btn btn-dark btn-sm" onclick="generateSiteCode(\'' + s.id + '\', this)">🌐 Site Code</button>' +
             libraryBtn +
           '</div>';
@@ -393,6 +438,178 @@
         })
         .withFailureHandler(function(err) { resetBtn(btn, '✨ Generate Brief'); showAlert(err.message, 'error'); })
         .webRegenerateBrief(sessionId);
+    }
+
+    // ── Collaborators Modal ────────────────────────────────────────────────────
+
+    var _collabSessionId = null;
+
+    function openCollabModal(sessionId) {
+      _collabSessionId = sessionId;
+      document.getElementById('collab-emails').value = '';
+      document.getElementById('collab-status').textContent = '';
+      document.getElementById('collab-spinner').style.display = 'none';
+      document.getElementById('collab-current').innerHTML = '<div style="font-size:0.82rem;color:var(--muted);">Loading current collaborators...</div>';
+      document.getElementById('collabModal').classList.add('open');
+      google.script.run
+        .withSuccessHandler(function(list) {
+          var el = document.getElementById('collab-current');
+          if (!list || !list.length) {
+            el.innerHTML = '<div style="font-size:0.82rem;color:var(--muted);font-style:italic;">No collaborators added yet.</div>';
+          } else {
+            var rows = list.map(function(c) {
+              return '<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;margin-bottom:5px;">' +
+                '<span style="font-size:0.82rem;font-weight:600;color:var(--navy);">' + esc(c.name) + '</span>' +
+                '<span style="font-size:0.78rem;color:var(--muted);">' + esc(c.email) + '</span>' +
+                '<button onclick="removeCollaborator(\'' + esc(c.email) + '\')" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:0.85rem;padding:0 4px;" title="Remove access">×</button>' +
+              '</div>';
+            }).join('');
+            el.innerHTML = '<div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;color:var(--muted);margin-bottom:6px;">Current Collaborators</div>' + rows;
+          }
+        })
+        .withFailureHandler(function() {
+          document.getElementById('collab-current').innerHTML = '';
+        })
+        .webGetCollaborators(sessionId);
+    }
+
+    function closeCollabModal() {
+      document.getElementById('collabModal').classList.remove('open');
+      _collabSessionId = null;
+    }
+
+    function addCollaborators() {
+      if (!_collabSessionId) return;
+      var raw = document.getElementById('collab-emails').value.trim();
+      var emails = raw.split(',').map(function(e) { return e.trim(); }).filter(Boolean);
+      if (!emails.length) { document.getElementById('collab-status').textContent = 'Enter at least one email.'; return; }
+      document.getElementById('collab-spinner').style.display = 'block';
+      document.getElementById('collab-status').textContent = 'Adding access...';
+      google.script.run
+        .withSuccessHandler(function(res) {
+          document.getElementById('collab-spinner').style.display = 'none';
+          document.getElementById('collab-emails').value = '';
+          if (res.errors && res.errors.length) {
+            document.getElementById('collab-status').textContent = res.added + ' added · ' + res.errors.length + ' failed: ' + res.errors.join('; ');
+          } else {
+            document.getElementById('collab-status').textContent = res.added + ' collaborator(s) added.';
+          }
+          openCollabModal(_collabSessionId); // refresh list
+        })
+        .withFailureHandler(function(err) {
+          document.getElementById('collab-spinner').style.display = 'none';
+          document.getElementById('collab-status').textContent = 'Error: ' + err.message;
+        })
+        .webAddCollaborators(_collabSessionId, emails);
+    }
+
+    function removeCollaborator(email) {
+      if (!_collabSessionId) return;
+      document.getElementById('collab-status').textContent = 'Removing ' + email + '...';
+      google.script.run
+        .withSuccessHandler(function() {
+          openCollabModal(_collabSessionId); // refresh list
+        })
+        .withFailureHandler(function(err) {
+          document.getElementById('collab-status').textContent = 'Error: ' + err.message;
+        })
+        .webRemoveCollaborator(_collabSessionId, email);
+    }
+
+    // ── Permission Checker Modal ───────────────────────────────────────────────
+
+    var _permSessionId = null;
+    var _permResults = [];
+
+    function openPermModal(sessionId) {
+      _permSessionId = sessionId;
+      _permResults = [];
+      document.getElementById('permModalBody').innerHTML = '<div class="draft-loading">Checking file permissions... (~5 sec)</div>';
+      document.getElementById('permModalFooter').style.display = 'none';
+      document.getElementById('permModal').classList.add('open');
+      google.script.run
+        .withSuccessHandler(function(results) {
+          _permResults = results || [];
+          renderPermResults(results);
+        })
+        .withFailureHandler(function(err) {
+          document.getElementById('permModalBody').innerHTML = '<p style="color:#721C24;font-size:0.88rem;">' + esc(err.message) + '</p>';
+          document.getElementById('permModalFooter').style.display = 'flex';
+          document.getElementById('fixPermBtn').style.display = 'none';
+        })
+        .webCheckPermissions(sessionId);
+    }
+
+    function closePermModal() {
+      document.getElementById('permModal').classList.remove('open');
+      _permSessionId = null;
+      _permResults = [];
+    }
+
+    function renderPermResults(results) {
+      var body = document.getElementById('permModalBody');
+      if (!results || !results.length) {
+        body.innerHTML = '<p style="font-size:0.88rem;color:var(--muted);">No resources found for this session. Add resources first, then check access.</p>';
+        document.getElementById('permModalFooter').style.display = 'flex';
+        document.getElementById('fixPermBtn').style.display = 'none';
+        return;
+      }
+
+      var hasRestricted = results.some(function(r) { return r.access === 'restricted' || r.access === 'error'; });
+      var ACCESS_BADGE = {
+        'public':     '<span style="background:#D4EDDA;color:#155724;padding:2px 8px;border-radius:4px;font-size:0.72rem;font-weight:700;">✅ Public</span>',
+        'restricted': '<span style="background:#F8D7DA;color:#721C24;padding:2px 8px;border-radius:4px;font-size:0.72rem;font-weight:700;">⚠️ Restricted</span>',
+        'youtube':    '<span style="background:#D4EDDA;color:#155724;padding:2px 8px;border-radius:4px;font-size:0.72rem;font-weight:700;">✅ YouTube</span>',
+        'external':   '<span style="background:var(--bg);color:var(--muted);padding:2px 8px;border-radius:4px;font-size:0.72rem;font-weight:700;">➡️ External</span>',
+        'error':      '<span style="background:#F8D7DA;color:#721C24;padding:2px 8px;border-radius:4px;font-size:0.72rem;font-weight:700;">⚠️ Error</span>',
+        'unknown':    '<span style="background:var(--bg);color:var(--muted);padding:2px 8px;border-radius:4px;font-size:0.72rem;font-weight:700;">? Unknown</span>'
+      };
+      var EMBED_LABEL = { slides:'Slides', doc:'Doc', drive:'Drive File', youtube:'YouTube', web:'Web Link' };
+
+      var rows = results.map(function(r) {
+        var badge = ACCESS_BADGE[r.access] || ACCESS_BADGE['unknown'];
+        var embedLabel = EMBED_LABEL[r.embedType] || r.embedType;
+        return '<tr style="border-bottom:1px solid var(--border);">' +
+          '<td style="padding:9px 10px;font-size:0.82rem;font-weight:600;color:var(--navy);max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + esc(r.name) + '">' + esc(r.name) + '</td>' +
+          '<td style="padding:9px 10px;font-size:0.78rem;color:var(--muted);white-space:nowrap;">' + esc(embedLabel) + '</td>' +
+          '<td style="padding:9px 10px;">' + badge + '</td>' +
+        '</tr>';
+      }).join('');
+
+      body.innerHTML =
+        '<p style="font-size:0.82rem;color:var(--muted);margin-bottom:12px;">Drive-hosted files need <strong>Anyone with the link</strong> sharing for iframes to render in Google Sites. External links and YouTube are always fine.</p>' +
+        '<table style="width:100%;border-collapse:collapse;">' +
+          '<thead><tr style="background:var(--bg);">' +
+            '<th style="padding:7px 10px;font-size:0.72rem;font-weight:700;color:var(--muted);text-align:left;text-transform:uppercase;letter-spacing:0.6px;">Resource</th>' +
+            '<th style="padding:7px 10px;font-size:0.72rem;font-weight:700;color:var(--muted);text-align:left;text-transform:uppercase;letter-spacing:0.6px;">Embed Type</th>' +
+            '<th style="padding:7px 10px;font-size:0.72rem;font-weight:700;color:var(--muted);text-align:left;text-transform:uppercase;letter-spacing:0.6px;">Access</th>' +
+          '</tr></thead>' +
+          '<tbody>' + rows + '</tbody>' +
+        '</table>';
+
+      document.getElementById('permModalFooter').style.display = 'flex';
+      document.getElementById('fixPermBtn').style.display = hasRestricted ? 'inline-flex' : 'none';
+      document.getElementById('perm-status').textContent = '';
+    }
+
+    function fixAllPermissions() {
+      var restrictedIds = _permResults
+        .filter(function(r) { return (r.access === 'restricted' || r.access === 'error') && r.fileId; })
+        .map(function(r) { return r.fileId; });
+      if (!restrictedIds.length) return;
+      document.getElementById('fixPermBtn').disabled = true;
+      document.getElementById('perm-status').textContent = 'Fixing ' + restrictedIds.length + ' file(s)...';
+      google.script.run
+        .withSuccessHandler(function(res) {
+          document.getElementById('fixPermBtn').disabled = false;
+          document.getElementById('perm-status').textContent = res.fixed + ' file(s) made public.';
+          openPermModal(_permSessionId); // re-run check to confirm
+        })
+        .withFailureHandler(function(err) {
+          document.getElementById('fixPermBtn').disabled = false;
+          document.getElementById('perm-status').textContent = 'Error: ' + err.message;
+        })
+        .webFixPermissions(restrictedIds);
     }
 
     function openNewSessionWizard() {

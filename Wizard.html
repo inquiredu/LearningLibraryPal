@@ -123,6 +123,11 @@
           <option value="None">None / Default</option>
         </select>
       </div>
+      <div class="form-group">
+        <label>Collaborators <span style="font-weight:400;color:var(--muted);">(optional)</span></label>
+        <input type="text" id="w_collaborators" placeholder="alice@example.com, bob@example.com">
+        <div class="hint">Comma-separated emails. Each person gets Editor access to the session Drive folder, subfolders, and Project Database.</div>
+      </div>
     </div>
     <div class="panel-footer">
       <div class="spinner" id="s1-spinner"></div>
@@ -205,10 +210,20 @@
 
       setStep1Loading(true, 'Creating workspace + generating AI brief (~20 sec)...');
 
+      var collaboratorEmails = (document.getElementById('w_collaborators').value || '')
+        .split(',').map(function(e) { return e.trim(); }).filter(Boolean);
+
       google.script.run
         .withSuccessHandler(function(result) {
           _sessionId = result.sessionId;
           _sessionResult = result;
+          // Add collaborators in the background — non-blocking
+          if (collaboratorEmails.length) {
+            google.script.run
+              .withSuccessHandler(function() {})
+              .withFailureHandler(function() {})
+              .webAddCollaborators(result.sessionId, collaboratorEmails);
+          }
           setStep1Loading(false, '');
           goToStep2(result);
         })

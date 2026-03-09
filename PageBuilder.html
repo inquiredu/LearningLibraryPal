@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;800&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+  <title>Page Builder — MNGAIA</title>
+  <style>
+    :root {
+      --navy:   #0B2B46;
+      --cyan:   #5DCDF5;
+      --white:  #FFFFFF;
+      --bg:     #F0F4F8;
+      --border: #DDE4ED;
+      --text:   #2C3E50;
+      --muted:  #7F8FA4;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; overflow: hidden; font-family: 'Open Sans', sans-serif; background: var(--bg); color: var(--text); }
+
+    /* ── Header ─────────────────────────────────────────────────── */
+    .header {
+      background: var(--navy); padding: 12px 20px;
+      display: flex; align-items: center; gap: 16px;
+      height: 56px; flex-shrink: 0; position: relative; z-index: 10;
+    }
+    .header-brand { font-family: 'Montserrat', sans-serif; font-size: 1rem; color: var(--white); letter-spacing: 1px; white-space: nowrap; }
+    .header-sep { color: rgba(255,255,255,0.25); }
+    .session-label { color: var(--cyan); font-size: 0.85rem; font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .header-spacer { flex: 1; }
+    .header-actions { display: flex; gap: 8px; flex-shrink: 0; }
+
+    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border: none; border-radius: 6px; font-family: 'Open Sans', sans-serif; font-size: 0.82rem; font-weight: 700; cursor: pointer; transition: opacity 0.15s, transform 0.1s; }
+    .btn:hover { opacity: 0.88; transform: translateY(-1px); }
+    .btn:active { transform: translateY(0); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .btn-primary { background: var(--cyan); color: var(--navy); }
+    .btn-outline { background: transparent; color: var(--cyan); border: 1.5px solid var(--cyan); }
+    .btn-ghost { background: rgba(255,255,255,0.1); color: var(--white); border: 1.5px solid rgba(255,255,255,0.2); }
+    .btn-sm { padding: 5px 11px; font-size: 0.76rem; }
+    .btn-xs { padding: 3px 8px; font-size: 0.72rem; border-radius: 4px; }
+
+    /* ── Layout ─────────────────────────────────────────────────── */
+    .workspace {
+      display: flex; height: calc(100vh - 56px); overflow: hidden;
+    }
+
+    /* ── Left Palette ───────────────────────────────────────────── */
+    .palette {
+      width: 210px; flex-shrink: 0; background: var(--white);
+      border-right: 1px solid var(--border); overflow-y: auto;
+      padding: 14px 10px;
+    }
+    .palette-section-label {
+      font-size: 0.65rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 1px; color: var(--muted); padding: 0 6px 6px;
+      margin-top: 12px;
+    }
+    .palette-section-label:first-of-type { margin-top: 0; }
+    .palette-divider { height: 1px; background: var(--border); margin: 10px 0; }
+    .palette-item {
+      display: flex; align-items: center; gap: 9px; padding: 8px 10px;
+      border-radius: 7px; cursor: pointer; font-size: 0.82rem; font-weight: 600;
+      color: var(--text); transition: background 0.12s;
+      user-select: none; border: 1px solid transparent;
+    }
+    .palette-item:hover { background: var(--bg); border-color: var(--border); }
+    .palette-item:active { background: #E2EAEF; }
+    .palette-item .p-icon { font-size: 1rem; width: 20px; text-align: center; flex-shrink: 0; }
+    .palette-tip { font-size: 0.72rem; color: var(--muted); padding: 0 6px; line-height: 1.5; }
+
+    /* ── Center Canvas ──────────────────────────────────────────── */
+    .canvas-area {
+      flex: 1; overflow-y: auto; display: flex; flex-direction: column;
+      padding: 20px; gap: 0; min-width: 0;
+    }
+    .canvas-empty {
+      flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      color: var(--muted); text-align: center; gap: 12px; padding: 40px;
+    }
+    .canvas-empty .icon { font-size: 2.5rem; }
+    .canvas-empty p { font-size: 0.88rem; line-height: 1.6; max-width: 280px; }
+    .canvas-empty .btn { margin-top: 4px; }
+
+    #canvas { display: flex; flex-direction: column; gap: 8px; min-height: 20px; }
+
+    .canvas-block {
+      background: var(--white); border: 1.5px solid var(--border);
+      border-radius: 8px; display: flex; align-items: center; gap: 10px;
+      padding: 11px 14px; cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s;
+      user-select: none;
+    }
+    .canvas-block:hover { border-color: var(--cyan); box-shadow: 0 2px 8px rgba(93,205,245,0.15); }
+    .canvas-block.selected { border-color: var(--cyan); box-shadow: 0 0 0 3px rgba(93,205,245,0.18); background: #F5FEFF; }
+    .canvas-block.sortable-ghost { opacity: 0.4; }
+    .canvas-block.sortable-drag { box-shadow: 0 8px 24px rgba(11,43,70,0.18); }
+
+    .block-drag { color: var(--muted); cursor: grab; font-size: 1.1rem; flex-shrink: 0; line-height: 1; }
+    .block-drag:active { cursor: grabbing; }
+    .block-icon { font-size: 1.1rem; flex-shrink: 0; }
+    .block-info { flex: 1; min-width: 0; }
+    .block-name { font-size: 0.85rem; font-weight: 700; color: var(--navy); }
+    .block-preview { font-size: 0.75rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+    .block-remove { background: none; border: none; cursor: pointer; color: var(--muted); font-size: 1rem; padding: 2px 4px; flex-shrink: 0; line-height: 1; border-radius: 4px; }
+    .block-remove:hover { color: #721C24; background: #FDE8EA; }
+
+    .canvas-footer {
+      padding: 16px 0 0; display: flex; justify-content: center; gap: 10px;
+    }
+
+    /* ── Right Editor ───────────────────────────────────────────── */
+    .editor-panel {
+      width: 300px; flex-shrink: 0; background: var(--white);
+      border-left: 1px solid var(--border); overflow-y: auto;
+      display: flex; flex-direction: column;
+    }
+    .editor-header {
+      padding: 14px 16px 10px; border-bottom: 1px solid var(--border);
+      font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 1px; color: var(--muted); flex-shrink: 0;
+    }
+    .editor-empty {
+      flex: 1; display: flex; align-items: center; justify-content: center;
+      color: var(--muted); text-align: center; padding: 24px; font-size: 0.83rem; line-height: 1.6;
+    }
+    .editor-body { flex: 1; padding: 14px 16px; overflow-y: auto; }
+    .editor-auto-note {
+      background: #EBF8FF; border: 1px solid #BEE3F8; border-radius: 6px;
+      padding: 12px 14px; font-size: 0.8rem; color: #2B6CB0; line-height: 1.5;
+    }
+    .field-group { margin-bottom: 13px; }
+    .field-label { display: block; font-size: 0.75rem; font-weight: 700; color: var(--navy); margin-bottom: 5px; }
+    .field-input, .field-textarea, .field-select {
+      width: 100%; padding: 7px 10px; border: 1.5px solid var(--border);
+      border-radius: 6px; font-family: 'Open Sans', sans-serif; font-size: 0.82rem;
+      color: var(--text); transition: border-color 0.15s; background: var(--white);
+    }
+    .field-input:focus, .field-textarea:focus, .field-select:focus { outline: none; border-color: var(--cyan); }
+    .field-textarea { min-height: 80px; resize: vertical; }
+    .field-row { display: flex; gap: 6px; }
+    .field-row .field-input { flex: 1; }
+    .color-swatches { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+    .color-swatch {
+      width: 28px; height: 28px; border-radius: 6px; cursor: pointer;
+      border: 2px solid transparent; transition: border-color 0.12s;
+    }
+    .color-swatch.active { border-color: var(--navy); }
+    .color-swatch[data-color="custom"] { background: linear-gradient(135deg, #f06, #fc0); }
+    .field-sep { height: 1px; background: var(--border); margin: 14px 0; }
+    .img-picker-area { margin-top: 6px; }
+    .img-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; margin-top: 8px; max-height: 180px; overflow-y: auto; }
+    .img-thumb {
+      width: 100%; padding-top: 75%; background: var(--bg) center/cover no-repeat;
+      border-radius: 5px; cursor: pointer; border: 2px solid transparent;
+      transition: border-color 0.12s; position: relative; overflow: hidden;
+    }
+    .img-thumb:hover { border-color: var(--cyan); }
+    .img-thumb.selected { border-color: var(--navy); }
+
+    /* Card grid editor */
+    .card-list { display: flex; flex-direction: column; gap: 8px; }
+    .card-item {
+      background: var(--bg); border: 1px solid var(--border); border-radius: 7px;
+      padding: 10px 10px 8px;
+    }
+    .card-item-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+    .card-item-label { font-size: 0.72rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+
+    /* Position toggle */
+    .toggle-group { display: flex; border: 1.5px solid var(--border); border-radius: 6px; overflow: hidden; }
+    .toggle-btn {
+      flex: 1; padding: 6px; font-size: 0.75rem; font-weight: 600; cursor: pointer;
+      border: none; background: var(--white); color: var(--muted); transition: background 0.12s, color 0.12s;
+    }
+    .toggle-btn.active { background: var(--navy); color: var(--white); }
+
+    /* Toast */
+    .toast {
+      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(0);
+      background: var(--navy); color: var(--white); padding: 12px 20px; border-radius: 8px;
+      font-size: 0.85rem; font-weight: 600; box-shadow: 0 6px 20px rgba(0,0,0,0.25);
+      z-index: 9999; display: flex; align-items: center; gap: 10px;
+      transition: opacity 0.3s, transform 0.3s;
+    }
+    .toast.hidden { opacity: 0; pointer-events: none; transform: translateX(-50%) translateY(12px); }
+    .toast a { color: var(--cyan); font-weight: 700; }
+
+    /* Spinner */
+    .spinner { width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.3); border-top-color: var(--cyan); border-radius: 50%; animation: spin 0.7s linear infinite; flex-shrink: 0; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner-navy { border: 2px solid var(--border); border-top-color: var(--navy); }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  </style>
+</head>
+<body>
+
+  <!-- ── Header ── -->
+  <div class="header">
+    <span class="header-brand">MNGAIA</span>
+    <span class="header-sep">|</span>
+    <span class="session-label" id="sessionLabel">Loading session…</span>
+    <div class="header-spacer"></div>
+    <div class="header-actions">
+      <button class="btn btn-ghost" id="btnAutoPop" onclick="autoPopulate()" disabled>✨ Auto-populate</button>
+      <button class="btn btn-primary" id="btnGenerate" onclick="generateCode()" disabled>⚡ Generate Code →</button>
+    </div>
+  </div>
+
+  <!-- ── Workspace ── -->
+  <div class="workspace">
+
+    <!-- Left: Palette -->
+    <aside class="palette">
+      <div class="palette-section-label">From Session</div>
+      <div class="palette-item" onclick="addBlock('hero')" title="Auto-populated with your session name and theme">
+        <span class="p-icon">🟦</span> Hero Banner
+      </div>
+      <div class="palette-item" onclick="addBlock('overview')" title="Session overview + learning objectives">
+        <span class="p-icon">📋</span> Overview
+      </div>
+      <div class="palette-item" onclick="addBlock('questions')" title="Inquiry questions from the session brief">
+        <span class="p-icon">❓</span> Inquiry Questions
+      </div>
+      <div class="palette-item" onclick="addBlock('resources')" title="All session resources with embeds">
+        <span class="p-icon">📁</span> Resources
+      </div>
+      <div class="palette-item" onclick="addBlock('gems')" title="AI Learning Gems with links">
+        <span class="p-icon">💎</span> AI Gems
+      </div>
+      <div class="palette-item" onclick="addBlock('library-embed')" title="Embeds the full Learning Library page">
+        <span class="p-icon">📚</span> Library Embed
+      </div>
+
+      <div class="palette-divider"></div>
+      <div class="palette-section-label">Custom</div>
+
+      <div class="palette-item" onclick="addBlock('text')" title="Heading + paragraph text">
+        <span class="p-icon">✏️</span> Text Block
+      </div>
+      <div class="palette-item" onclick="addBlock('image-text')" title="Side-by-side image and text">
+        <span class="p-icon">🖼️</span> Image + Text
+      </div>
+      <div class="palette-item" onclick="addBlock('card-grid')" title="Grid of icon cards">
+        <span class="p-icon">🃏</span> Card Grid
+      </div>
+      <div class="palette-item" onclick="addBlock('cta')" title="Centred call-to-action button">
+        <span class="p-icon">🔵</span> CTA Button
+      </div>
+      <div class="palette-item" onclick="addBlock('divider')" title="Horizontal rule separator">
+        <span class="p-icon">─</span> Divider
+      </div>
+
+      <div class="palette-divider"></div>
+      <p class="palette-tip">Drag blocks on the canvas to reorder them.</p>
+    </aside>
+
+    <!-- Center: Canvas -->
+    <section class="canvas-area" id="canvasArea">
+      <div id="canvasEmpty" class="canvas-empty">
+        <div class="icon">🎨</div>
+        <p>Click blocks from the palette to start building your page.</p>
+        <button class="btn btn-outline" onclick="autoPopulate()" id="emptyAutoPop" disabled>✨ Auto-populate from session</button>
+      </div>
+      <div id="canvas"></div>
+      <div class="canvas-footer" id="canvasFooter" style="display:none;">
+        <button class="btn btn-primary" onclick="generateCode()" id="footerGenBtn">⚡ Generate Code →</button>
+      </div>
+    </section>
+
+    <!-- Right: Editor Panel -->
+    <aside class="editor-panel">
+      <div class="editor-header" id="editorHeader">Block Editor</div>
+      <div class="editor-empty" id="editorEmpty">
+        <span>Click a block on the canvas to edit its settings.</span>
+      </div>
+      <div class="editor-body" id="editorBody" style="display:none;"></div>
+    </aside>
+
+  </div>
+
+  <!-- Toast notification -->
+  <div class="toast hidden" id="toast"></div>
+
+  <script>
+    // ── State ─────────────────────────────────────────────────────────────────
+    var SESSION_ID  = '__SESSION_ID__';
+    var sessionData = null;
+    var blocks      = [];       // [{ id, type, config }]
+    var selectedId  = null;
+    var designAssetsFolderId = ''; // Script Property DESIGN_ASSETS_FOLDER_ID
+
+    // ── Block meta ────────────────────────────────────────────────────────────
+    var BLOCK_META = {
+      'hero':          { icon: '🟦', name: 'Hero Banner',       auto: true  },
+      'overview':      { icon: '📋', name: 'Overview',          auto: true  },
+      'questions':     { icon: '❓', name: 'Inquiry Questions', auto: true  },
+      'resources':     { icon: '📁', name: 'Resources',         auto: true  },
+      'gems':          { icon: '💎', name: 'AI Gems',           auto: true  },
+      'library-embed': { icon: '📚', name: 'Library Embed',     auto: false },
+      'text':          { icon: '✏️', name: 'Text Block',        auto: false },
+      'image-text':    { icon: '🖼️', name: 'Image + Text',      auto: false },
+      'card-grid':     { icon: '🃏', name: 'Card Grid',         auto: false },
+      'cta':           { icon: '🔵', name: 'CTA Button',        auto: false },
+      'divider':       { icon: '─',  name: 'Divider',           auto: false }
+    };
+
+    // ── Initialise ────────────────────────────────────────────────────────────
+    window.onload = function() {
+      if (!SESSION_ID || SESSION_ID === '__SESSION_ID__') {
+        document.getElementById('sessionLabel').textContent = 'No session specified';
+        return;
+      }
+      google.script.run
+        .withSuccessHandler(onDataLoaded)
+        .withFailureHandler(function(err) {
+          document.getElementById('sessionLabel').textContent = 'Error loading session';
+          showToast('❌ ' + (err.message || 'Failed to load session data'), false);
+        })
+        .webGetPageBuilderData(SESSION_ID);
+
+      google.script.run
+        .withSuccessHandler(function(folderId) { designAssetsFolderId = folderId || ''; })
+        .withFailureHandler(function() {})
+        .webGetDesignAssetsFolder();
+    };
+
+    function onDataLoaded(data) {
+      sessionData = data.session;
+      document.getElementById('sessionLabel').textContent = sessionData.name || SESSION_ID;
+      document.getElementById('btnAutoPop').disabled  = false;
+      document.getElementById('btnGenerate').disabled = false;
+      document.getElementById('emptyAutoPop').disabled = false;
+    }
+
+    // ── Add block ─────────────────────────────────────────────────────────────
+    function addBlock(type, cfg) {
+      var config = cfg || defaultConfig(type);
+      var block  = { id: 'b_' + Date.now() + '_' + Math.random().toString(36).slice(2,5), type: type, config: config };
+      blocks.push(block);
+      renderCanvas();
+      selectBlock(block.id);
+      scrollToBlock(block.id);
+    }
+
+    function defaultConfig(type) {
+      if (!sessionData) return {};
+      switch (type) {
+        case 'hero':          return { title: sessionData.name || '', subtitle: sessionData.theme || '', bgColor: '#0B2B46', imageUrl: '' };
+        case 'library-embed': return { height: 900 };
+        case 'text':          return { heading: '', body: '' };
+        case 'image-text':    return { imageUrl: '', heading: '', body: '', imagePosition: 'left' };
+        case 'card-grid':     return { heading: '', cards: [{ emoji: '✨', title: '', body: '' }] };
+        case 'cta':           return { heading: '', label: 'Learn More →', url: sessionData.libraryUrl || '', bgColor: '#5DCDF5' };
+        default:              return {};
+      }
+    }
+
+    function scrollToBlock(id) {
+      setTimeout(function() {
+        var el = document.querySelector('[data-block-id="' + id + '"]');
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }, 50);
+    }
+
+    // ── Auto-populate ─────────────────────────────────────────────────────────
+    function autoPopulate() {
+      if (!sessionData) return;
+      // Remove existing auto blocks so we don't double-up
+      var autoTypes = ['hero','overview','questions','resources','gems','library-embed'];
+      blocks = blocks.filter(function(b) { return autoTypes.indexOf(b.type) === -1; });
+
+      var inserts = autoTypes.map(function(t) {
+        return { id: 'b_' + Date.now() + '_' + t, type: t, config: defaultConfig(t) };
+      });
+      // Prepend auto blocks before any custom blocks
+      blocks = inserts.concat(blocks);
+      renderCanvas();
+      document.getElementById('canvasArea').scrollTop = 0;
+    }
+
+    // ── Render canvas ─────────────────────────────────────────────────────────
+    function renderCanvas() {
+      var canvas = document.getElementById('canvas');
+      var empty  = document.getElementById('canvasEmpty');
+      var footer = document.getElementById('canvasFooter');
+
+      if (!blocks.length) {
+        empty.style.display  = 'flex';
+        canvas.style.display = 'none';
+        footer.style.display = 'none';
+        return;
+      }
+      empty.style.display  = 'none';
+      canvas.style.display = 'flex';
+      footer.style.display = 'flex';
+
+      canvas.innerHTML = '';
+      blocks.forEach(function(block) {
+        var meta    = BLOCK_META[block.type] || { icon: '□', name: block.type };
+        var preview = blockPreview(block);
+        var div = document.createElement('div');
+        div.className = 'canvas-block' + (block.id === selectedId ? ' selected' : '');
+        div.setAttribute('data-block-id', block.id);
+        div.innerHTML =
+          '<span class="block-drag" title="Drag to reorder">⋮⋮</span>' +
+          '<span class="block-icon">' + meta.icon + '</span>' +
+          '<div class="block-info">' +
+            '<div class="block-name">' + esc(meta.name) + '</div>' +
+            (preview ? '<div class="block-preview">' + esc(preview) + '</div>' : '') +
+          '</div>' +
+          '<button class="block-remove" title="Remove block" onclick="removeBlock(\'' + block.id + '\', event)">×</button>';
+        div.addEventListener('click', function() { selectBlock(block.id); });
+        canvas.appendChild(div);
+      });
+
+      // Initialise Sortable if not yet done
+      if (!canvas._sortable) {
+        canvas._sortable = Sortable.create(canvas, {
+          animation: 150,
+          handle: '.block-drag',
+          ghostClass: 'sortable-ghost',
+          dragClass: 'sortable-drag',
+          onEnd: function() {
+            // Re-sync blocks array to DOM order
+            var newOrder = [];
+            canvas.querySelectorAll('[data-block-id]').forEach(function(el) {
+              var id = el.getAttribute('data-block-id');
+              var b  = blocks.find(function(x) { return x.id === id; });
+              if (b) newOrder.push(b);
+            });
+            blocks = newOrder;
+          }
+        });
+      }
+    }
+
+    function blockPreview(block) {
+      var c = block.config || {};
+      switch (block.type) {
+        case 'hero':          return c.title || (sessionData && sessionData.name) || '';
+        case 'overview':      return 'Overview + learning objectives';
+        case 'questions':     return 'Inquiry questions from brief';
+        case 'resources':     return 'All session resources';
+        case 'gems':          return 'AI Learning Gems';
+        case 'library-embed': return 'Full Learning Library page';
+        case 'text':          return c.heading || c.body || '';
+        case 'image-text':    return c.heading || c.body || '';
+        case 'card-grid':     return c.heading || ((c.cards || []).length + ' card(s)');
+        case 'cta':           return c.label || '';
+        case 'divider':       return '─────────────────';
+        default:              return '';
+      }
+    }
+
+    // ── Select block → Editor Panel ───────────────────────────────────────────
+    function selectBlock(id) {
+      selectedId = id;
+      // Update selected state visually
+      document.querySelectorAll('.canvas-block').forEach(function(el) {
+        el.classList.toggle('selected', el.getAttribute('data-block-id') === id);
+      });
+      var block = blocks.find(function(b) { return b.id === id; });
+      if (!block) return;
+      renderEditor(block);
+    }
+
+    // ── Remove block ──────────────────────────────────────────────────────────
+    function removeBlock(id, evt) {
+      evt.stopPropagation();
+      blocks = blocks.filter(function(b) { return b.id !== id; });
+      if (selectedId === id) {
+        selectedId = null;
+        document.getElementById('editorEmpty').style.display  = 'flex';
+        document.getElementById('editorBody').style.display   = 'none';
+        document.getElementById('editorHeader').textContent   = 'Block Editor';
+      }
+      renderCanvas();
+    }
+
+    // ── Editor Panel renderer ─────────────────────────────────────────────────
+    function renderEditor(block) {
+      var meta = BLOCK_META[block.type] || { name: block.type };
+      document.getElementById('editorHeader').textContent  = meta.name + ' Settings';
+      document.getElementById('editorEmpty').style.display = 'none';
+      document.getElementById('editorBody').style.display  = 'block';
+
+      var body = document.getElementById('editorBody');
+      body.innerHTML = '';
+
+      switch (block.type) {
+        case 'overview': case 'questions': case 'resources': case 'gems':
+          body.innerHTML = '<div class="editor-auto-note">🤖 <strong>Auto-populated from session data.</strong><br><br>This block renders automatically using your session\'s Gemini-generated brief, resources, and gems. No manual editing needed.</div>';
+          break;
+
+        case 'hero':
+          renderHeroEditor(body, block);
+          break;
+
+        case 'library-embed':
+          renderFieldGroup(body, 'Embed Height (px)', '<input type="number" class="field-input" id="ef_height" value="' + (block.config.height || 900) + '" min="400" max="2000" oninput="updateConfig(\'' + block.id + '\', \'height\', parseInt(this.value)||900)">');
+          body.appendChild(makeNote('💡 The full Learning Library page is embedded at this height. In Google Sites, use Insert → Embed → URL and paste the library URL directly — that\'s the easiest approach.'));
+          break;
+
+        case 'text':
+          renderFieldGroup(body, 'Heading (optional)', '<input type="text" class="field-input" id="ef_heading" placeholder="Optional heading…" value="' + esc(block.config.heading || '') + '" oninput="updateConfig(\'' + block.id + '\', \'heading\', this.value); refreshPreview(\'' + block.id + '\')">');
+          renderFieldGroup(body, 'Body Text', '<textarea class="field-textarea" id="ef_body" placeholder="Paragraph text…" oninput="updateConfig(\'' + block.id + '\', \'body\', this.value); refreshPreview(\'' + block.id + '\')">' + esc(block.config.body || '') + '</textarea>');
+          break;
+
+        case 'image-text':
+          renderImageEditor(body, block);
+          break;
+
+        case 'card-grid':
+          renderCardGridEditor(body, block);
+          break;
+
+        case 'cta':
+          renderCtaEditor(body, block);
+          break;
+
+        case 'divider':
+          body.innerHTML = '<p style="font-size:0.82rem;color:var(--muted);line-height:1.6;">A simple horizontal rule separating sections. No settings needed.</p>';
+          break;
+
+        default:
+          body.innerHTML = '<p style="font-size:0.82rem;color:var(--muted);">No editor for this block type.</p>';
+      }
+    }
+
+    // ── Hero editor ───────────────────────────────────────────────────────────
+    function renderHeroEditor(body, block) {
+      renderFieldGroup(body, 'Title', '<input type="text" class="field-input" placeholder="Session name…" value="' + esc(block.config.title || '') + '" oninput="updateConfig(\'' + block.id + '\', \'title\', this.value); refreshPreview(\'' + block.id + '\')">');
+      renderFieldGroup(body, 'Subtitle', '<input type="text" class="field-input" placeholder="Theme or tagline…" value="' + esc(block.config.subtitle || '') + '" oninput="updateConfig(\'' + block.id + '\', \'subtitle\', this.value)">');
+      // Background color
+      var div = document.createElement('div');
+      div.className = 'field-group';
+      div.innerHTML = '<label class="field-label">Background Colour</label>' +
+        '<div class="color-swatches">' +
+          swatch('#0B2B46', block.config.bgColor, block.id, 'bgColor', 'Navy') +
+          swatch('#1a3a5c', block.config.bgColor, block.id, 'bgColor', 'Dark Blue') +
+          swatch('#164E63', block.config.bgColor, block.id, 'bgColor', 'Deep Teal') +
+          swatch('#1E3A1E', block.config.bgColor, block.id, 'bgColor', 'Forest') +
+          swatch('#3B1A5E', block.config.bgColor, block.id, 'bgColor', 'Purple') +
+        '</div>' +
+        '<div style="display:flex;gap:6px;margin-top:6px;">' +
+          '<input type="color" style="width:32px;height:32px;padding:0;border:1.5px solid var(--border);border-radius:5px;cursor:pointer;" value="' + (block.config.bgColor || '#0B2B46') + '" oninput="updateConfig(\'' + block.id + '\', \'bgColor\', this.value)">' +
+          '<span style="font-size:0.72rem;color:var(--muted);align-self:center;">Custom colour</span>' +
+        '</div>';
+      body.appendChild(div);
+      // Background image
+      renderImagePickerField(body, block, 'imageUrl', 'Background Image (optional)');
+    }
+
+    // ── Image+Text editor ────────────────────────────────────────────────────
+    function renderImageEditor(body, block) {
+      renderImagePickerField(body, block, 'imageUrl', 'Image');
+      // Image position
+      var posDIv = document.createElement('div');
+      posDIv.className = 'field-group';
+      var pos = block.config.imagePosition || 'left';
+      posDIv.innerHTML = '<label class="field-label">Image Position</label>' +
+        '<div class="toggle-group">' +
+          '<button class="toggle-btn' + (pos === 'left' ? ' active' : '') + '" onclick="setImagePos(\'' + block.id + '\', \'left\', this)">◀ Left</button>' +
+          '<button class="toggle-btn' + (pos === 'right' ? ' active' : '') + '" onclick="setImagePos(\'' + block.id + '\', \'right\', this)">Right ▶</button>' +
+        '</div>';
+      body.appendChild(posDIv);
+      renderFieldGroup(body, 'Heading', '<input type="text" class="field-input" placeholder="Optional heading…" value="' + esc(block.config.heading || '') + '" oninput="updateConfig(\'' + block.id + '\', \'heading\', this.value); refreshPreview(\'' + block.id + '\')">');
+      renderFieldGroup(body, 'Body Text', '<textarea class="field-textarea" placeholder="Paragraph text…" oninput="updateConfig(\'' + block.id + '\', \'body\', this.value)">' + esc(block.config.body || '') + '</textarea>');
+    }
+
+    function setImagePos(blockId, pos, btn) {
+      updateConfig(blockId, 'imagePosition', pos);
+      btn.closest('.toggle-group').querySelectorAll('.toggle-btn').forEach(function(b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+    }
+
+    // ── Card Grid editor ──────────────────────────────────────────────────────
+    function renderCardGridEditor(body, block) {
+      renderFieldGroup(body, 'Section Heading (optional)', '<input type="text" class="field-input" placeholder="e.g. Key Themes" value="' + esc(block.config.heading || '') + '" oninput="updateConfig(\'' + block.id + '\', \'heading\', this.value); refreshPreview(\'' + block.id + '\')">');
+      var sep = document.createElement('div'); sep.className = 'field-sep'; body.appendChild(sep);
+      var cardsLabel = document.createElement('label'); cardsLabel.className = 'field-label'; cardsLabel.textContent = 'Cards'; body.appendChild(cardsLabel);
+      var cardList = document.createElement('div'); cardList.className = 'card-list'; cardList.id = 'card-list-' + block.id; body.appendChild(cardList);
+      renderCardList(block);
+      // Add card button
+      var addBtn = document.createElement('button');
+      addBtn.className = 'btn btn-outline btn-sm'; addBtn.style.marginTop = '8px';
+      addBtn.textContent = '+ Add Card';
+      addBtn.onclick = function() {
+        if ((block.config.cards || []).length >= 6) { showToast('Maximum 6 cards per grid.', false); return; }
+        block.config.cards = block.config.cards || [];
+        block.config.cards.push({ emoji: '✨', title: '', body: '' });
+        renderCanvas(); renderEditor(block);
+      };
+      body.appendChild(addBtn);
+    }
+
+    function renderCardList(block) {
+      var list = document.getElementById('card-list-' + block.id);
+      if (!list) return;
+      list.innerHTML = '';
+      (block.config.cards || []).forEach(function(card, i) {
+        var item = document.createElement('div'); item.className = 'card-item';
+        item.innerHTML =
+          '<div class="card-item-header"><span class="card-item-label">Card ' + (i+1) + '</span>' +
+            (block.config.cards.length > 1 ? '<button class="btn-xs" style="background:none;border:none;cursor:pointer;color:var(--muted);" onclick="removeCard(\'' + block.id + '\',' + i + ')">× Remove</button>' : '') +
+          '</div>' +
+          '<div class="field-row" style="margin-bottom:5px;">' +
+            '<input type="text" class="field-input" placeholder="emoji" style="width:52px;flex:none;" maxlength="4" value="' + esc(card.emoji||'') + '" oninput="updateCard(\'' + block.id + '\',' + i + ',\'emoji\',this.value)">' +
+            '<input type="text" class="field-input" placeholder="Card title" value="' + esc(card.title||'') + '" oninput="updateCard(\'' + block.id + '\',' + i + ',\'title\',this.value); refreshPreview(\'' + block.id + '\')"> ' +
+          '</div>' +
+          '<textarea class="field-textarea" style="min-height:52px;" placeholder="Card body…" oninput="updateCard(\'' + block.id + '\',' + i + ',\'body\',this.value)">' + esc(card.body||'') + '</textarea>';
+        list.appendChild(item);
+      });
+    }
+
+    function updateCard(blockId, i, key, val) {
+      var block = blocks.find(function(b) { return b.id === blockId; });
+      if (!block || !block.config.cards || !block.config.cards[i]) return;
+      block.config.cards[i][key] = val;
+    }
+
+    function removeCard(blockId, i) {
+      var block = blocks.find(function(b) { return b.id === blockId; });
+      if (!block) return;
+      block.config.cards.splice(i, 1);
+      renderCardList(block); renderCanvas();
+    }
+
+    // ── CTA editor ────────────────────────────────────────────────────────────
+    function renderCtaEditor(body, block) {
+      renderFieldGroup(body, 'Above-button Text (optional)', '<input type="text" class="field-input" placeholder="e.g. Ready to dive in?" value="' + esc(block.config.heading||'') + '" oninput="updateConfig(\'' + block.id + '\', \'heading\', this.value)">');
+      renderFieldGroup(body, 'Button Label', '<input type="text" class="field-input" placeholder="e.g. Open Learning Library →" value="' + esc(block.config.label||'') + '" oninput="updateConfig(\'' + block.id + '\', \'label\', this.value); refreshPreview(\'' + block.id + '\')">');
+      renderFieldGroup(body, 'Button URL', '<input type="url" class="field-input" placeholder="https://…" value="' + esc(block.config.url||'') + '" oninput="updateConfig(\'' + block.id + '\', \'url\', this.value)">');
+      // Color swatches
+      var div = document.createElement('div'); div.className = 'field-group';
+      div.innerHTML = '<label class="field-label">Button Colour</label>' +
+        '<div class="color-swatches">' +
+          swatch('#5DCDF5', block.config.bgColor, block.id, 'bgColor', 'Cyan (default)') +
+          swatch('#0B2B46', block.config.bgColor, block.id, 'bgColor', 'Navy') +
+          swatch('#2563EB', block.config.bgColor, block.id, 'bgColor', 'Blue') +
+          swatch('#059669', block.config.bgColor, block.id, 'bgColor', 'Green') +
+        '</div>' +
+        '<div style="display:flex;gap:6px;margin-top:6px;">' +
+          '<input type="color" style="width:32px;height:32px;padding:0;border:1.5px solid var(--border);border-radius:5px;cursor:pointer;" value="' + (block.config.bgColor||'#5DCDF5') + '" oninput="updateConfig(\'' + block.id + '\', \'bgColor\', this.value)">' +
+          '<span style="font-size:0.72rem;color:var(--muted);align-self:center;">Custom colour</span>' +
+        '</div>';
+      body.appendChild(div);
+    }
+
+    // ── Image picker field ────────────────────────────────────────────────────
+    function renderImagePickerField(body, block, configKey, labelText) {
+      var div = document.createElement('div'); div.className = 'field-group';
+      var pickerId = 'imgpicker_' + block.id + '_' + configKey;
+      div.innerHTML =
+        '<label class="field-label">' + esc(labelText) + '</label>' +
+        '<div class="field-row">' +
+          '<input type="url" class="field-input" id="' + pickerId + '_url" placeholder="Paste image URL…" value="' + esc((block.config[configKey]||'')) + '" oninput="updateConfig(\'' + block.id + '\', \'' + configKey + '\', this.value)">' +
+        '</div>' +
+        '<div class="img-picker-area">' +
+          '<button class="btn btn-sm" style="background:var(--bg);border:1px solid var(--border);color:var(--text);margin-top:6px;" onclick="browseAssets(\'' + block.id + '\', \'' + configKey + '\', \'' + pickerId + '\')">🗂️ Browse Drive Assets</button>' +
+          '<div id="' + pickerId + '_grid" class="img-grid" style="display:none;"></div>' +
+        '</div>';
+      body.appendChild(div);
+    }
+
+    function browseAssets(blockId, configKey, pickerId) {
+      if (!designAssetsFolderId) {
+        showToast('⚠️ No Design Assets folder set. Add one in Settings from the main dashboard.', false);
+        return;
+      }
+      var grid = document.getElementById(pickerId + '_grid');
+      grid.innerHTML = '<div style="text-align:center;padding:12px;color:var(--muted);font-size:0.78rem;">Loading…</div>';
+      grid.style.display = 'grid';
+
+      google.script.run
+        .withSuccessHandler(function(result) {
+          if (result.error) { grid.innerHTML = '<p style="font-size:0.75rem;color:#721C24;padding:6px;">' + esc(result.error) + '</p>'; return; }
+          var images = (result.files || []).filter(function(f) { return f.mimeType && f.mimeType.startsWith('image/'); });
+          if (!images.length) { grid.innerHTML = '<p style="font-size:0.75rem;color:var(--muted);padding:6px;">No image files found in your Design Assets folder.</p>'; return; }
+          grid.innerHTML = '';
+          images.forEach(function(f) {
+            var src = 'https://drive.google.com/uc?export=view&id=' + f.fileId;
+            var thumb = document.createElement('div');
+            thumb.className = 'img-thumb';
+            thumb.title = f.name;
+            thumb.style.backgroundImage = 'url(' + src + ')';
+            thumb.onclick = function() {
+              updateConfig(blockId, configKey, src);
+              var urlInput = document.getElementById(pickerId + '_url');
+              if (urlInput) urlInput.value = src;
+              grid.querySelectorAll('.img-thumb').forEach(function(t) { t.classList.remove('selected'); });
+              thumb.classList.add('selected');
+            };
+            grid.appendChild(thumb);
+          });
+        })
+        .withFailureHandler(function(err) {
+          grid.innerHTML = '<p style="font-size:0.75rem;color:#721C24;padding:6px;">' + esc(err.message||'Error loading assets') + '</p>';
+        })
+        .webGetDesignAssets();
+    }
+
+    // ── Config helpers ────────────────────────────────────────────────────────
+    function updateConfig(blockId, key, val) {
+      var block = blocks.find(function(b) { return b.id === blockId; });
+      if (!block) return;
+      block.config[key] = val;
+    }
+
+    function refreshPreview(blockId) {
+      var block = blocks.find(function(b) { return b.id === blockId; });
+      if (!block) return;
+      var el = document.querySelector('[data-block-id="' + blockId + '"] .block-preview');
+      if (el) el.textContent = blockPreview(block);
+    }
+
+    // ── Color swatch helper ───────────────────────────────────────────────────
+    function swatch(hex, currentVal, blockId, configKey, title) {
+      var isActive = (currentVal === hex) || (!currentVal && hex === '#0B2B46') || (!currentVal && hex === '#5DCDF5');
+      return '<div class="color-swatch' + (isActive ? ' active' : '') + '" style="background:' + hex + ';" title="' + esc(title) + '" onclick="pickColor(\'' + blockId + '\', \'' + configKey + '\', \'' + hex + '\', this)"></div>';
+    }
+
+    function pickColor(blockId, configKey, hex, el) {
+      updateConfig(blockId, configKey, hex);
+      var swatches = el.closest('.color-swatches');
+      if (swatches) swatches.querySelectorAll('.color-swatch').forEach(function(s) { s.classList.remove('active'); });
+      el.classList.add('active');
+    }
+
+    // ── Editor field helpers ──────────────────────────────────────────────────
+    function renderFieldGroup(parent, label, inputHtml) {
+      var div = document.createElement('div'); div.className = 'field-group';
+      div.innerHTML = '<label class="field-label">' + esc(label) + '</label>' + inputHtml;
+      parent.appendChild(div);
+    }
+
+    function makeNote(text) {
+      var div = document.createElement('div');
+      div.className = 'editor-auto-note'; div.style.marginTop = '10px';
+      div.innerHTML = text;
+      return div;
+    }
+
+    // ── Generate code ─────────────────────────────────────────────────────────
+    function generateCode() {
+      if (!blocks.length) { showToast('⚠️ Add at least one block first.', false); return; }
+      var btn = document.getElementById('btnGenerate');
+      var footBtn = document.getElementById('footerGenBtn');
+      btn.disabled = true; btn.innerHTML = '<div class="spinner"></div> Generating…';
+      if (footBtn) { footBtn.disabled = true; footBtn.textContent = 'Generating…'; }
+
+      // Strip IDs for server call (server doesn't need them)
+      var payload = blocks.map(function(b) { return { type: b.type, config: b.config }; });
+
+      google.script.run
+        .withSuccessHandler(function(res) {
+          btn.disabled = false; btn.textContent = '⚡ Generate Code →';
+          if (footBtn) { footBtn.disabled = false; footBtn.textContent = '⚡ Generate Code →'; }
+          if (res && res.docUrl) {
+            showToast('✅ Code generated! <a href="' + escAttr(res.docUrl) + '" target="_blank">Open Doc →</a>', true, 0);
+          } else {
+            showToast('✅ Done! ' + (res.blockCount || blocks.length) + ' section(s) generated.', true);
+          }
+        })
+        .withFailureHandler(function(err) {
+          btn.disabled = false; btn.textContent = '⚡ Generate Code →';
+          if (footBtn) { footBtn.disabled = false; footBtn.textContent = '⚡ Generate Code →'; }
+          showToast('❌ ' + (err.message || 'Failed to generate code'), false);
+        })
+        .webGeneratePageCode(SESSION_ID, payload);
+    }
+
+    // ── Toast ─────────────────────────────────────────────────────────────────
+    var _toastTimer = null;
+    function showToast(html, isSuccess, duration) {
+      var toast = document.getElementById('toast');
+      toast.innerHTML = (isSuccess ? '' : '') + html;
+      toast.style.background = isSuccess ? '#0B2B46' : '#721C24';
+      toast.classList.remove('hidden');
+      if (_toastTimer) clearTimeout(_toastTimer);
+      var ms = (duration === 0) ? 0 : (duration || 5000);
+      if (ms > 0) {
+        _toastTimer = setTimeout(function() { toast.classList.add('hidden'); }, ms);
+      }
+    }
+
+    // ── Utilities ─────────────────────────────────────────────────────────────
+    function esc(str) { return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+    function escAttr(str) { return String(str||'').replace(/"/g,'&quot;'); }
+  </script>
+</body>
+</html>

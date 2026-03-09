@@ -56,6 +56,15 @@ function doGet(e) {
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   }
 
+  if (page === 'design') {
+    const sessionId = e.parameter.session || '';
+    const html = HtmlService.createHtmlOutputFromFile('PageBuilder')
+      .getContent().replace('__SESSION_ID__', sessionId);
+    return HtmlService.createHtmlOutput(html)
+      .setTitle('Page Builder — MNGAIA')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  }
+
   return HtmlService.createHtmlOutputFromFile('Index')
     .setTitle('MNGAIA Content Engine')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
@@ -320,4 +329,68 @@ function _getWebAppUrl() {
   } catch (e) {
     return '';
   }
+}
+
+// ─── Page Builder API ─────────────────────────────────────────────────────────
+
+/**
+ * Returns all data needed to initialise the Page Builder for a session.
+ * Called from PageBuilder.html on load.
+ * @param {string} sessionId
+ * @returns {{ session, resources, libraryUrl }}
+ */
+function webGetPageBuilderData(sessionId) {
+  const session = SessionService.getSession(sessionId);
+  if (!session) throw new Error('Session not found: ' + sessionId);
+  const resources = SynthesisService.getResources(sessionId);
+  const baseUrl   = _getWebAppUrl();
+  return {
+    session:    session,
+    resources:  resources,
+    libraryUrl: baseUrl ? baseUrl + '?page=library&session=' + sessionId : (session.libraryUrl || '')
+  };
+}
+
+/**
+ * Generates Google Sites–ready HTML from a block layout and saves it as a Google Doc.
+ * Called from PageBuilder.html on "Generate Code".
+ * @param {string} sessionId
+ * @param {Object[]} blocks - [{ type, config }]
+ * @returns {{ docUrl: string, blockCount: number }}
+ */
+function webGeneratePageCode(sessionId, blocks) {
+  return PageBuilderService.generateFromBlocks(sessionId, blocks);
+}
+
+// ─── Design Assets Settings API ───────────────────────────────────────────────
+
+/**
+ * Returns the stored Design Assets folder ID (Script Property).
+ * @returns {string}
+ */
+function webGetDesignAssetsFolder() {
+  return PropertiesService.getScriptProperties().getProperty('DESIGN_ASSETS_FOLDER_ID') || '';
+}
+
+/**
+ * Stores the Design Assets folder ID from a Drive folder URL.
+ * @param {string} folderUrl - Full Google Drive folder URL
+ * @returns {{ ok: boolean }}
+ */
+function webSetDesignAssetsFolder(folderUrl) {
+  var m  = String(folderUrl || '').match(/\/folders\/([a-zA-Z0-9_-]{25,})/);
+  var id = m ? m[1] : String(folderUrl || '').trim();
+  if (!id) throw new Error('Could not extract folder ID from that URL.');
+  PropertiesService.getScriptProperties().setProperty('DESIGN_ASSETS_FOLDER_ID', id);
+  return { ok: true };
+}
+
+/**
+ * Lists image files in the Design Assets folder. Called from the PageBuilder image picker.
+ * @returns {{ folderName, files } | { error }}
+ */
+function webGetDesignAssets() {
+  var folderId = PropertiesService.getScriptProperties().getProperty('DESIGN_ASSETS_FOLDER_ID') || '';
+  if (!folderId) return { error: 'No Design Assets folder configured. Add one in Settings.' };
+  return getDriveFilesInFolder('https://drive.google.com/drive/folders/' + folderId);
 }

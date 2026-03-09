@@ -30,12 +30,7 @@ const SitesService = {
       : (session.libraryUrl || '');
 
     // Locate 04_Final folder
-    const folderId = this._extractDriveFileId(session.folderUrl);
-    if (!folderId) throw new Error('Could not determine session folder ID.');
-    const sessionFolder = DriveApp.getFolderById(folderId);
-    const finalIter = sessionFolder.getFoldersByName('04_Final');
-    if (!finalIter.hasNext()) throw new Error('04_Final folder not found. Create a session first.');
-    const finalFolder = finalIter.next();
+    const finalFolderId = this._getFinalFolderId(session.folderUrl);
 
     // Build sections
     const sections = [
@@ -47,7 +42,7 @@ const SitesService = {
       { label: 'LEARNING LIBRARY (FULL PAGE)',   html: this._buildLibraryEmbedSection(libraryUrl), embedUrl: libraryUrl }
     ].filter(s => s.html); // skip empty sections
 
-    const docUrl = this._saveAsDoc(finalFolder.getId(), 'SITES: ' + session.name, session, sections);
+    const docUrl = this._saveAsDoc(finalFolderId, 'SITES: ' + session.name, session, sections);
     return { docUrl: docUrl };
   },
 
@@ -244,6 +239,20 @@ ${cards}${libraryNote}
   },
 
   // ─── Doc Output ────────────────────────────────────────────────────────────
+
+  /**
+   * Navigates to the 04_Final subfolder of a session's Drive folder.
+   * @param {string} sessionFolderUrl - The session's top-level Drive folder URL
+   * @returns {string} The folder ID of 04_Final
+   */
+  _getFinalFolderId: function(sessionFolderUrl) {
+    var folderId = this._extractDriveFileId(sessionFolderUrl);
+    if (!folderId) throw new Error('Could not determine session folder ID.');
+    var sessionFolder = DriveApp.getFolderById(folderId);
+    var finalIter = sessionFolder.getFoldersByName('04_Final');
+    if (!finalIter.hasNext()) throw new Error('04_Final folder not found. Create a session first.');
+    return finalIter.next().getId();
+  },
 
   /**
    * Creates a Google Doc with labelled code blocks for each section.

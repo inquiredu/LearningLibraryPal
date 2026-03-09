@@ -108,6 +108,7 @@
       <h1>MNGAIA</h1>
       <span>Content Engine</span>
     </div>
+    <button class="btn btn-outline" onclick="openSettingsModal()" style="margin-left:auto;margin-right:8px;">⚙️ Settings</button>
     <button class="btn btn-primary" onclick="openNewSessionWizard()">+ New Session</button>
   </div>
 
@@ -116,6 +117,32 @@
     <div id="alert" class="alert"></div>
     <div id="loader" class="spinner"></div>
     <div id="sessions-grid" class="sessions-grid" style="display:none;"></div>
+  </div>
+
+  <!-- Settings Modal -->
+  <div id="settingsModal" class="modal-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>⚙️ Settings</h2>
+        <button class="modal-close" onclick="closeSettingsModal()">×</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size:0.82rem;color:var(--muted);margin-bottom:16px;">Configuration stored as Script Properties — shared across all users of this deployment.</p>
+
+        <div class="form-group">
+          <label>🖼️ Design Assets Folder (Google Drive)</label>
+          <div style="display:flex;gap:6px;">
+            <input type="url" id="settings-assetsFolder" placeholder="Paste Google Drive folder URL…" style="flex:1;">
+            <button class="btn btn-dark btn-sm" onclick="saveDesignAssetsFolder()">Save</button>
+          </div>
+          <div style="font-size:0.73rem;color:var(--muted);margin-top:4px;">Images in this folder appear in the Page Builder's image picker. Paste the full folder share URL.</div>
+          <div id="settings-assetsStatus" style="font-size:0.78rem;margin-top:6px;"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline btn-sm" onclick="closeSettingsModal()">Close</button>
+      </div>
+    </div>
   </div>
 
   <!-- Participants Modal -->
@@ -324,6 +351,7 @@
             '<button class="btn btn-dark btn-sm" onclick="openEmailModal(\'' + s.id + '\')">📧 Draft Email</button>' +
             '<button class="btn btn-dark btn-sm" onclick="openPermModal(\'' + s.id + '\')">🔍 Check Access</button>' +
             '<button class="btn btn-dark btn-sm" onclick="generateSiteCode(\'' + s.id + '\', this)">🌐 Site Code</button>' +
+            '<button class="btn btn-dark btn-sm" onclick="openPageBuilder(\'' + s.id + '\')">🎨 Design Page</button>' +
             libraryBtn +
           '</div>';
         grid.appendChild(card);
@@ -884,6 +912,50 @@
         .withSuccessHandler(function() { openParticipantsModal(_participantsSessionId); })
         .withFailureHandler(function(err) { document.getElementById('participants-status').textContent = 'Error: ' + err.message; })
         .webRemoveParticipant(_participantsSessionId, email);
+    }
+
+    // ── Page Builder ───────────────────────────────────────────────────────────
+
+    function openPageBuilder(sessionId) {
+      var base = window.location.href.split('?')[0];
+      window.open(base + '?page=design&session=' + sessionId, '_blank');
+    }
+
+    // ── Settings Modal ─────────────────────────────────────────────────────────
+
+    function openSettingsModal() {
+      document.getElementById('settings-assetsStatus').textContent = '';
+      document.getElementById('settingsModal').classList.add('open');
+      // Pre-fill stored folder ID as a constructed URL if available
+      google.script.run
+        .withSuccessHandler(function(folderId) {
+          if (folderId) {
+            document.getElementById('settings-assetsFolder').value = 'https://drive.google.com/drive/folders/' + folderId;
+          }
+        })
+        .withFailureHandler(function() {})
+        .webGetDesignAssetsFolder();
+    }
+
+    function closeSettingsModal() {
+      document.getElementById('settingsModal').classList.remove('open');
+    }
+
+    function saveDesignAssetsFolder() {
+      var url = document.getElementById('settings-assetsFolder').value.trim();
+      var status = document.getElementById('settings-assetsStatus');
+      if (!url) { status.textContent = 'Paste a Drive folder URL first.'; status.style.color = '#721C24'; return; }
+      status.textContent = 'Saving…'; status.style.color = 'var(--muted)';
+      google.script.run
+        .withSuccessHandler(function() {
+          status.textContent = '✅ Design Assets folder saved.';
+          status.style.color = '#155724';
+        })
+        .withFailureHandler(function(err) {
+          status.textContent = 'Error: ' + (err.message || 'Could not save.');
+          status.style.color = '#721C24';
+        })
+        .webSetDesignAssetsFolder(url);
     }
 
     function showAlert(msg, type) {

@@ -246,6 +246,7 @@
           '</div>' +
           '<div class="session-card-actions">' +
             '<button class="btn btn-dark btn-sm" onclick="openResourcesModal(\'' + s.id + '\')">📁 Add Resources</button>' +
+            (!s.hasBrief ? '<button class="btn btn-dark btn-sm" onclick="regenerateBrief(\'' + s.id + '\', this)">✨ Generate Brief</button>' : '') +
             '<button class="btn btn-dark btn-sm" onclick="runSynthesis(\'' + s.id + '\', this)">🔬 Synthesize</button>' +
             '<button class="btn btn-dark btn-sm" onclick="runGems(\'' + s.id + '\', this)">💎 Generate Gems</button>' +
             (s.hasGems ? '<button class="btn btn-dark btn-sm" onclick="openGemLinksModal(\'' + s.id + '\')">🔗 Set Gem Links</button>' : '') +
@@ -380,6 +381,18 @@
         })
         .withFailureHandler(function(err) { resetBtn(btn, '🌐 Site Code'); showAlert(err.message, 'error'); })
         .webGenerateSiteCode(sessionId);
+    }
+
+    function regenerateBrief(sessionId, btn) {
+      setBtnLoading(btn, 'Generating...');
+      google.script.run
+        .withSuccessHandler(function() {
+          resetBtn(btn, '✨ Generate Brief');
+          showAlert('Session brief generated! Refreshing dashboard...', 'success');
+          loadDashboard();
+        })
+        .withFailureHandler(function(err) { resetBtn(btn, '✨ Generate Brief'); showAlert(err.message, 'error'); })
+        .webRegenerateBrief(sessionId);
     }
 
     function openNewSessionWizard() {

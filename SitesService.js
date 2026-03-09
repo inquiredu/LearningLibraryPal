@@ -1,7 +1,7 @@
 /**
  * SitesService
  * Generates embed-ready HTML snippets for Google Sites from a session's content.
- * Output: a Google Doc in 04_Final_Assets with labelled code blocks to copy-paste.
+ * Output: a Google Doc in 04_Final with labelled code blocks to copy-paste.
  *
  * Google Sites embed approach: Insert → Embed → paste HTML per section.
  * Each section is self-contained with inline CSS (no shared stylesheets needed).
@@ -23,12 +23,12 @@ const SitesService = {
     const resources = SynthesisService.getResources(sessionId);
     const gems = session.gems || [];
 
-    // Locate 04_Final_Assets folder
+    // Locate 04_Final folder
     const folderId = this._extractDriveFileId(session.folderUrl);
     if (!folderId) throw new Error('Could not determine session folder ID.');
     const sessionFolder = DriveApp.getFolderById(folderId);
-    const finalIter = sessionFolder.getFoldersByName('04_Final_Assets');
-    if (!finalIter.hasNext()) throw new Error('04_Final_Assets folder not found. Create a session first.');
+    const finalIter = sessionFolder.getFoldersByName('04_Final');
+    if (!finalIter.hasNext()) throw new Error('04_Final folder not found. Create a session first.');
     const finalFolder = finalIter.next();
 
     // Build sections

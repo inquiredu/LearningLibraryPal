@@ -173,6 +173,21 @@ function webGenerateSiteCode(sessionId) {
   return SitesService.generateSiteCode(sessionId);
 }
 
+/**
+ * Regenerates the AI session brief for an existing session.
+ * Used when a session was created without a brief or the brief is missing.
+ * @param {string} sessionId
+ * @returns {{ ok: boolean }}
+ */
+function webRegenerateBrief(sessionId) {
+  const session = SessionService.getSession(sessionId);
+  if (!session) throw new Error('Session not found: ' + sessionId);
+  const brief = GeminiService.generateSessionBrief(session.theme, session.format, session.audience);
+  SessionService.updateSession(sessionId, { BRIEF_JSON: JSON.stringify(brief) });
+  invalidateLibraryCache(sessionId);
+  return { ok: true };
+}
+
 // ─── Drive Folder Browser ─────────────────────────────────────────────────────
 
 /**

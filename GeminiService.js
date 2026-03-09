@@ -1,7 +1,7 @@
 /**
  * GeminiService
  * Central AI layer — all Gemini API interactions live here.
- * Model: gemini-1.5-flash (fast, structured JSON output)
+ * Model: gemini-2.0-flash (fast, structured JSON output)
  */
 
 const GeminiService = {
@@ -21,7 +21,7 @@ const GeminiService = {
     };
 
     const response = UrlFetchApp.fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
       { method: 'post', contentType: 'application/json', payload: JSON.stringify(payload), muteHttpExceptions: true }
     );
 

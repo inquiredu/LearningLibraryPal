@@ -151,6 +151,26 @@
     </div>
   </div>
 
+  <!-- Gem Links Modal -->
+  <div id="gemLinksModal" class="modal-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>🔗 Set Gem Links</h2>
+        <button class="modal-close" onclick="closeGemLinksModal()">×</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size:0.82rem;color:var(--muted);margin-bottom:16px;">After creating each Gem in <a href="https://gemini.google.com" target="_blank" style="color:var(--navy);font-weight:700;">gemini.google.com</a>, paste its shareable link here. Links appear as "Open Gem →" buttons on the Library page.</p>
+        <div id="gem-link-rows" style="display:flex;flex-direction:column;gap:10px;"></div>
+      </div>
+      <div class="modal-footer">
+        <div class="spinner" id="gemlinks-spinner" style="display:none;"></div>
+        <span style="flex:1;font-size:0.78rem;color:var(--muted);" id="gemlinks-status"></span>
+        <button class="btn btn-outline btn-sm" onclick="closeGemLinksModal()">Cancel</button>
+        <button class="btn btn-primary btn-sm" onclick="saveGemLinks()">Save Links</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Email Draft Modal -->
   <div id="emailModal" class="modal-overlay">
     <div class="modal">
@@ -170,6 +190,8 @@
 
   <script>
     var _emailSessionId = null;
+    var _gemLinksSessionId = null;
+    var _sessionsData = [];   // cache of last renderSessions() call
 
     function loadDashboard() {
       document.getElementById('loader').style.display = 'block';
@@ -184,6 +206,7 @@
     }
 
     function renderSessions(sessions) {
+      _sessionsData = sessions || [];
       document.getElementById('loader').style.display = 'none';
       var grid = document.getElementById('sessions-grid');
       grid.style.display = 'flex';
@@ -225,6 +248,7 @@
             '<button class="btn btn-dark btn-sm" onclick="openResourcesModal(\'' + s.id + '\')">📁 Add Resources</button>' +
             '<button class="btn btn-dark btn-sm" onclick="runSynthesis(\'' + s.id + '\', this)">🔬 Synthesize</button>' +
             '<button class="btn btn-dark btn-sm" onclick="runGems(\'' + s.id + '\', this)">💎 Generate Gems</button>' +
+            (s.hasGems ? '<button class="btn btn-dark btn-sm" onclick="openGemLinksModal(\'' + s.id + '\')">🔗 Set Gem Links</button>' : '') +
             '<button class="btn btn-dark btn-sm" onclick="openEmailModal(\'' + s.id + '\')">📧 Draft Email</button>' +
             libraryBtn +
           '</div>';
@@ -243,9 +267,69 @@
     function runGems(sessionId, btn) {
       setBtnLoading(btn, 'Generating...');
       google.script.run
-        .withSuccessHandler(function() { resetBtn(btn, '💎 Generate Gems'); showAlert('Gems generated! View them in the Learning Library.', 'success'); loadDashboard(); })
+        .withSuccessHandler(function(res) { resetBtn(btn, '💎 Generate Gems'); showAlert('Gem instructions generated! Open 03_Gems in Drive to copy-paste into AI Studio, then use 🔗 Set Gem Links.', 'success'); loadDashboard(); })
         .withFailureHandler(function(err) { resetBtn(btn, '💎 Generate Gems'); showAlert(err.message, 'error'); })
         .webGenerateGems(sessionId);
+    }
+
+    // ── Gem Links Modal ────────────────────────────────────────────────────────
+
+    function openGemLinksModal(sessionId) {
+      _gemLinksSessionId = sessionId;
+      var session = _sessionsData.find(function(s) { return s.id === sessionId; });
+      var gems = [];
+      try { gems = JSON.parse((session && session.gemsJson) || '[]'); } catch(e) {}
+
+      var container = document.getElementById('gem-link-rows');
+      container.innerHTML = '';
+      if (!gems.length) {
+        container.innerHTML = '<p style="color:var(--muted);font-size:0.85rem;">No gems found. Run Generate Gems first.</p>';
+      } else {
+        gems.forEach(function(gem) {
+          var row = document.createElement('div');
+          row.style.cssText = 'display:flex;flex-direction:column;gap:4px;';
+          row.innerHTML =
+            '<label style="font-size:0.78rem;font-weight:700;color:var(--navy);">' +
+              (gem.emoji || '💎') + ' ' + esc(gem.name || gem.id) +
+            '</label>' +
+            '<input type="url" data-gem-id="' + esc(gem.id) + '" placeholder="Paste Gemini Gem link..." ' +
+              'value="' + esc(gem.link || '') + '" ' +
+              'style="padding:7px 10px;border:1.5px solid var(--border);border-radius:6px;font-family:\'Open Sans\',sans-serif;font-size:0.82rem;">';
+          container.appendChild(row);
+        });
+      }
+      document.getElementById('gemlinks-status').textContent = '';
+      document.getElementById('gemLinksModal').classList.add('open');
+    }
+
+    function closeGemLinksModal() {
+      document.getElementById('gemLinksModal').classList.remove('open');
+      _gemLinksSessionId = null;
+    }
+
+    function saveGemLinks() {
+      if (!_gemLinksSessionId) return;
+      var links = {};
+      document.querySelectorAll('#gem-link-rows input[data-gem-id]').forEach(function(input) {
+        var gemId = input.getAttribute('data-gem-id');
+        var val = input.value.trim();
+        if (gemId) links[gemId] = val;
+      });
+      document.getElementById('gemlinks-spinner').style.display = 'block';
+      document.getElementById('gemlinks-status').textContent = 'Saving...';
+      google.script.run
+        .withSuccessHandler(function() {
+          document.getElementById('gemlinks-spinner').style.display = 'none';
+          closeGemLinksModal();
+          showAlert('Gem links saved! They\'ll appear as buttons on the Library page.', 'success');
+          loadDashboard();
+        })
+        .withFailureHandler(function(err) {
+          document.getElementById('gemlinks-spinner').style.display = 'none';
+          document.getElementById('gemlinks-status').textContent = '';
+          showAlert('Error: ' + err.message, 'error');
+        })
+        .webUpdateGemLinks(_gemLinksSessionId, links);
     }
 
     function openEmailModal(sessionId) {

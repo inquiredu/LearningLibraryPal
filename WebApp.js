@@ -72,6 +72,7 @@ function getDashboardData() {
     dbUrl:      s.dbUrl,
     emailSent:  s.emailSent,
     hasGems:    !!(s.gems && s.gems.length),
+    gemsJson:   s.gems ? JSON.stringify(s.gems) : '[]',
     hasBrief:   !!(s.brief && s.brief.overview),
     libraryUrl: baseUrl ? baseUrl + '?page=library&session=' + s.id : ''
   }));
@@ -88,11 +89,23 @@ function webRunSynthesis(sessionId) {
 }
 
 /**
- * Generates Gems for a session. Called from dashboard.
+ * Generates Gem instruction sets for a session. Called from dashboard.
  */
 function webGenerateGems(sessionId) {
   const gems = GemsService.generateGems(sessionId);
-  return { success: true, gems: gems };
+  invalidateLibraryCache(sessionId);
+  return { success: true, count: gems.length };
+}
+
+/**
+ * Updates shareable links for published Gems. Called from "Set Gem Links" modal.
+ * @param {string} sessionId
+ * @param {Object} gemLinks - { "session-primer": "https://...", ... }
+ */
+function webUpdateGemLinks(sessionId, gemLinks) {
+  GemsService.updateGemLinks(sessionId, gemLinks);
+  invalidateLibraryCache(sessionId);
+  return { ok: true };
 }
 
 /**

@@ -106,23 +106,57 @@
     .tag.nlm  { background: #F3E5F5; color: #6A0080; border-color: #E1BEE7; }
 
     /* ── Gems ── */
-    .gems-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+    .gems-grid { display: flex; flex-direction: column; gap: 16px; }
     .gem-card {
       background: var(--white); border: 1px solid var(--border); border-radius: 10px;
-      padding: 20px; display: flex; flex-direction: column; gap: 12px;
+      padding: 20px; display: flex; flex-direction: column; gap: 14px;
     }
-    .gem-header { display: flex; align-items: center; gap: 10px; }
+    .gem-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+    .gem-header-left { display: flex; align-items: center; gap: 10px; }
     .gem-emoji { font-size: 1.6rem; }
-    .gem-info h3 { font-family: 'Montserrat', sans-serif; font-size: 0.92rem; color: var(--navy); }
+    .gem-info h3 { font-family: 'Montserrat', sans-serif; font-size: 0.95rem; color: var(--navy); }
     .gem-info p  { font-size: 0.75rem; color: var(--muted); }
     .gem-persona { font-size: 0.83rem; color: var(--text); line-height: 1.55; font-style: italic; }
-    .gem-prompt-box {
-      background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
-      padding: 12px; font-family: monospace; font-size: 0.78rem; line-height: 1.6;
-      color: var(--navy); white-space: pre-wrap; word-break: break-word; max-height: 180px; overflow-y: auto;
+    .gem-link-btn {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: var(--cyan); color: var(--navy); border: none; border-radius: 5px;
+      padding: 6px 12px; font-size: 0.78rem; font-weight: 700; cursor: pointer;
+      text-decoration: none; flex-shrink: 0; transition: opacity 0.15s; white-space: nowrap;
     }
+    .gem-link-btn:hover { opacity: 0.85; color: var(--navy); }
+    .gem-not-published {
+      font-size: 0.72rem; color: var(--muted); background: var(--bg);
+      border: 1px solid var(--border); border-radius: 4px; padding: 5px 8px;
+      font-weight: 600; flex-shrink: 0; white-space: nowrap;
+    }
+    .gem-instructions { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+    .gem-instructions-toggle {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 14px; cursor: pointer; background: var(--bg);
+      font-size: 0.78rem; font-weight: 700; color: var(--navy); border: none; width: 100%;
+      text-align: left; transition: background 0.15s;
+    }
+    .gem-instructions-toggle:hover { background: #E8EEF4; }
+    .toggle-arrow { transition: transform 0.2s; color: var(--muted); font-size: 1rem; }
+    .gem-instructions.open .toggle-arrow { transform: rotate(90deg); }
+    .gem-instructions-body { display: none; padding: 14px; border-top: 1px solid var(--border); }
+    .gem-instructions.open .gem-instructions-body { display: block; }
+    .gem-instruction-block {
+      background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+      padding: 12px; font-family: monospace; font-size: 0.75rem; line-height: 1.6;
+      color: var(--navy); white-space: pre-wrap; word-break: break-word; max-height: 200px; overflow-y: auto;
+    }
+    .instruction-copy-btn {
+      position: absolute; top: 8px; right: 8px;
+      background: var(--navy); color: var(--white); border: none; border-radius: 4px;
+      padding: 4px 8px; font-size: 0.7rem; font-weight: 700; cursor: pointer; transition: opacity 0.15s;
+    }
+    .instruction-copy-btn:hover { opacity: 0.8; }
+    .instruction-copy-btn.copied { background: #155724; }
+    .gem-setup-steps { list-style: decimal; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; margin-top: 2px; }
+    .gem-setup-steps li { font-size: 0.8rem; color: var(--text); line-height: 1.5; }
     .gem-starters { margin-top: 2px; }
-    .gem-starters h4 { font-size: 0.72rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+    .gem-starters h4 { font-size: 0.78rem; font-weight: 700; color: var(--navy); margin-bottom: 8px; }
     .gem-starters ul { list-style: none; display: flex; flex-direction: column; gap: 4px; }
     .gem-starters li { font-size: 0.8rem; color: var(--text); line-height: 1.4; display: flex; gap: 6px; }
     .gem-starters li::before { content: '→'; color: var(--cyan); flex-shrink: 0; }
@@ -350,41 +384,94 @@
     // ── Gems ───────────────────────────────────────────────────────────────────
     function renderGems(gems) {
       var grid = document.getElementById('gemsGrid');
-      if (!gems.length) { grid.innerHTML = '<div class="empty" style="grid-column:1/-1;">No Gems generated yet. Run "Generate Gems" from the Dashboard first.</div>'; return; }
+      if (!gems.length) {
+        grid.innerHTML = '<div class="empty">No Gems generated yet. Run "Generate Gems" from the Dashboard first.</div>';
+        return;
+      }
 
       gems.forEach(function(gem) {
         var card = document.createElement('div');
         card.className = 'gem-card';
-        var starters = (gem.starterQueries || []).map(function(q) { return '<li>' + esc(q) + '</li>'; }).join('');
-        var promptId = 'prompt-' + gem.id;
+
+        var instrId      = 'instr-'      + gem.id;
+        var instrBlockId = 'instrblock-' + gem.id;
+
+        // "Open Gem →" button or "Not published yet" badge
+        var linkHtml = gem.link
+          ? '<a class="gem-link-btn" href="' + esc(gem.link) + '" target="_blank">Open Gem →</a>'
+          : '<span class="gem-not-published">Not published yet</span>';
+
+        // System instruction (new field; fallback to legacy systemPrompt)
+        var instruction = gem.systemInstruction || gem.systemPrompt || '';
+
+        // Setup steps
+        var stepsHtml = (gem.setupSteps || []).map(function(s) {
+          return '<li>' + esc(s) + '</li>';
+        }).join('');
+
+        // Conversation starters
+        var starters = (gem.starterQueries || []).map(function(q) {
+          return '<li>' + esc(q) + '</li>';
+        }).join('');
+
         card.innerHTML =
+          // Header: emoji + name on left, link/badge on right
           '<div class="gem-header">' +
-            '<span class="gem-emoji">' + (gem.emoji || '💎') + '</span>' +
-            '<div class="gem-info"><h3>' + esc(gem.name) + '</h3><p>' + esc(gem.role || '') + '</p></div>' +
+            '<div class="gem-header-left">' +
+              '<span class="gem-emoji">' + (gem.emoji || '💎') + '</span>' +
+              '<div class="gem-info"><h3>' + esc(gem.name || '') + '</h3></div>' +
+            '</div>' +
+            linkHtml +
           '</div>' +
+
+          // Persona description
           '<div class="gem-persona">' + esc(gem.persona || '') + '</div>' +
-          '<div>' +
-            '<div style="font-size:0.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">System Prompt (copy into Gemini Gem)</div>' +
-            '<div class="gem-prompt-box" id="' + promptId + '">' + esc(gem.systemPrompt || '') + '</div>' +
+
+          // Expandable: System Instruction + Setup Steps
+          '<div class="gem-instructions" id="' + instrId + '">' +
+            '<button class="gem-instructions-toggle" onclick="toggleGemInstructions(\'' + instrId + '\')">' +
+              '<span class="toggle-label">▸ View Setup Instructions</span>' +
+              '<span class="toggle-arrow">›</span>' +
+            '</button>' +
+            '<div class="gem-instructions-body">' +
+              '<div style="font-size:0.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">System Instruction</div>' +
+              '<div style="position:relative;margin-bottom:14px;">' +
+                '<div class="gem-instruction-block" id="' + instrBlockId + '">' + esc(instruction) + '</div>' +
+                '<button class="instruction-copy-btn" onclick="copyInstruction(\'' + instrBlockId + '\', this)">📋 Copy</button>' +
+              '</div>' +
+              (stepsHtml
+                ? '<div style="font-size:0.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Setup Steps</div>' +
+                  '<ol class="gem-setup-steps">' + stepsHtml + '</ol>'
+                : '') +
+            '</div>' +
           '</div>' +
-          (starters ? '<div class="gem-starters"><h4>Starter Queries</h4><ul>' + starters + '</ul></div>' : '') +
-          '<button class="copy-btn" onclick="copyPrompt(\'' + promptId + '\', this)">Copy System Prompt</button>';
+
+          // Conversation starters
+          (starters
+            ? '<div class="gem-starters"><h4>💬 Conversation Starters</h4><ul>' + starters + '</ul></div>'
+            : '');
+
         grid.appendChild(card);
       });
     }
 
-    function copyPrompt(elemId, btn) {
+    function toggleGemInstructions(id) {
+      var el = document.getElementById(id);
+      el.classList.toggle('open');
+      var label = el.querySelector('.toggle-label');
+      if (label) label.textContent = el.classList.contains('open') ? '▾ Hide Setup Instructions' : '▸ View Setup Instructions';
+    }
+
+    function copyInstruction(elemId, btn) {
       var text = document.getElementById(elemId).textContent;
       navigator.clipboard.writeText(text).then(function() {
-        var orig = btn.textContent;
-        btn.textContent = '✓ Copied!';
-        btn.classList.add('copied');
+        var orig = btn.textContent; btn.textContent = '✓ Copied!'; btn.classList.add('copied');
         setTimeout(function() { btn.textContent = orig; btn.classList.remove('copied'); }, 2000);
       }).catch(function() {
         var ta = document.createElement('textarea');
         ta.value = text; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
         btn.textContent = '✓ Copied!'; btn.classList.add('copied');
-        setTimeout(function() { btn.textContent = 'Copy System Prompt'; btn.classList.remove('copied'); }, 2000);
+        setTimeout(function() { btn.textContent = '📋 Copy'; btn.classList.remove('copied'); }, 2000);
       });
     }
 

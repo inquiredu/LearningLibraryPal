@@ -8,533 +8,937 @@
   <title>Learning Library — MNGAIA</title>
   <style>
     :root {
-      --navy:    #0B2B46;
-      --cyan:    #5DCDF5;
-      --white:   #FFFFFF;
-      --bg:      #F0F4F8;
-      --border:  #DDE4ED;
-      --text:    #2C3E50;
-      --muted:   #7F8FA4;
-      --deep:    #004085;
-      --deep-bg: #CCE5FF;
-      --mid-bg:  #FFF3CD;
-      --mid:     #856404;
-      --acc-bg:  #D4EDDA;
-      --acc:     #155724;
+      --navy:   #0B2B46;
+      --navy2:  #0D3459;
+      --cyan:   #5DCDF5;
+      --white:  #FFFFFF;
+      --bg:     #F4F7FA;
+      --border: #DDE4ED;
+      --text:   #2C3E50;
+      --muted:  #7F8FA4;
+      --acc:    #155724;
+      --acc-bg: #D4EDDA;
+      --deep:   #004085;
+      --deep-bg:#CCE5FF;
+      --mid:    #856404;
+      --mid-bg: #FFF3CD;
+      --nlm:    #6A0080;
+      --nlm-bg: #F3E5F5;
     }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Open Sans', sans-serif; background: var(--bg); color: var(--text); }
-    a { color: var(--navy); }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body { font-family: 'Open Sans', sans-serif; background: var(--bg); color: var(--text); font-size: 15px; line-height: 1.7; }
+    a { color: var(--navy); text-decoration: none; }
     a:hover { color: var(--cyan); }
 
-    /* ── Header ── */
-    .hero {
-      background: linear-gradient(135deg, var(--navy) 0%, #1A4A6E 100%);
-      padding: 48px 32px 40px;
-      text-align: center;
+    /* ── Loading ──────────────────────────────────────────────────── */
+    #loading {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      min-height: 100vh; gap: 16px; color: var(--muted);
     }
-    .hero-label { color: var(--cyan); font-size: 0.75rem; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 12px; }
-    .hero-title { font-family: 'Montserrat', sans-serif; font-size: 2rem; color: var(--white); line-height: 1.25; margin-bottom: 10px; text-transform: uppercase; }
-    .hero-meta { color: rgba(255,255,255,0.65); font-size: 0.88rem; display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
-    .hero-meta span::before { content: '✨'; margin-right: 8px; color: var(--cyan); opacity: 1; }
-    .hero-meta span:first-child::before { content: ''; margin: 0; }
-
-    /* ── Layout ── */
-    .container {
-      max-width: 1100px;
-      margin: 0 auto;
-      padding: 32px 24px 60px;
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-      gap: 0 40px;
-      align-items: start;
-    }
-    .section { margin-bottom: 40px; }
-    #secOverview { grid-column: 1 / -1; } /* Spans full width */
-    .section-header {
-      display: flex; align-items: center; gap: 10px;
-      margin-bottom: 18px; padding-bottom: 12px;
-      border-bottom: 2px solid var(--border);
-    }
-    .section-header h2 { font-family: 'Montserrat', sans-serif; font-size: 1.05rem; color: var(--navy); }
-    .section-icon { font-size: 1.25rem; }
-
-    /* ── Loading ── */
-    .loading { text-align: center; padding: 60px 20px; }
-    .spinner { width: 36px; height: 36px; border: 3px solid var(--border); border-top-color: var(--cyan); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 16px; }
+    .spinner { width: 40px; height: 40px; border: 3px solid var(--border); border-top-color: var(--cyan); border-radius: 50%; animation: spin 0.75s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
-    .loading p { color: var(--muted); font-size: 0.9rem; }
 
-    /* ── Overview ── */
-    .overview-text { font-size: 1rem; line-height: 1.8; color: var(--text); }
-    .objectives-list { list-style: none; display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
-    .objectives-list li { display: flex; align-items: flex-start; gap: 10px; font-size: 0.92rem; line-height: 1.6; }
-    .obj-dot { width: 8px; height: 8px; background: var(--cyan); border-radius: 50%; margin-top: 8px; flex-shrink: 0; }
-
-    /* ── Inquiry Questions ── */
-    .questions-list { display: flex; flex-direction: column; gap: 10px; }
-    .question-item {
-      background: var(--white); border: 1px solid var(--border); border-radius: 8px;
-      padding: 16px 18px; cursor: pointer; transition: border-color 0.15s;
-      user-select: none;
+    /* ── Hero ─────────────────────────────────────────────────────── */
+    .hero {
+      background: linear-gradient(150deg, var(--navy) 0%, var(--navy2) 60%, #0F3D5C 100%);
+      padding: 56px 32px 48px;
+      position: relative;
+      overflow: hidden;
     }
-    .question-item:hover { border-color: var(--cyan); }
-    .question-item.open { border-color: var(--cyan); background: #F5FCFF; }
-    .question-q { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
-    .question-q span { font-size: 0.92rem; line-height: 1.6; font-weight: 600; color: var(--navy); }
-    .question-toggle { color: var(--muted); font-size: 1.1rem; flex-shrink: 0; margin-top: 1px; transition: transform 0.2s; }
-    .question-item.open .question-toggle { transform: rotate(45deg); }
-    .question-detail { display: none; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); font-size: 0.85rem; color: var(--muted); line-height: 1.6; }
-    .question-item.open .question-detail { display: block; }
-
-    /* ── Resources ── */
-    .resources-grid { display: flex; flex-direction: column; gap: 12px; }
-    .resource-card {
-      background: var(--white); border: 1px solid var(--border); border-radius: 8px;
-      padding: 16px 18px; display: flex; gap: 16px; align-items: flex-start;
+    .hero::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse at 80% 20%, rgba(93,205,245,0.08) 0%, transparent 60%);
+      pointer-events: none;
     }
-    .resource-score {
-      width: 36px; height: 36px; border-radius: 50%; background: var(--navy); color: var(--white);
-      display: flex; align-items: center; justify-content: center; font-size: 0.88rem; font-weight: 700; flex-shrink: 0;
+    .hero-inner { max-width: 860px; margin: 0 auto; position: relative; z-index: 1; }
+    .hero-eyebrow {
+      font-size: 0.68rem; font-weight: 700; letter-spacing: 2.5px;
+      text-transform: uppercase; color: var(--cyan); margin-bottom: 16px;
+      display: flex; align-items: center; gap: 8px;
     }
-    .resource-score.s5 { background: #155724; }
-    .resource-score.s4 { background: #004085; }
-    .resource-score.s3 { background: var(--navy); }
-    .resource-score.s2 { background: var(--muted); }
-    .resource-score.s1 { background: var(--border); color: var(--muted); }
-    .resource-content { flex: 1; min-width: 0; }
-    .resource-title { font-size: 0.92rem; font-weight: 700; color: var(--navy); margin-bottom: 4px; }
-    .resource-title a { text-decoration: none; color: inherit; }
-    .resource-title a:hover { color: var(--cyan); }
-    .resource-statement { font-size: 0.83rem; color: var(--text); line-height: 1.5; margin-bottom: 8px; }
-    .resource-tags { display: flex; flex-wrap: wrap; gap: 6px; }
-    .tag { padding: 2px 8px; border-radius: 4px; font-size: 0.72rem; font-weight: 700; background: var(--bg); color: var(--muted); border: 1px solid var(--border); }
-    .tag.pre  { background: var(--acc-bg); color: var(--acc); border-color: #C3E6CB; }
-    .tag.deep { background: var(--deep-bg); color: var(--deep); border-color: #B8DAFF; }
-    .tag.mid  { background: var(--mid-bg); color: var(--mid); border-color: #FFEEBA; }
-    .tag.nlm  { background: #F3E5F5; color: #6A0080; border-color: #E1BEE7; }
+    .hero-eyebrow::before { content: ''; display: block; width: 24px; height: 2px; background: var(--cyan); }
+    .hero-title {
+      font-family: 'Montserrat', sans-serif; font-size: clamp(1.6rem, 4vw, 2.4rem);
+      color: var(--white); line-height: 1.18; margin-bottom: 16px; font-weight: 800;
+    }
+    .hero-chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
+    .hero-chip {
+      padding: 4px 12px; border-radius: 20px; font-size: 0.76rem; font-weight: 700;
+      background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.8);
+      border: 1px solid rgba(255,255,255,0.15);
+    }
+    .hero-chip.date { background: rgba(93,205,245,0.15); color: var(--cyan); border-color: rgba(93,205,245,0.3); }
+    .hero-overview {
+      font-size: 0.97rem; color: rgba(255,255,255,0.75); line-height: 1.75;
+      max-width: 680px; border-left: 3px solid rgba(93,205,245,0.4); padding-left: 16px;
+    }
 
-    /* ── Gems ── */
-    .gems-grid { display: flex; flex-direction: column; gap: 16px; }
-    .gem-card {
+    /* ── Progress bar (checklist) ─────────────────────────────────── */
+    .hero-progress { margin-top: 24px; display: flex; align-items: center; gap: 12px; }
+    .progress-track { flex: 1; max-width: 220px; height: 4px; background: rgba(255,255,255,0.15); border-radius: 2px; overflow: hidden; }
+    .progress-fill { height: 100%; background: var(--cyan); border-radius: 2px; transition: width 0.4s ease; }
+    .progress-label { font-size: 0.72rem; color: rgba(255,255,255,0.55); font-weight: 600; }
+
+    /* ── Page body ────────────────────────────────────────────────── */
+    #content { display: none; }
+    .page-body { display: flex; max-width: 1180px; margin: 0 auto; padding: 0 20px; gap: 0; }
+
+    /* ── Sticky Sidebar Nav ───────────────────────────────────────── */
+    .sidebar {
+      width: 220px; flex-shrink: 0; padding: 32px 0 60px;
+    }
+    .sidebar-inner { position: sticky; top: 24px; }
+    .nav-label {
+      font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px;
+      color: var(--muted); padding: 0 16px; margin-bottom: 8px;
+    }
+    .nav-item {
+      display: flex; align-items: center; gap: 9px; padding: 8px 16px;
+      border-radius: 0 8px 8px 0; font-size: 0.82rem; font-weight: 600;
+      color: var(--muted); cursor: pointer; transition: background 0.15s, color 0.15s;
+      border-left: 2px solid transparent; text-decoration: none;
+    }
+    .nav-item:hover { background: rgba(11,43,70,0.05); color: var(--navy); }
+    .nav-item.active { background: rgba(93,205,245,0.08); color: var(--navy); border-left-color: var(--cyan); font-weight: 700; }
+    .nav-icon { font-size: 0.95rem; width: 18px; text-align: center; flex-shrink: 0; }
+    .nav-badge {
+      margin-left: auto; background: var(--border); color: var(--muted);
+      font-size: 0.65rem; font-weight: 700; padding: 1px 6px; border-radius: 10px; min-width: 20px; text-align: center;
+    }
+    .nav-item.active .nav-badge { background: rgba(93,205,245,0.2); color: var(--navy); }
+    .nav-spacer { height: 1px; background: var(--border); margin: 10px 16px; }
+
+    /* ── Main Content Area ────────────────────────────────────────── */
+    .main-content { flex: 1; min-width: 0; padding: 40px 0 80px 40px; }
+
+    /* ── Section ─────────────────────────────────────────────────── */
+    .section { margin-bottom: 64px; scroll-margin-top: 24px; }
+    .section-heading {
+      display: flex; align-items: center; gap: 10px; margin-bottom: 24px;
+    }
+    .section-heading-icon {
+      width: 36px; height: 36px; border-radius: 9px;
+      background: var(--navy); color: var(--cyan); display: flex; align-items: center;
+      justify-content: center; font-size: 1rem; flex-shrink: 0;
+    }
+    .section-heading h2 {
+      font-family: 'Montserrat', sans-serif; font-size: 1.1rem; color: var(--navy); font-weight: 800;
+    }
+    .section-heading .count {
+      margin-left: auto; font-size: 0.72rem; font-weight: 700; color: var(--muted);
+      background: var(--border); padding: 2px 8px; border-radius: 10px;
+    }
+
+    /* ── Overview ────────────────────────────────────────────────── */
+    .overview-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .overview-text-card {
       background: var(--white); border: 1px solid var(--border); border-radius: 10px;
-      padding: 20px; display: flex; flex-direction: column; gap: 14px;
+      padding: 22px 24px; font-size: 0.93rem; line-height: 1.8; color: var(--text);
     }
-    .gem-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
-    .gem-header-left { display: flex; align-items: center; gap: 10px; }
-    .gem-emoji { font-size: 1.6rem; }
-    .gem-info h3 { font-family: 'Montserrat', sans-serif; font-size: 0.95rem; color: var(--navy); }
-    .gem-info p  { font-size: 0.75rem; color: var(--muted); }
-    .gem-persona { font-size: 0.83rem; color: var(--text); line-height: 1.55; font-style: italic; }
-    .gem-link-btn {
-      display: inline-flex; align-items: center; gap: 4px;
-      background: var(--cyan); color: var(--navy); border: none; border-radius: 5px;
-      padding: 6px 12px; font-size: 0.78rem; font-weight: 700; cursor: pointer;
-      text-decoration: none; flex-shrink: 0; transition: opacity 0.15s; white-space: nowrap;
+    .obj-list { display: flex; flex-direction: column; gap: 10px; }
+    .obj-item {
+      background: var(--white); border: 1px solid var(--border); border-radius: 8px;
+      padding: 12px 16px; display: flex; gap: 12px; align-items: flex-start;
+      font-size: 0.87rem; line-height: 1.55; color: var(--text);
     }
-    .gem-link-btn:hover { opacity: 0.85; color: var(--navy); }
-    .gem-not-published {
-      font-size: 0.72rem; color: var(--muted); background: var(--bg);
-      border: 1px solid var(--border); border-radius: 4px; padding: 5px 8px;
-      font-weight: 600; flex-shrink: 0; white-space: nowrap;
+    .obj-num {
+      width: 22px; height: 22px; border-radius: 50%; background: var(--navy); color: var(--cyan);
+      font-size: 0.65rem; font-weight: 800; display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; margin-top: 1px;
     }
-    .gem-instructions { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
-    .gem-instructions-toggle {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 10px 14px; cursor: pointer; background: var(--bg);
-      font-size: 0.78rem; font-weight: 700; color: var(--navy); border: none; width: 100%;
-      text-align: left; transition: background 0.15s;
+    .obj-label { font-size: 0.67rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--muted); margin-bottom: 8px; }
+
+    /* ── Questions ───────────────────────────────────────────────── */
+    .questions-list { display: flex; flex-direction: column; gap: 8px; }
+    .q-item {
+      background: var(--white); border: 1px solid var(--border); border-radius: 10px;
+      overflow: hidden; transition: border-color 0.15s;
     }
-    .gem-instructions-toggle:hover { background: #E8EEF4; }
-    .toggle-arrow { transition: transform 0.2s; color: var(--muted); font-size: 1rem; }
-    .gem-instructions.open .toggle-arrow { transform: rotate(90deg); }
-    .gem-instructions-body { display: none; padding: 14px; border-top: 1px solid var(--border); }
-    .gem-instructions.open .gem-instructions-body { display: block; }
-    .gem-instruction-block {
-      background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
-      padding: 12px; font-family: monospace; font-size: 0.75rem; line-height: 1.6;
-      color: var(--navy); white-space: pre-wrap; word-break: break-word; max-height: 200px; overflow-y: auto;
+    .q-item:hover { border-color: var(--cyan); }
+    .q-trigger {
+      display: flex; align-items: flex-start; gap: 16px; padding: 18px 20px;
+      cursor: pointer; user-select: none; width: 100%; text-align: left; background: none; border: none;
     }
-    .instruction-copy-btn {
+    .q-num {
+      width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--border);
+      font-size: 0.75rem; font-weight: 700; color: var(--muted); display: flex;
+      align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px;
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+    }
+    .q-item.open .q-num { background: var(--navy); border-color: var(--navy); color: var(--cyan); }
+    .q-text { flex: 1; font-size: 0.92rem; font-weight: 600; color: var(--navy); line-height: 1.55; }
+    .q-arrow { color: var(--muted); font-size: 1rem; flex-shrink: 0; margin-top: 3px; transition: transform 0.2s; }
+    .q-item.open .q-arrow { transform: rotate(90deg); color: var(--cyan); }
+    .q-body {
+      display: none; padding: 0 20px 18px 64px; font-size: 0.84rem;
+      color: var(--muted); line-height: 1.65; border-top: 1px solid var(--border);
+      padding-top: 14px; margin-top: 0;
+    }
+    .q-item.open .q-body { display: block; }
+
+    /* ── Resources ───────────────────────────────────────────────── */
+    .res-filter-bar { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 20px; }
+    .res-filter {
+      padding: 5px 14px; border-radius: 20px; font-size: 0.78rem; font-weight: 700;
+      cursor: pointer; border: 1.5px solid var(--border); background: var(--white);
+      color: var(--muted); transition: all 0.15s;
+    }
+    .res-filter:hover { border-color: var(--navy); color: var(--navy); }
+    .res-filter.active { background: var(--navy); color: var(--white); border-color: var(--navy); }
+
+    .resources-list { display: flex; flex-direction: column; gap: 10px; }
+    .resource-card {
+      background: var(--white); border: 1px solid var(--border); border-radius: 10px;
+      padding: 18px 20px; display: flex; gap: 16px; align-items: flex-start;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .resource-card:hover { border-color: var(--cyan); box-shadow: 0 2px 12px rgba(93,205,245,0.1); }
+    .resource-score-bar {
+      display: flex; flex-direction: column; align-items: center; gap: 4px; flex-shrink: 0;
+      padding-top: 2px;
+    }
+    .score-pips { display: flex; flex-direction: column; gap: 3px; }
+    .score-pip { width: 4px; height: 10px; border-radius: 2px; background: var(--border); }
+    .score-pip.lit.s5 { background: #155724; }
+    .score-pip.lit.s4 { background: #2563EB; }
+    .score-pip.lit.s3 { background: var(--navy); }
+    .score-pip.lit.s2 { background: var(--muted); }
+    .score-pip.lit.s1 { background: #c0c8d0; }
+    .score-digit { font-size: 0.65rem; font-weight: 800; color: var(--muted); letter-spacing: 0; }
+    .resource-body { flex: 1; min-width: 0; }
+    .resource-name { font-size: 0.93rem; font-weight: 700; color: var(--navy); margin-bottom: 5px; line-height: 1.4; }
+    .resource-name a { color: inherit; }
+    .resource-name a:hover { color: var(--cyan); }
+    .resource-stmt { font-size: 0.83rem; color: var(--text); line-height: 1.55; margin-bottom: 10px; }
+    .resource-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+    .rtag {
+      padding: 2px 9px; border-radius: 12px; font-size: 0.68rem; font-weight: 700;
+      background: var(--bg); color: var(--muted); border: 1px solid var(--border);
+    }
+    .rtag.pre  { background: var(--acc-bg);  color: var(--acc);  border-color: #C3E6CB; }
+    .rtag.deep { background: var(--deep-bg); color: var(--deep); border-color: #B8DAFF; }
+    .rtag.mid  { background: var(--mid-bg);  color: var(--mid);  border-color: #FFEEBA; }
+    .rtag.nlm  { background: var(--nlm-bg);  color: var(--nlm);  border-color: #E1BEE7; }
+    .resource-card[data-hidden="true"] { display: none; }
+
+    /* ── Gems ────────────────────────────────────────────────────── */
+    .gems-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+    .gem-card {
+      background: var(--white); border: 1px solid var(--border); border-radius: 12px;
+      overflow: hidden; display: flex; flex-direction: column;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .gem-card:hover { border-color: rgba(93,205,245,0.4); box-shadow: 0 4px 20px rgba(11,43,70,0.08); }
+    .gem-card-top {
+      padding: 20px 20px 0; display: flex; align-items: flex-start; gap: 14px; margin-bottom: 14px;
+    }
+    .gem-emoji-wrap {
+      width: 44px; height: 44px; border-radius: 10px; background: var(--bg);
+      border: 1px solid var(--border); display: flex; align-items: center; justify-content: center;
+      font-size: 1.4rem; flex-shrink: 0;
+    }
+    .gem-meta { flex: 1; min-width: 0; }
+    .gem-name { font-family: 'Montserrat', sans-serif; font-size: 0.92rem; font-weight: 800; color: var(--navy); margin-bottom: 2px; }
+    .gem-role { font-size: 0.73rem; color: var(--muted); font-weight: 600; }
+    .gem-persona { padding: 0 20px; font-size: 0.82rem; color: var(--muted); line-height: 1.6; font-style: italic; margin-bottom: 16px; }
+    .gem-starters { padding: 0 20px; margin-bottom: 14px; }
+    .gem-starters-label { font-size: 0.67rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 8px; }
+    .gem-starter-item { font-size: 0.8rem; color: var(--text); line-height: 1.45; display: flex; gap: 8px; margin-bottom: 5px; }
+    .gem-starter-item::before { content: '→'; color: var(--cyan); flex-shrink: 0; font-weight: 700; }
+    .gem-card-footer { padding: 14px 20px; background: var(--bg); border-top: 1px solid var(--border); display: flex; gap: 8px; align-items: center; margin-top: auto; }
+    .gem-open-btn {
+      flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      background: var(--cyan); color: var(--navy); border: none; border-radius: 7px;
+      padding: 9px 16px; font-size: 0.82rem; font-weight: 700; cursor: pointer;
+      text-decoration: none; transition: opacity 0.15s;
+    }
+    .gem-open-btn:hover { opacity: 0.88; color: var(--navy); }
+    .gem-open-btn.disabled {
+      background: var(--border); color: var(--muted); cursor: default; pointer-events: none;
+    }
+    .gem-instr-btn {
+      background: var(--white); border: 1.5px solid var(--border); border-radius: 7px;
+      padding: 8px 12px; font-size: 0.78rem; font-weight: 700; color: var(--muted);
+      cursor: pointer; transition: border-color 0.15s, color 0.15s; white-space: nowrap;
+    }
+    .gem-instr-btn:hover { border-color: var(--navy); color: var(--navy); }
+    /* Instructions drawer */
+    .gem-instr-drawer {
+      display: none; padding: 16px 20px; border-top: 1px solid var(--border);
+      background: #FAFCFF;
+    }
+    .gem-instr-drawer.open { display: block; }
+    .drawer-label { font-size: 0.67rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 8px; }
+    .instr-block-wrap { position: relative; margin-bottom: 14px; }
+    .gem-instr-block {
+      background: var(--navy); color: rgba(255,255,255,0.85); border-radius: 8px;
+      padding: 14px 16px; font-family: 'Courier New', monospace; font-size: 0.73rem;
+      line-height: 1.6; white-space: pre-wrap; word-break: break-word; max-height: 180px; overflow-y: auto;
+    }
+    .instr-copy-btn {
       position: absolute; top: 8px; right: 8px;
-      background: var(--navy); color: var(--white); border: none; border-radius: 4px;
-      padding: 4px 8px; font-size: 0.7rem; font-weight: 700; cursor: pointer; transition: opacity 0.15s;
+      background: rgba(93,205,245,0.15); color: var(--cyan); border: 1px solid rgba(93,205,245,0.3);
+      border-radius: 5px; padding: 3px 8px; font-size: 0.68rem; font-weight: 700; cursor: pointer;
+      transition: background 0.15s;
     }
-    .instruction-copy-btn:hover { opacity: 0.8; }
-    .instruction-copy-btn.copied { background: #155724; }
-    .gem-setup-steps { list-style: decimal; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; margin-top: 2px; }
-    .gem-setup-steps li { font-size: 0.8rem; color: var(--text); line-height: 1.5; }
-    .gem-starters { margin-top: 2px; }
-    .gem-starters h4 { font-size: 0.78rem; font-weight: 700; color: var(--navy); margin-bottom: 8px; }
-    .gem-starters ul { list-style: none; display: flex; flex-direction: column; gap: 4px; }
-    .gem-starters li { font-size: 0.8rem; color: var(--text); line-height: 1.4; display: flex; gap: 6px; }
-    .gem-starters li::before { content: '→'; color: var(--cyan); flex-shrink: 0; }
-    .copy-btn {
-      background: var(--navy); color: var(--white); border: none; border-radius: 5px;
-      padding: 7px 14px; font-size: 0.78rem; font-weight: 700; cursor: pointer; width: 100%; transition: opacity 0.15s;
+    .instr-copy-btn:hover { background: rgba(93,205,245,0.25); }
+    .instr-copy-btn.copied { background: #155724; color: #fff; border-color: transparent; }
+    .gem-steps { padding-left: 16px; display: flex; flex-direction: column; gap: 5px; list-style: decimal; }
+    .gem-steps li { font-size: 0.8rem; color: var(--text); line-height: 1.5; }
+
+    /* ── NotebookLM ──────────────────────────────────────────────── */
+    .nlm-card {
+      background: var(--white); border: 1px solid #E1BEE7; border-radius: 12px; overflow: hidden;
     }
-    .copy-btn:hover { opacity: 0.85; }
-    .copy-btn.copied { background: #155724; }
-
-    /* ── NotebookLM ── */
-    .nlm-box { background: #F3E5F5; border: 1px solid #E1BEE7; border-radius: 8px; padding: 20px; }
-    .nlm-box h3 { font-family: 'Montserrat', sans-serif; font-size: 0.88rem; color: #6A0080; margin-bottom: 10px; }
-    .nlm-guide { font-size: 0.85rem; line-height: 1.7; color: var(--text); white-space: pre-line; margin-bottom: 14px; }
-    .nlm-prompt-label { font-size: 0.75rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
-    .nlm-prompt-box { background: var(--white); border: 1px solid #E1BEE7; border-radius: 6px; padding: 12px; font-size: 0.85rem; line-height: 1.6; color: var(--text); margin-bottom: 10px; }
-
-    /* ── Checklist ── */
-    .checklist { list-style: none; display: flex; flex-direction: column; gap: 10px; }
-    .check-item {
-      display: flex; align-items: flex-start; gap: 12px;
-      background: var(--white); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; cursor: pointer;
-      transition: border-color 0.15s;
+    .nlm-header {
+      background: linear-gradient(135deg, #6A0080 0%, #4A0060 100%); padding: 20px 24px;
+      display: flex; align-items: center; gap: 12px;
     }
-    .check-item:hover { border-color: var(--cyan); }
-    .check-item.done { background: var(--acc-bg); border-color: #C3E6CB; }
-    .check-box { width: 20px; height: 20px; border: 2px solid var(--border); border-radius: 4px; flex-shrink: 0; margin-top: 1px; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
-    .check-item.done .check-box { background: var(--acc); border-color: var(--acc); color: #fff; font-size: 0.8rem; }
-    .check-content { flex: 1; }
-    .check-content strong { display: block; font-size: 0.9rem; color: var(--navy); margin-bottom: 2px; }
-    .check-content span  { font-size: 0.8rem; color: var(--muted); line-height: 1.4; }
+    .nlm-header-icon { font-size: 1.4rem; }
+    .nlm-header h3 { font-family: 'Montserrat', sans-serif; font-size: 0.95rem; color: #fff; font-weight: 800; }
+    .nlm-header p  { font-size: 0.78rem; color: rgba(255,255,255,0.7); margin-top: 2px; }
+    .nlm-body { padding: 22px 24px; }
+    .nlm-guide { font-size: 0.87rem; line-height: 1.75; color: var(--text); margin-bottom: 18px; white-space: pre-line; }
+    .nlm-resources { margin-bottom: 18px; }
+    .nlm-res-label { font-size: 0.67rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 8px; }
+    .nlm-res-item { font-size: 0.83rem; padding: 7px 0; border-bottom: 1px solid var(--border); display: flex; gap: 8px; align-items: baseline; }
+    .nlm-res-num { color: var(--muted); font-size: 0.72rem; font-weight: 700; flex-shrink: 0; }
+    .nlm-prompt-label { font-size: 0.67rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--nlm); margin-bottom: 8px; }
+    .nlm-prompt-box {
+      background: var(--nlm-bg); border: 1px solid #E1BEE7; border-radius: 8px;
+      padding: 14px 16px; font-size: 0.84rem; line-height: 1.65; color: var(--text); margin-bottom: 12px;
+    }
+    .nlm-copy-btn {
+      display: inline-flex; align-items: center; gap: 6px; background: var(--nlm); color: #fff;
+      border: none; border-radius: 7px; padding: 9px 18px; font-size: 0.82rem; font-weight: 700;
+      cursor: pointer; transition: opacity 0.15s;
+    }
+    .nlm-copy-btn:hover { opacity: 0.88; }
+    .nlm-copy-btn.copied { background: var(--acc); }
 
-    /* ── Empty ── */
-    .empty { text-align: center; padding: 30px; color: var(--muted); font-size: 0.88rem; background: var(--white); border-radius: 8px; border: 1px dashed var(--border); }
+    /* ── Checklist ───────────────────────────────────────────────── */
+    .checklist-progress {
+      display: flex; align-items: center; gap: 14px; background: var(--white);
+      border: 1px solid var(--border); border-radius: 10px; padding: 14px 18px; margin-bottom: 20px;
+    }
+    .cl-progress-track { flex: 1; height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
+    .cl-progress-fill  { height: 100%; background: var(--cyan); border-radius: 3px; transition: width 0.4s; }
+    .cl-progress-label { font-size: 0.78rem; font-weight: 700; color: var(--navy); white-space: nowrap; }
+    .checklist-list { display: flex; flex-direction: column; gap: 8px; }
+    .cl-item {
+      background: var(--white); border: 1px solid var(--border); border-radius: 10px;
+      padding: 14px 18px; display: flex; gap: 14px; align-items: flex-start;
+      cursor: pointer; transition: border-color 0.15s, background 0.15s;
+    }
+    .cl-item:hover { border-color: var(--cyan); }
+    .cl-item.done { background: var(--acc-bg); border-color: #C3E6CB; }
+    .cl-box {
+      width: 22px; height: 22px; border-radius: 6px; border: 2px solid var(--border);
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+      margin-top: 1px; font-size: 0.75rem; font-weight: 700; color: #fff;
+      transition: all 0.15s;
+    }
+    .cl-item.done .cl-box { background: var(--acc); border-color: var(--acc); }
+    .cl-text strong { display: block; font-size: 0.9rem; color: var(--navy); margin-bottom: 2px; }
+    .cl-text span    { font-size: 0.8rem; color: var(--muted); line-height: 1.45; }
 
-    /* ── Footer ── */
-    .page-footer { text-align: center; padding: 32px 24px; color: var(--muted); font-size: 0.78rem; border-top: 1px solid var(--border); }
-    .page-footer a { color: var(--muted); text-decoration: none; }
+    /* ── Empty state ─────────────────────────────────────────────── */
+    .empty-state {
+      text-align: center; padding: 36px 24px; color: var(--muted); font-size: 0.85rem;
+      background: var(--white); border-radius: 10px; border: 1px dashed var(--border); line-height: 1.6;
+    }
+    .empty-state strong { display: block; font-size: 1.1rem; margin-bottom: 6px; }
+
+    /* ── Footer ──────────────────────────────────────────────────── */
+    .page-footer {
+      text-align: center; padding: 28px 24px;
+      color: var(--muted); font-size: 0.75rem; border-top: 1px solid var(--border);
+      max-width: 1180px; margin: 0 auto;
+    }
+
+    /* ── Mobile ──────────────────────────────────────────────────── */
+    @media (max-width: 768px) {
+      .hero { padding: 36px 20px 32px; }
+      .sidebar { display: none; }
+      .page-body { padding: 0 16px; }
+      .main-content { padding: 28px 0 60px; }
+      .overview-grid { grid-template-columns: 1fr; }
+      .gems-grid { grid-template-columns: 1fr; }
+
+      /* Mobile tab nav */
+      .mobile-nav {
+        display: flex; overflow-x: auto; gap: 0; background: var(--white);
+        border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 100;
+        -webkit-overflow-scrolling: touch; scrollbar-width: none;
+      }
+      .mobile-nav::-webkit-scrollbar { display: none; }
+      .mobile-nav-item {
+        flex-shrink: 0; padding: 10px 14px; font-size: 0.78rem; font-weight: 700;
+        color: var(--muted); border-bottom: 2px solid transparent; white-space: nowrap;
+        cursor: pointer; transition: color 0.15s, border-color 0.15s;
+      }
+      .mobile-nav-item.active { color: var(--navy); border-bottom-color: var(--cyan); }
+    }
+    @media (min-width: 769px) { .mobile-nav { display: none; } }
+
+    /* ── Scrollbar ───────────────────────────────────────────────── */
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
   </style>
 </head>
 <body>
 
-  <!-- Loading state -->
-  <div id="loading" class="loading">
+  <!-- Loading -->
+  <div id="loading">
     <div class="spinner"></div>
-    <p>Loading your learning library...</p>
+    <p style="font-size:0.85rem;color:var(--muted);">Loading your learning library…</p>
   </div>
 
-  <!-- Content (hidden until data loads) -->
-  <div id="content" style="display:none;">
+  <!-- Page content -->
+  <div id="content">
+
     <!-- Hero -->
     <div class="hero">
-      <div class="hero-label">MNGAIA Learning Library</div>
-      <h1 class="hero-title" id="heroTitle"></h1>
-      <div class="hero-meta" id="heroMeta"></div>
+      <div class="hero-inner">
+        <div class="hero-eyebrow">MNGAIA Learning Library</div>
+        <h1 class="hero-title" id="heroTitle"></h1>
+        <div class="hero-chips" id="heroChips"></div>
+        <p class="hero-overview" id="heroOverview"></p>
+        <div class="hero-progress" id="heroProgress" style="display:none;">
+          <div class="progress-track"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+          <span class="progress-label" id="progressLabel"></span>
+        </div>
+      </div>
     </div>
 
-    <div class="container">
+    <!-- Mobile tab nav -->
+    <nav class="mobile-nav" id="mobileNav"></nav>
 
-      <!-- Overview + Objectives -->
-      <div class="section" id="secOverview">
-        <div class="section-header">
-          <span class="section-icon">🌐</span>
-          <h2>Session Overview</h2>
+    <!-- Page body: sidebar + content -->
+    <div class="page-body">
+
+      <!-- Sidebar -->
+      <aside class="sidebar">
+        <div class="sidebar-inner">
+          <div class="nav-label">In this session</div>
+          <a class="nav-item active" href="#overview" data-section="overview">
+            <span class="nav-icon">🌐</span> Overview
+          </a>
+          <a class="nav-item" href="#questions" data-section="questions">
+            <span class="nav-icon">❓</span> Questions
+            <span class="nav-badge" id="nav-badge-questions">–</span>
+          </a>
+          <a class="nav-item" href="#resources" data-section="resources">
+            <span class="nav-icon">📚</span> Resources
+            <span class="nav-badge" id="nav-badge-resources">–</span>
+          </a>
+          <a class="nav-item" href="#gems" data-section="gems">
+            <span class="nav-icon">💎</span> AI Gems
+            <span class="nav-badge" id="nav-badge-gems">–</span>
+          </a>
+          <div class="nav-spacer"></div>
+          <a class="nav-item" href="#notebooklm" data-section="notebooklm">
+            <span class="nav-icon">🔬</span> NotebookLM
+          </a>
+          <a class="nav-item" href="#checklist" data-section="checklist">
+            <span class="nav-icon">✅</span> Checklist
+            <span class="nav-badge" id="nav-badge-checklist">–</span>
+          </a>
         </div>
-        <p class="overview-text" id="overviewText"></p>
-        <br>
-        <ul class="objectives-list" id="objectivesList"></ul>
-      </div>
+      </aside>
 
-      <!-- Inquiry Questions -->
-      <div class="section" id="secQuestions">
-        <div class="section-header">
-          <span class="section-icon">❓</span>
-          <h2>Inquiry Questions</h2>
-        </div>
-        <div class="questions-list" id="questionsList"></div>
-      </div>
+      <!-- Main content -->
+      <main class="main-content">
 
-      <!-- Resources -->
-      <div class="section" id="secResources">
-        <div class="section-header">
-          <span class="section-icon">📚</span>
-          <h2>Resource Library</h2>
-        </div>
-        <div class="resources-grid" id="resourcesGrid"></div>
-      </div>
+        <!-- Overview -->
+        <section class="section" id="overview">
+          <div class="section-heading">
+            <div class="section-heading-icon">🌐</div>
+            <h2>Session Overview</h2>
+          </div>
+          <div class="overview-grid" id="overviewGrid"></div>
+        </section>
 
-      <!-- Gems Workshop -->
-      <div class="section" id="secGems">
-        <div class="section-header">
-          <span class="section-icon">💎</span>
-          <h2>Gems Workshop</h2>
-        </div>
-        <div class="gems-grid" id="gemsGrid"></div>
-      </div>
+        <!-- Questions -->
+        <section class="section" id="questions">
+          <div class="section-heading">
+            <div class="section-heading-icon">❓</div>
+            <h2>Inquiry Questions</h2>
+            <span class="count" id="qCount"></span>
+          </div>
+          <div class="questions-list" id="questionsList"></div>
+        </section>
 
-      <!-- NotebookLM -->
-      <div class="section" id="secNotebookLM">
-        <div class="section-header">
-          <span class="section-icon">🔬</span>
-          <h2>NotebookLM Setup</h2>
-        </div>
-        <div id="nlmContent"></div>
-      </div>
+        <!-- Resources -->
+        <section class="section" id="resources">
+          <div class="section-heading">
+            <div class="section-heading-icon">📚</div>
+            <h2>Resource Library</h2>
+            <span class="count" id="resCount"></span>
+          </div>
+          <div class="res-filter-bar" id="resFilters"></div>
+          <div class="resources-list" id="resourcesList"></div>
+        </section>
 
-      <!-- Checklist -->
-      <div class="section" id="secChecklist">
-        <div class="section-header">
-          <span class="section-icon">✅</span>
-          <h2>Pre-Session Checklist</h2>
-        </div>
-        <ul class="checklist" id="checklistEl"></ul>
-      </div>
+        <!-- Gems -->
+        <section class="section" id="gems">
+          <div class="section-heading">
+            <div class="section-heading-icon">💎</div>
+            <h2>AI Learning Gems</h2>
+            <span class="count" id="gemsCount"></span>
+          </div>
+          <div class="gems-grid" id="gemsGrid"></div>
+        </section>
 
-    </div>
+        <!-- NotebookLM -->
+        <section class="section" id="notebooklm">
+          <div class="section-heading">
+            <div class="section-heading-icon">🔬</div>
+            <h2>NotebookLM Setup</h2>
+          </div>
+          <div id="nlmContent"></div>
+        </section>
+
+        <!-- Checklist -->
+        <section class="section" id="checklist">
+          <div class="section-heading">
+            <div class="section-heading-icon">✅</div>
+            <h2>Pre-Session Checklist</h2>
+          </div>
+          <div class="checklist-progress" id="clProgress" style="display:none;">
+            <div class="cl-progress-track"><div class="cl-progress-fill" id="clFill" style="width:0%"></div></div>
+            <span class="cl-progress-label" id="clLabel"></span>
+          </div>
+          <div class="checklist-list" id="checklistEl"></div>
+        </section>
+
+      </main>
+    </div><!-- /.page-body -->
 
     <div class="page-footer">
-      <p>MNGAIA Content Engine &nbsp;·&nbsp; <span id="footerDate"></span></p>
+      <p>MNGAIA Learning Community &nbsp;·&nbsp; <span id="footerDate"></span></p>
     </div>
-  </div>
+
+  </div><!-- /#content -->
 
   <script>
     var SESSION_ID = '__SESSION_ID__';
+    var _checklistSaved = {};
+    var _checklistTotal = 0;
 
-    // ── Bootstrap ──────────────────────────────────────────────────────────────
+    // ── Bootstrap ─────────────────────────────────────────────────────────────
     window.onload = function() {
       if (!SESSION_ID || SESSION_ID === '__SESSION_ID__') {
-        document.getElementById('loading').innerHTML = '<p style="color:#721C24;padding:40px;">No session ID provided.</p>';
+        document.getElementById('loading').innerHTML =
+          '<p style="color:#721C24;padding:40px;text-align:center;">No session ID provided.</p>';
         return;
       }
       google.script.run
         .withSuccessHandler(renderLibrary)
         .withFailureHandler(function(err) {
-          document.getElementById('loading').innerHTML = '<p style="color:#721C24;padding:40px;">Error loading library: ' + err.message + '</p>';
+          document.getElementById('loading').innerHTML =
+            '<p style="color:#721C24;padding:40px;text-align:center;">Error: ' + err.message + '</p>';
         })
         .getLibraryData(SESSION_ID);
     };
 
-    // ── Render ─────────────────────────────────────────────────────────────────
+    // ── Main render ───────────────────────────────────────────────────────────
     function renderLibrary(data) {
-      document.getElementById('loading').style.display = 'none';
-      document.getElementById('content').style.display = 'block';
+      document.getElementById('loading').style.display  = 'none';
+      document.getElementById('content').style.display  = 'block';
 
-      var m = data.meta || {};
+      var m     = data.meta  || {};
       var brief = data.brief || {};
 
       // Hero
       document.getElementById('heroTitle').textContent = m.name || 'Session';
-      var metaItems = [];
-      if (m.theme) metaItems.push({ text: m.theme, type: 'theme' });
-      if (m.date)  metaItems.push({ text: m.date, type: 'date' });
-      if (m.format)metaItems.push({ text: m.format, type: 'format' });
-      document.getElementById('heroMeta').innerHTML = metaItems.map(function(t, i) {
-        var style = i === 0 ? 'margin-left:0;' : '';
-        if (t.type === 'date') style += 'color:var(--cyan);font-weight:700;';
-        return '<span' + (style ? ' style="' + style + '"' : '') + '>' + esc(t.text) + '</span>';
-      }).join('');
-
       document.title = (m.name || 'Session') + ' — Learning Library';
       document.getElementById('footerDate').textContent = new Date().toLocaleDateString();
 
-      // Overview
-      document.getElementById('overviewText').textContent = brief.overview || 'No overview generated yet.';
-      var objList = document.getElementById('objectivesList');
-      (brief.learningObjectives || []).forEach(function(o) {
-        var li = document.createElement('li');
-        li.innerHTML = '<div class="obj-dot"></div><span>' + esc(o) + '</span>';
-        objList.appendChild(li);
-      });
-      if (!brief.learningObjectives || !brief.learningObjectives.length) objList.innerHTML = '<li style="color:var(--muted);font-size:0.85rem;">No objectives generated yet.</li>';
+      // Hero chips
+      var chips = '';
+      if (m.date)   chips += '<span class="hero-chip date">' + esc(m.date) + '</span>';
+      if (m.format) chips += '<span class="hero-chip">' + esc(m.format) + '</span>';
+      if (m.audience) chips += '<span class="hero-chip">' + esc(m.audience) + '</span>';
+      document.getElementById('heroChips').innerHTML = chips;
 
-      // Inquiry Questions
-      var qList = document.getElementById('questionsList');
-      (brief.inquiryQuestions || []).forEach(function(q, i) {
-        var div = document.createElement('div');
-        div.className = 'question-item';
-        div.innerHTML =
-          '<div class="question-q"><span>' + esc(q) + '</span><span class="question-toggle">+</span></div>' +
-          '<div class="question-detail">Take a moment to sit with this question before the session. There\'s no single answer — it\'s an invitation to think.</div>';
-        div.addEventListener('click', function() { div.classList.toggle('open'); });
-        qList.appendChild(div);
-      });
-      if (!brief.inquiryQuestions || !brief.inquiryQuestions.length) qList.innerHTML = '<div class="empty">No inquiry questions generated yet.</div>';
+      // Hero overview (first 240 chars)
+      var overviewFull = brief.overview || '';
+      document.getElementById('heroOverview').textContent =
+        overviewFull.length > 240 ? overviewFull.substring(0, 240) + '…' : overviewFull;
 
-      // Resources
+      // Build sections
+      renderOverview(brief);
+      renderQuestions(brief.inquiryQuestions || []);
       renderResources(data.resources || []);
-
-      // Gems
       renderGems(data.gems || []);
-
-      // NotebookLM
       renderNotebookLM(data.notebookLM || {});
-
-      // Checklist
       renderChecklist(data.checklist || []);
+
+      // Sidebar nav observer
+      initNavObserver();
+      buildMobileNav();
     }
 
-    // ── Resources ──────────────────────────────────────────────────────────────
-    function renderResources(resources) {
-      var grid = document.getElementById('resourcesGrid');
-      if (!resources.length) { grid.innerHTML = '<div class="empty">No resources synthesized yet. Add URLs to the Project DB and run Synthesis from the Dashboard.</div>'; return; }
+    // ── Overview ──────────────────────────────────────────────────────────────
+    function renderOverview(brief) {
+      var grid = document.getElementById('overviewGrid');
+      var objs = brief.learningObjectives || [];
 
+      var overviewHtml =
+        '<div class="overview-text-card">' +
+          '<p>' + esc(brief.overview || 'Overview will appear here after Synthesis runs.') + '</p>' +
+        '</div>';
+
+      var objHtml = '<div>';
+      if (objs.length) {
+        objHtml += '<div class="obj-label">Learning Objectives</div><div class="obj-list">';
+        objs.forEach(function(o, i) {
+          objHtml += '<div class="obj-item"><div class="obj-num">' + (i + 1) + '</div><span>' + esc(o) + '</span></div>';
+        });
+        objHtml += '</div>';
+      } else {
+        objHtml += '<div class="empty-state"><strong>No objectives yet</strong>Run Synthesis from the dashboard to generate session objectives.</div>';
+      }
+      objHtml += '</div>';
+
+      grid.innerHTML = overviewHtml + objHtml;
+    }
+
+    // ── Inquiry Questions ─────────────────────────────────────────────────────
+    function renderQuestions(questions) {
+      var list = document.getElementById('questionsList');
+      document.getElementById('qCount').textContent = questions.length;
+      document.getElementById('nav-badge-questions').textContent = questions.length;
+
+      if (!questions.length) {
+        list.innerHTML = '<div class="empty-state"><strong>No questions yet</strong>Inquiry questions are generated with the session brief.</div>';
+        return;
+      }
+
+      questions.forEach(function(q, i) {
+        var item = document.createElement('div');
+        item.className = 'q-item';
+        item.innerHTML =
+          '<button class="q-trigger" onclick="toggleQ(this.parentElement)">' +
+            '<div class="q-num">' + (i + 1) + '</div>' +
+            '<span class="q-text">' + esc(q) + '</span>' +
+            '<span class="q-arrow">›</span>' +
+          '</button>' +
+          '<div class="q-body">Sit with this question before the session. There is no single right answer — it is an invitation to explore your own thinking and listen deeply to others.</div>';
+        list.appendChild(item);
+      });
+    }
+
+    function toggleQ(el) { el.classList.toggle('open'); }
+
+    // ── Resources ─────────────────────────────────────────────────────────────
+    function renderResources(resources) {
+      var list = document.getElementById('resourcesList');
+      document.getElementById('resCount').textContent = resources.length;
+      document.getElementById('nav-badge-resources').textContent = resources.length;
+
+      if (!resources.length) {
+        list.innerHTML = '<div class="empty-state"><strong>No resources yet</strong>Add source materials from the dashboard, then run Synthesis.</div>';
+        return;
+      }
+
+      // Build filter tags
+      var tags = new Set(['All']);
+      resources.forEach(function(r) {
+        if (r.preReading) tags.add('Pre-Reading');
+        if (r.engagementLevel) tags.add(r.engagementLevel);
+        if (r.notebookLMReady) tags.add('NotebookLM');
+      });
+      var filterBar = document.getElementById('resFilters');
+      tags.forEach(function(t) {
+        var btn = document.createElement('button');
+        btn.className = 'res-filter' + (t === 'All' ? ' active' : '');
+        btn.textContent = t;
+        btn.onclick = function() {
+          filterBar.querySelectorAll('.res-filter').forEach(function(b) { b.classList.remove('active'); });
+          btn.classList.add('active');
+          filterResources(t);
+        };
+        filterBar.appendChild(btn);
+      });
+
+      // Render cards
       resources.forEach(function(r) {
         var score = Math.max(1, Math.min(5, r.relevanceScore || 0));
-        var engTag = '';
-        if (r.engagementLevel === 'Deep') engTag = '<span class="tag deep">Deep</span>';
-        else if (r.engagementLevel === 'Intermediate') engTag = '<span class="tag mid">Intermediate</span>';
-        else if (r.engagementLevel) engTag = '<span class="tag acc">' + esc(r.engagementLevel) + '</span>';
-        var preTag = r.preReading ? '<span class="tag pre">Pre-Reading</span>' : '';
-        var nlmTag = r.notebookLMReady ? '<span class="tag nlm">NotebookLM</span>' : '';
-        var keyTags = (r.keyTags || []).map(function(t) { return '<span class="tag">' + esc(t) + '</span>'; }).join('');
+        var pips = '';
+        for (var p = 5; p >= 1; p--) {
+          pips += '<div class="score-pip' + (p <= score ? ' lit s' + score : '') + '"></div>';
+        }
+        var tags = '';
+        if (r.preReading)       tags += '<span class="rtag pre">Pre-Reading</span>';
+        if (r.engagementLevel === 'Deep Dive' || r.engagementLevel === 'Deep') tags += '<span class="rtag deep">Deep Dive</span>';
+        else if (r.engagementLevel === 'Intermediate' || r.engagementLevel === 'Mid-Level') tags += '<span class="rtag mid">Intermediate</span>';
+        else if (r.engagementLevel) tags += '<span class="rtag">' + esc(r.engagementLevel) + '</span>';
+        if (r.notebookLMReady)  tags += '<span class="rtag nlm">NotebookLM</span>';
+        (r.keyTags || []).forEach(function(t) { tags += '<span class="rtag">' + esc(t) + '</span>'; });
 
         var card = document.createElement('div');
         card.className = 'resource-card';
+        card.dataset.preReading = r.preReading ? 'true' : '';
+        card.dataset.engagement = r.engagementLevel || '';
+        card.dataset.nlm = r.notebookLMReady ? 'true' : '';
         card.innerHTML =
-          '<div class="resource-score s' + score + '">' + score + '</div>' +
-          '<div class="resource-content">' +
-            '<div class="resource-title"><a href="' + esc(r.url) + '" target="_blank">' + esc(r.title || r.url) + '</a></div>' +
-            (r.relevanceStatement ? '<div class="resource-statement">' + esc(r.relevanceStatement) + '</div>' : '') +
-            '<div class="resource-tags">' + preTag + engTag + nlmTag + keyTags + '</div>' +
+          '<div class="resource-score-bar">' +
+            '<div class="score-pips">' + pips + '</div>' +
+            '<div class="score-digit">' + score + '/5</div>' +
+          '</div>' +
+          '<div class="resource-body">' +
+            '<div class="resource-name"><a href="' + esc(r.url) + '" target="_blank">' + esc(r.title || r.url) + ' ↗</a></div>' +
+            (r.relevanceStatement ? '<div class="resource-stmt">' + esc(r.relevanceStatement) + '</div>' : '') +
+            '<div class="resource-tags">' + tags + '</div>' +
           '</div>';
-        grid.appendChild(card);
+        list.appendChild(card);
       });
     }
 
-    // ── Gems ───────────────────────────────────────────────────────────────────
+    function filterResources(filter) {
+      document.querySelectorAll('.resource-card').forEach(function(card) {
+        var show = filter === 'All' ||
+          (filter === 'Pre-Reading'  && card.dataset.preReading === 'true') ||
+          (filter === 'NotebookLM'   && card.dataset.nlm === 'true') ||
+          card.dataset.engagement === filter ||
+          card.dataset.engagement === (filter === 'Deep Dive' ? 'Deep' : filter) ||
+          card.dataset.engagement === (filter === 'Intermediate' ? 'Mid-Level' : filter);
+        card.dataset.hidden = show ? 'false' : 'true';
+      });
+    }
+
+    // ── Gems ──────────────────────────────────────────────────────────────────
     function renderGems(gems) {
       var grid = document.getElementById('gemsGrid');
+      document.getElementById('gemsCount').textContent = gems.length;
+      document.getElementById('nav-badge-gems').textContent = gems.length;
+
       if (!gems.length) {
-        grid.innerHTML = '<div class="empty">No Gems generated yet. Run "Generate Gems" from the Dashboard first.</div>';
+        grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><strong>No Gems yet</strong>Run "Generate Gems" from the dashboard to create AI learning companions.</div>';
         return;
       }
 
       gems.forEach(function(gem) {
         var card = document.createElement('div');
         card.className = 'gem-card';
+        var drawerId = 'drawer-' + gem.id;
+        var instrId  = 'instr-'  + gem.id;
 
-        var instrId      = 'instr-'      + gem.id;
-        var instrBlockId = 'instrblock-' + gem.id;
-
-        // "Open Gem →" button or "Not published yet" badge
-        var linkHtml = gem.link
-          ? '<a class="gem-link-btn" href="' + esc(gem.link) + '" target="_blank">Open Gem →</a>'
-          : '<span class="gem-not-published">Not published yet</span>';
-
-        // System instruction (new field; fallback to legacy systemPrompt)
         var instruction = gem.systemInstruction || gem.systemPrompt || '';
-
-        // Setup steps
-        var stepsHtml = (gem.setupSteps || []).map(function(s) {
+        var stepsHtml = (gem.setupSteps || []).map(function(s, i) {
           return '<li>' + esc(s) + '</li>';
         }).join('');
-
-        // Conversation starters
-        var starters = (gem.starterQueries || []).map(function(q) {
-          return '<li>' + esc(q) + '</li>';
+        var startersHtml = (gem.starterQueries || []).slice(0, 3).map(function(q) {
+          return '<div class="gem-starter-item">' + esc(q) + '</div>';
         }).join('');
+        var hasLink = !!(gem.link);
 
         card.innerHTML =
-          // Header: emoji + name on left, link/badge on right
-          '<div class="gem-header">' +
-            '<div class="gem-header-left">' +
-              '<span class="gem-emoji">' + (gem.emoji || '💎') + '</span>' +
-              '<div class="gem-info"><h3>' + esc(gem.name || '') + '</h3></div>' +
-            '</div>' +
-            linkHtml +
-          '</div>' +
-
-          // Persona description
-          '<div class="gem-persona">' + esc(gem.persona || '') + '</div>' +
-
-          // Expandable: System Instruction + Setup Steps
-          '<div class="gem-instructions" id="' + instrId + '">' +
-            '<button class="gem-instructions-toggle" onclick="toggleGemInstructions(\'' + instrId + '\')">' +
-              '<span class="toggle-label">▸ View Setup Instructions</span>' +
-              '<span class="toggle-arrow">›</span>' +
-            '</button>' +
-            '<div class="gem-instructions-body">' +
-              '<div style="font-size:0.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">System Instruction</div>' +
-              '<div style="position:relative;margin-bottom:14px;">' +
-                '<div class="gem-instruction-block" id="' + instrBlockId + '">' + esc(instruction) + '</div>' +
-                '<button class="instruction-copy-btn" onclick="copyInstruction(\'' + instrBlockId + '\', this)">📋 Copy</button>' +
-              '</div>' +
-              (stepsHtml
-                ? '<div style="font-size:0.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">Setup Steps</div>' +
-                  '<ol class="gem-setup-steps">' + stepsHtml + '</ol>'
-                : '') +
+          '<div class="gem-card-top">' +
+            '<div class="gem-emoji-wrap">' + (gem.emoji || '💎') + '</div>' +
+            '<div class="gem-meta">' +
+              '<div class="gem-name">' + esc(gem.name || '') + '</div>' +
+              '<div class="gem-role">' + esc(gem.role || '') + '</div>' +
             '</div>' +
           '</div>' +
-
-          // Conversation starters
-          (starters
-            ? '<div class="gem-starters"><h4>💬 Conversation Starters</h4><ul>' + starters + '</ul></div>'
+          (gem.persona ? '<div class="gem-persona">' + esc(gem.persona) + '</div>' : '') +
+          (startersHtml
+            ? '<div class="gem-starters"><div class="gem-starters-label">Conversation Starters</div>' + startersHtml + '</div>'
+            : '') +
+          '<div class="gem-card-footer">' +
+            (hasLink
+              ? '<a class="gem-open-btn" href="' + esc(gem.link) + '" target="_blank">Open Gem →</a>'
+              : '<span class="gem-open-btn disabled">Coming Soon</span>') +
+            (instruction
+              ? '<button class="gem-instr-btn" onclick="toggleDrawer(\'' + drawerId + '\', this)">⚙ Setup</button>'
+              : '') +
+          '</div>' +
+          (instruction
+            ? '<div class="gem-instr-drawer" id="' + drawerId + '">' +
+                '<div class="drawer-label">System Instruction</div>' +
+                '<div class="instr-block-wrap">' +
+                  '<div class="gem-instr-block" id="' + instrId + '">' + esc(instruction) + '</div>' +
+                  '<button class="instr-copy-btn" onclick="copyInstr(\'' + instrId + '\', this)">📋 Copy</button>' +
+                '</div>' +
+                (stepsHtml ? '<div class="drawer-label" style="margin-top:8px;">Setup Steps</div><ol class="gem-steps">' + stepsHtml + '</ol>' : '') +
+              '</div>'
             : '');
 
         grid.appendChild(card);
       });
     }
 
-    function toggleGemInstructions(id) {
-      var el = document.getElementById(id);
-      el.classList.toggle('open');
-      var label = el.querySelector('.toggle-label');
-      if (label) label.textContent = el.classList.contains('open') ? '▾ Hide Setup Instructions' : '▸ View Setup Instructions';
+    function toggleDrawer(id, btn) {
+      var drawer = document.getElementById(id);
+      var isOpen = drawer.classList.toggle('open');
+      btn.textContent = isOpen ? '⚙ Hide' : '⚙ Setup';
     }
 
-    function copyInstruction(elemId, btn) {
+    function copyInstr(elemId, btn) {
       var text = document.getElementById(elemId).textContent;
       navigator.clipboard.writeText(text).then(function() {
-        var orig = btn.textContent; btn.textContent = '✓ Copied!'; btn.classList.add('copied');
+        var orig = btn.textContent; btn.textContent = '✓ Copied'; btn.classList.add('copied');
         setTimeout(function() { btn.textContent = orig; btn.classList.remove('copied'); }, 2000);
       }).catch(function() {
         var ta = document.createElement('textarea');
-        ta.value = text; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
-        btn.textContent = '✓ Copied!'; btn.classList.add('copied');
+        ta.value = text; document.body.appendChild(ta); ta.select(); document.execCommand('copy');
+        document.body.removeChild(ta);
+        btn.textContent = '✓ Copied'; btn.classList.add('copied');
         setTimeout(function() { btn.textContent = '📋 Copy'; btn.classList.remove('copied'); }, 2000);
       });
     }
 
-    // ── NotebookLM ─────────────────────────────────────────────────────────────
+    // ── NotebookLM ────────────────────────────────────────────────────────────
     function renderNotebookLM(nlm) {
       var el = document.getElementById('nlmContent');
       var resources = nlm.resources || [];
-      var resHtml = resources.length ? resources.map(function(r, i) {
-        return (i + 1) + '. <a href="' + esc(r.url) + '" target="_blank">' + esc(r.title) + '</a>';
-      }).join('<br>') : 'No NotebookLM-ready resources yet.';
+
+      if (!nlm.guide && !resources.length && !nlm.starterPrompt) {
+        el.innerHTML = '<div class="empty-state"><strong>NotebookLM not configured</strong>Run Synthesis to generate the NotebookLM setup guide.</div>';
+        return;
+      }
+
+      var resHtml = '';
+      if (resources.length) {
+        resHtml = '<div class="nlm-resources"><div class="nlm-res-label">Sources to add</div>' +
+          resources.map(function(r, i) {
+            return '<div class="nlm-res-item"><span class="nlm-res-num">' + (i + 1) + '.</span><a href="' + esc(r.url) + '" target="_blank">' + esc(r.title) + ' ↗</a></div>';
+          }).join('') + '</div>';
+      }
 
       el.innerHTML =
-        '<div class="nlm-box">' +
-          '<h3>🔬 NotebookLM Setup Guide</h3>' +
-          '<div class="nlm-guide">' + esc(nlm.guide || '').replace(/\n/g, '<br>') + '</div>' +
-          (resources.length ? '<p style="font-size:0.83rem;margin-bottom:10px;"><strong>Resources to add:</strong><br>' + resHtml + '</p>' : '') +
-          (nlm.starterPrompt ? '<div class="nlm-prompt-label">Starter Prompt (paste into NotebookLM chat)</div><div class="nlm-prompt-box">' + esc(nlm.starterPrompt) + '</div><button class="copy-btn" onclick="copyText(\'' + esc(nlm.starterPrompt).replace(/'/g, "\\'") + '\', this)">Copy Starter Prompt</button>' : '') +
+        '<div class="nlm-card">' +
+          '<div class="nlm-header">' +
+            '<span class="nlm-header-icon">🔬</span>' +
+            '<div><h3>NotebookLM Setup Guide</h3><p>AI-powered research synthesis tool from Google</p></div>' +
+          '</div>' +
+          '<div class="nlm-body">' +
+            (nlm.guide ? '<div class="nlm-guide">' + esc(nlm.guide) + '</div>' : '') +
+            resHtml +
+            (nlm.starterPrompt
+              ? '<div class="nlm-prompt-label">Starter Prompt — paste into NotebookLM chat</div>' +
+                '<div class="nlm-prompt-box">' + esc(nlm.starterPrompt) + '</div>' +
+                '<button class="nlm-copy-btn" id="nlmCopyBtn" onclick="copyNlmPrompt()">📋 Copy Starter Prompt</button>'
+              : '') +
+          '</div>' +
         '</div>';
+
+      window._nlmPrompt = nlm.starterPrompt || '';
     }
 
-    function copyText(text, btn) {
-      navigator.clipboard.writeText(text).then(function() {
-        var orig = btn.textContent; btn.textContent = '✓ Copied!'; btn.classList.add('copied');
-        setTimeout(function() { btn.textContent = orig; btn.classList.remove('copied'); }, 2000);
+    function copyNlmPrompt() {
+      var btn = document.getElementById('nlmCopyBtn');
+      navigator.clipboard.writeText(window._nlmPrompt || '').then(function() {
+        btn.textContent = '✓ Copied!'; btn.classList.add('copied');
+        setTimeout(function() { btn.textContent = '📋 Copy Starter Prompt'; btn.classList.remove('copied'); }, 2000);
       });
     }
 
-    // ── Checklist ──────────────────────────────────────────────────────────────
+    // ── Checklist ─────────────────────────────────────────────────────────────
     function renderChecklist(items) {
-      var list = document.getElementById('checklistEl');
-      var savedKey = 'checklist-' + SESSION_ID;
+      var list  = document.getElementById('checklistEl');
       var saved = {};
-      try { saved = JSON.parse(localStorage.getItem(savedKey) || '{}'); } catch(e) {}
+      var key   = 'cl-' + SESSION_ID;
+      try { saved = JSON.parse(localStorage.getItem(key) || '{}'); } catch(e) {}
+      _checklistSaved = saved;
+      _checklistTotal = items.length;
+
+      document.getElementById('nav-badge-checklist').textContent = items.length;
+
+      if (!items.length) {
+        list.innerHTML = '<div class="empty-state"><strong>No checklist items</strong>The checklist is generated automatically from session content.</div>';
+        return;
+      }
+
+      document.getElementById('clProgress').style.display = 'flex';
+      updateChecklistProgress();
 
       items.forEach(function(item) {
-        var li = document.createElement('li');
-        li.className = 'check-item' + (saved[item.id] ? ' done' : '');
+        var li = document.createElement('div');
+        li.className = 'cl-item' + (saved[item.id] ? ' done' : '');
         li.innerHTML =
-          '<div class="check-box">' + (saved[item.id] ? '✓' : '') + '</div>' +
-          '<div class="check-content"><strong>' + esc(item.label) + '</strong><span>' + esc(item.detail || '') + '</span></div>';
+          '<div class="cl-box">' + (saved[item.id] ? '✓' : '') + '</div>' +
+          '<div class="cl-text"><strong>' + esc(item.label) + '</strong><span>' + esc(item.detail || '') + '</span></div>';
         li.addEventListener('click', function() {
           var isDone = li.classList.toggle('done');
-          li.querySelector('.check-box').textContent = isDone ? '✓' : '';
-          saved[item.id] = isDone;
-          try { localStorage.setItem(savedKey, JSON.stringify(saved)); } catch(e) {}
+          li.querySelector('.cl-box').textContent = isDone ? '✓' : '';
+          _checklistSaved[item.id] = isDone;
+          try { localStorage.setItem(key, JSON.stringify(_checklistSaved)); } catch(e) {}
+          updateChecklistProgress();
         });
         list.appendChild(li);
       });
-      if (!items.length) list.innerHTML = '<li class="empty">No checklist items available.</li>';
     }
 
-    // ── Util ───────────────────────────────────────────────────────────────────
+    function updateChecklistProgress() {
+      var done  = Object.values(_checklistSaved).filter(Boolean).length;
+      var total = _checklistTotal;
+      var pct   = total > 0 ? Math.round(done / total * 100) : 0;
+      document.getElementById('clFill').style.width  = pct + '%';
+      document.getElementById('clLabel').textContent = done + ' / ' + total + ' complete';
+      document.getElementById('progressFill').style.width  = pct + '%';
+      document.getElementById('progressLabel').textContent = done + ' of ' + total + ' checklist items done';
+      document.getElementById('heroProgress').style.display = total > 0 ? 'flex' : 'none';
+    }
+
+    // ── Sidebar nav — IntersectionObserver ────────────────────────────────────
+    function initNavObserver() {
+      var sections = document.querySelectorAll('.section[id]');
+      var navItems = document.querySelectorAll('.nav-item[data-section]');
+      var active   = 'overview';
+
+      var obs = new IntersectionObserver(function(entries) {
+        entries.forEach(function(e) {
+          if (e.isIntersecting) active = e.target.id;
+        });
+        navItems.forEach(function(n) {
+          n.classList.toggle('active', n.dataset.section === active);
+        });
+      }, { rootMargin: '-20% 0px -70% 0px' });
+
+      sections.forEach(function(s) { obs.observe(s); });
+    }
+
+    // ── Mobile nav ────────────────────────────────────────────────────────────
+    function buildMobileNav() {
+      var nav = document.getElementById('mobileNav');
+      var items = [
+        { id: 'overview',    label: '🌐 Overview' },
+        { id: 'questions',   label: '❓ Questions' },
+        { id: 'resources',   label: '📚 Resources' },
+        { id: 'gems',        label: '💎 Gems' },
+        { id: 'notebooklm', label: '🔬 NotebookLM' },
+        { id: 'checklist',  label: '✅ Checklist' }
+      ];
+      items.forEach(function(item, i) {
+        var a = document.createElement('a');
+        a.className = 'mobile-nav-item' + (i === 0 ? ' active' : '');
+        a.href = '#' + item.id;
+        a.textContent = item.label;
+        nav.appendChild(a);
+      });
+
+      // Sync active state
+      var obs = new IntersectionObserver(function(entries) {
+        entries.forEach(function(e) {
+          if (e.isIntersecting) {
+            nav.querySelectorAll('.mobile-nav-item').forEach(function(n) {
+              n.classList.toggle('active', n.getAttribute('href') === '#' + e.target.id);
+            });
+          }
+        });
+      }, { rootMargin: '-20% 0px -70% 0px' });
+
+      document.querySelectorAll('.section[id]').forEach(function(s) { obs.observe(s); });
+    }
+
+    // ── Utils ─────────────────────────────────────────────────────────────────
     function esc(str) {
       return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }

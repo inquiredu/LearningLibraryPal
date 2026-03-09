@@ -106,12 +106,24 @@ function menuTriggerSiteCode() {
 }
 
 function openDashboard() {
-  const url = ScriptApp.getService().getUrl();
+  // Read the URL cached when doGet() first ran — that is always the live /exec URL.
+  // Calling ScriptApp.getService().getUrl() from a menu trigger returns the /dev URL,
+  // which only works for script editors and appears "not available" to everyone else.
+  var url = '';
+  try { url = PropertiesService.getScriptProperties().getProperty('WEB_APP_URL') || ''; } catch(e) {}
   if (!url) {
-    SpreadsheetApp.getUi().alert('Deploy this script as a Web App first, then try again.');
+    // Fallback if the web app hasn't been opened yet since last deploy
+    try { url = ScriptApp.getService().getUrl() || ''; } catch(e) {}
+  }
+  if (!url) {
+    SpreadsheetApp.getUi().alert(
+      '⚠️  Dashboard URL not found.\n\n' +
+      'Open the web app once in your browser (Deploy → Manage deployments → copy the /exec URL), ' +
+      'then return here and the menu item will work automatically.'
+    );
     return;
   }
-  SpreadsheetApp.getUi().alert('Dashboard URL:\n' + url);
+  SpreadsheetApp.getUi().alert('📊  Facilitator Dashboard\n\nCopy and open in browser:\n\n' + url);
 }
 
 function showSettings() {

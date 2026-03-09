@@ -11,9 +11,10 @@ const SynthesisService = {
   /**
    * Main entry point. Synthesizes all un-analyzed resources for a session.
    * @param {string} sessionId
+   * @param {boolean} [force] - If true, re-analyzes already-scored rows too.
    * @returns {number} Count of resources processed
    */
-  synthesizeAll: function(sessionId) {
+  synthesizeAll: function(sessionId, force) {
     const session = SessionService.getSession(sessionId);
     if (!session) throw new Error('Session not found: ' + sessionId);
     if (!session.dbUrl) throw new Error('No Project Database URL for session: ' + sessionId);
@@ -40,8 +41,8 @@ const SynthesisService = {
       const url = String(rows[i][0] || '').trim();
       if (!url) continue;
 
-      // Skip already-synthesized rows (relevanceScore filled means done)
-      if (rows[i][3] && String(rows[i][3]).trim() !== '') continue;
+      // Skip already-synthesized rows (relevanceScore filled means done) — unless force=true
+      if (!force && rows[i][3] && String(rows[i][3]).trim() !== '') continue;
 
       // Read the user-set resource type — this drives the Gemini prompt and special handling
       const resourceType = String(rows[i][2] || '').trim();

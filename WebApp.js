@@ -7,6 +7,16 @@
 // ─── Routing ─────────────────────────────────────────────────────────────────
 
 function doGet(e) {
+  // Cache the live published URL on first request so openDashboard() (Sheets menu) can read it.
+  // ScriptApp.getService().getUrl() from a menu trigger returns the dev URL; from doGet it's always /exec.
+  try {
+    var _liveUrl = ScriptApp.getService().getUrl();
+    if (_liveUrl) {
+      var _props = PropertiesService.getScriptProperties();
+      if (!_props.getProperty('WEB_APP_URL')) _props.setProperty('WEB_APP_URL', _liveUrl);
+    }
+  } catch(_ex) { /* script not yet deployed */ }
+
   const page = e && e.parameter && e.parameter.page ? e.parameter.page : 'dashboard';
 
   if (page === 'diag') {
@@ -82,9 +92,12 @@ function getDashboardData() {
 
 /**
  * Runs Synthesis for a session. Called from dashboard.
+ * @param {string} sessionId
+ * @param {boolean} [force] - If true, re-analyzes already-scored resources too.
  */
-function webRunSynthesis(sessionId) {
-  const count = SynthesisService.synthesizeAll(sessionId);
+function webRunSynthesis(sessionId, force) {
+  const count = SynthesisService.synthesizeAll(sessionId, force || false);
+  invalidateLibraryCache(sessionId);
   return { success: true, count: count };
 }
 
@@ -216,6 +229,36 @@ function webAddCollaborators(sessionId, emails) {
  */
 function webRemoveCollaborator(sessionId, email) {
   return CollaboratorService.removeEditor(sessionId, email);
+}
+
+// ─── Participant API ──────────────────────────────────────────────────────────
+
+/**
+ * Returns all participants for a session.
+ * @param {string} sessionId
+ * @returns {{ email: string, name: string, registeredAt: string }[]}
+ */
+function webGetParticipants(sessionId) {
+  return ParticipantService.getParticipants(sessionId);
+}
+
+/**
+ * Adds participants to a session (deduplicates by email).
+ * @param {string} sessionId
+ * @param {{ name: string, email: string }[]} participants
+ * @returns {{ added: number, skipped: number }}
+ */
+function webAddParticipants(sessionId, participants) {
+  return ParticipantService.addParticipants(sessionId, participants);
+}
+
+/**
+ * Removes a participant by email.
+ * @param {string} sessionId
+ * @param {string} email
+ */
+function webRemoveParticipant(sessionId, email) {
+  return ParticipantService.removeParticipant(sessionId, email);
 }
 
 // ─── Permission API ───────────────────────────────────────────────────────────

@@ -118,6 +118,31 @@
     <div id="sessions-grid" class="sessions-grid" style="display:none;"></div>
   </div>
 
+  <!-- Participants Modal -->
+  <div id="participantsModal" class="modal-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>👤 Participants</h2>
+        <button class="modal-close" onclick="closeParticipantsModal()">×</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size:0.82rem;color:var(--muted);margin-bottom:14px;">Manage the attendee list for this session. Participants are stored in the Project Database's Participants sheet.</p>
+        <div id="participants-current" style="margin-bottom:16px;"></div>
+        <div class="form-group" style="margin-bottom:0;">
+          <label>Add Participants</label>
+          <textarea id="participants-input" placeholder="Alice Smith &lt;alice@example.com&gt;&#10;bob@example.com&#10;Carol, carol@example.com" style="min-height:100px;"></textarea>
+          <div style="font-size:0.73rem;color:var(--muted);margin-top:4px;">One per line. Accepts: <code>Name &lt;email&gt;</code>, just <code>email</code>, or <code>Name, email</code>.</div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <div class="spinner" id="participants-spinner" style="display:none;width:20px;height:20px;"></div>
+        <span style="flex:1;font-size:0.78rem;color:var(--muted);" id="participants-status"></span>
+        <button class="btn btn-outline btn-sm" onclick="closeParticipantsModal()">Close</button>
+        <button class="btn btn-primary btn-sm" onclick="addParticipants()">Add Participants</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Collaborators Modal -->
   <div id="collabModal" class="modal-overlay">
     <div class="modal">
@@ -290,8 +315,10 @@
           '<div class="session-card-actions">' +
             '<button class="btn btn-dark btn-sm" onclick="openResourcesModal(\'' + s.id + '\')">📁 Add Resources</button>' +
             '<button class="btn btn-dark btn-sm" onclick="openCollabModal(\'' + s.id + '\')">👥 Collaborators</button>' +
+            '<button class="btn btn-dark btn-sm" onclick="openParticipantsModal(\'' + s.id + '\')">👤 Participants</button>' +
             (!s.hasBrief ? '<button class="btn btn-dark btn-sm" onclick="regenerateBrief(\'' + s.id + '\', this)">✨ Generate Brief</button>' : '') +
             '<button class="btn btn-dark btn-sm" onclick="runSynthesis(\'' + s.id + '\', this)">🔬 Synthesize</button>' +
+            '<button class="btn btn-dark btn-sm" onclick="runSynthesisForce(\'' + s.id + '\', this)" title="Re-analyze all resources, even ones already scored">♻️ Re-Synthesize</button>' +
             '<button class="btn btn-dark btn-sm" onclick="runGems(\'' + s.id + '\', this)">💎 Generate Gems</button>' +
             (s.hasGems ? '<button class="btn btn-dark btn-sm" onclick="openGemLinksModal(\'' + s.id + '\')">🔗 Set Gem Links</button>' : '') +
             '<button class="btn btn-dark btn-sm" onclick="openEmailModal(\'' + s.id + '\')">📧 Draft Email</button>' +
@@ -309,6 +336,15 @@
         .withSuccessHandler(function(res) { resetBtn(btn, '🔬 Synthesize'); showAlert('Synthesis complete! ' + (res.count || 0) + ' resources analyzed.', 'success'); loadDashboard(); })
         .withFailureHandler(function(err) { resetBtn(btn, '🔬 Synthesize'); showAlert(err.message, 'error'); })
         .webRunSynthesis(sessionId);
+    }
+
+    function runSynthesisForce(sessionId, btn) {
+      if (!confirm('Re-analyze all resources?\n\nThis will re-run synthesis for every resource — including ones already scored. If a Planning Doc is present, the session brief will also be regenerated.\n\nThis cannot be undone. Continue?')) return;
+      setBtnLoading(btn, '♻️ Re-Synthesizing...');
+      google.script.run
+        .withSuccessHandler(function(res) { resetBtn(btn, '♻️ Re-Synthesize'); showAlert('Re-synthesis complete! ' + (res.count || 0) + ' resources re-analyzed.', 'success'); loadDashboard(); })
+        .withFailureHandler(function(err) { resetBtn(btn, '♻️ Re-Synthesize'); showAlert(err.message, 'error'); })
+        .webRunSynthesis(sessionId, true);
     }
 
     function runGems(sessionId, btn) {
@@ -759,6 +795,95 @@
       if (type === 'Meeting Link') return '🔗';
       if (type === 'Audio / Podcast') return '🎧';
       return '📄';
+    }
+
+    // ── Participants Modal ─────────────────────────────────────────────────────
+
+    var _participantsSessionId = null;
+
+    function openParticipantsModal(sessionId) {
+      _participantsSessionId = sessionId;
+      document.getElementById('participants-input').value = '';
+      document.getElementById('participants-status').textContent = '';
+      document.getElementById('participants-spinner').style.display = 'none';
+      document.getElementById('participants-current').innerHTML = '<div style="font-size:0.82rem;color:var(--muted);">Loading participants...</div>';
+      document.getElementById('participantsModal').classList.add('open');
+      google.script.run
+        .withSuccessHandler(function(list) {
+          var el = document.getElementById('participants-current');
+          if (!list || !list.length) {
+            el.innerHTML = '<div style="font-size:0.82rem;color:var(--muted);font-style:italic;">No participants added yet.</div>';
+          } else {
+            var rows = list.map(function(p) {
+              return '<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;margin-bottom:5px;">' +
+                '<span style="font-size:0.82rem;font-weight:600;color:var(--navy);">' + esc(p.name || p.email) + '</span>' +
+                '<span style="font-size:0.78rem;color:var(--muted);margin:0 8px;flex:1;text-align:right;">' + esc(p.email) + '</span>' +
+                '<button onclick="removeParticipant(\'' + esc(p.email) + '\')" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:0.85rem;padding:0 4px;" title="Remove">×</button>' +
+              '</div>';
+            }).join('');
+            el.innerHTML = '<div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;color:var(--muted);margin-bottom:6px;">' + list.length + ' Participant(s)</div>' + rows;
+          }
+        })
+        .withFailureHandler(function() {
+          document.getElementById('participants-current').innerHTML = '';
+        })
+        .webGetParticipants(sessionId);
+    }
+
+    function closeParticipantsModal() {
+      document.getElementById('participantsModal').classList.remove('open');
+      _participantsSessionId = null;
+    }
+
+    function parseParticipantLines(raw) {
+      // Accepts (one per line):
+      //   Alice Smith <alice@example.com>
+      //   bob@example.com
+      //   Carol, carol@example.com
+      var result = [];
+      raw.split('\n').forEach(function(line) {
+        line = line.trim();
+        if (!line) return;
+        var angleMatch = line.match(/^(.+?)\s*<([^>]+@[^>]+)>$/);
+        if (angleMatch) { result.push({ name: angleMatch[1].trim(), email: angleMatch[2].trim() }); return; }
+        var commaMatch = line.match(/^([^,@]+),\s*(.+@.+)$/);
+        if (commaMatch) { result.push({ name: commaMatch[1].trim(), email: commaMatch[2].trim() }); return; }
+        if (line.includes('@')) result.push({ name: '', email: line });
+      });
+      return result;
+    }
+
+    function addParticipants() {
+      if (!_participantsSessionId) return;
+      var raw = document.getElementById('participants-input').value.trim();
+      if (!raw) { document.getElementById('participants-status').textContent = 'Enter at least one participant.'; return; }
+      var participants = parseParticipantLines(raw);
+      if (!participants.length) { document.getElementById('participants-status').textContent = 'No valid email addresses found.'; return; }
+      document.getElementById('participants-spinner').style.display = 'block';
+      document.getElementById('participants-status').textContent = 'Adding...';
+      google.script.run
+        .withSuccessHandler(function(res) {
+          document.getElementById('participants-spinner').style.display = 'none';
+          document.getElementById('participants-input').value = '';
+          var msg = res.added + ' added';
+          if (res.skipped) msg += ' · ' + res.skipped + ' skipped (duplicate or invalid)';
+          document.getElementById('participants-status').textContent = msg + '.';
+          openParticipantsModal(_participantsSessionId); // refresh list
+        })
+        .withFailureHandler(function(err) {
+          document.getElementById('participants-spinner').style.display = 'none';
+          document.getElementById('participants-status').textContent = 'Error: ' + err.message;
+        })
+        .webAddParticipants(_participantsSessionId, participants);
+    }
+
+    function removeParticipant(email) {
+      if (!_participantsSessionId) return;
+      document.getElementById('participants-status').textContent = 'Removing ' + email + '...';
+      google.script.run
+        .withSuccessHandler(function() { openParticipantsModal(_participantsSessionId); })
+        .withFailureHandler(function(err) { document.getElementById('participants-status').textContent = 'Error: ' + err.message; })
+        .webRemoveParticipant(_participantsSessionId, email);
     }
 
     function showAlert(msg, type) {

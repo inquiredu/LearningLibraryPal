@@ -23,6 +23,12 @@ const SitesService = {
     const resources = SynthesisService.getResources(sessionId);
     const gems = session.gems || [];
 
+    // Compute the library URL for this session
+    const baseUrl = typeof _getWebAppUrl === 'function' ? _getWebAppUrl() : '';
+    const libraryUrl = baseUrl
+      ? baseUrl + '?page=library&session=' + sessionId
+      : (session.libraryUrl || '');
+
     // Locate 04_Final folder
     const folderId = this._extractDriveFileId(session.folderUrl);
     if (!folderId) throw new Error('Could not determine session folder ID.');
@@ -33,11 +39,12 @@ const SitesService = {
 
     // Build sections
     const sections = [
-      { label: 'HERO BANNER',        html: this._buildHeroSection(session) },
-      { label: 'SESSION OVERVIEW',   html: this._buildOverviewSection(session) },
-      { label: 'INQUIRY QUESTIONS',  html: this._buildQuestionsSection(session) },
-      { label: 'RESOURCES',          html: this._buildResourcesSection(resources) },
-      { label: 'AI LEARNING GEMS',   html: this._buildGemsSection(gems, session.libraryUrl) }
+      { label: 'HERO BANNER',                    html: this._buildHeroSection(session) },
+      { label: 'SESSION OVERVIEW',               html: this._buildOverviewSection(session) },
+      { label: 'INQUIRY QUESTIONS',              html: this._buildQuestionsSection(session) },
+      { label: 'RESOURCES',                      html: this._buildResourcesSection(resources) },
+      { label: 'AI LEARNING GEMS',               html: this._buildGemsSection(gems, libraryUrl) },
+      { label: 'LEARNING LIBRARY (FULL PAGE)',   html: this._buildLibraryEmbedSection(libraryUrl), embedUrl: libraryUrl }
     ].filter(s => s.html); // skip empty sections
 
     const docUrl = this._saveAsDoc(finalFolder.getId(), 'SITES: ' + session.name, session, sections);
@@ -161,6 +168,15 @@ ${cards}${libraryNote}
 </div>`;
   },
 
+  /**
+   * Returns an iframe embed for the full Learning Library page.
+   * Also used as the "embedUrl" fallback — Google Sites can embed it directly by URL.
+   */
+  _buildLibraryEmbedSection: function(libraryUrl) {
+    if (!libraryUrl) return null;
+    return `<iframe src="${this._esc(libraryUrl)}" width="100%" height="900" frameborder="0" style="border:none;display:block;" allow="fullscreen"></iframe>`;
+  },
+
   // ─── Embed Builders ────────────────────────────────────────────────────────
 
   /**
@@ -266,7 +282,22 @@ ${cards}${libraryNote}
       body.appendHorizontalRule();
       body.appendParagraph('SECTION ' + (i + 1) + ' OF ' + total + ': ' + section.label)
         .setHeading(DocumentApp.ParagraphHeading.HEADING2);
-      body.appendParagraph('Copy everything between the lines below and paste into Sites → Insert → Embed:');
+
+      if (section.embedUrl) {
+        // URL-embed sections (e.g. the Library page): offer both quick URL paste and iframe code
+        body.appendParagraph(
+          '► OPTION A — Easiest: In Google Sites, click Insert → Embed → then the "URL" tab.\n' +
+          '   Paste this URL and click Insert:'
+        );
+        body.appendParagraph(section.embedUrl)
+          .setAttributes({ [DocumentApp.Attribute.FONT_FAMILY]: 'Courier New', [DocumentApp.Attribute.FONT_SIZE]: 10 });
+        body.appendParagraph(
+          '► OPTION B — Custom iframe height: Copy the code below and use Insert → Embed → "Embed code" tab:'
+        );
+      } else {
+        body.appendParagraph('Copy everything between the lines below and paste into Sites → Insert → Embed → "Embed code" tab:');
+      }
+
       body.appendParagraph('─────────────────────────────────────────────────────────────────');
       body.appendParagraph(section.html)
         .setAttributes({ [DocumentApp.Attribute.FONT_FAMILY]: 'Courier New', [DocumentApp.Attribute.FONT_SIZE]: 9 });

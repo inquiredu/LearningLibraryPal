@@ -44,15 +44,20 @@ const ParticipantService = {
     let added = 0;
     let skipped = 0;
     const now = new Date().toISOString();
+    const newRows = [];
 
     participants.forEach(function(p) {
       const email = String(p.email || '').trim().toLowerCase();
       if (!email || !email.includes('@')) { skipped++; return; }
       if (existingEmails.has(email)) { skipped++; return; }
-      sheet.appendRow([email, String(p.name || '').trim(), now]);
+      newRows.push([email, String(p.name || '').trim(), now]);
       existingEmails.add(email);
       added++;
     });
+
+    if (newRows.length > 0) {
+      sheet.getRange(sheet.getLastRow() + 1, 1, newRows.length, 3).setValues(newRows);
+    }
 
     return { added: added, skipped: skipped };
   },

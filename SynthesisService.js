@@ -49,11 +49,11 @@ const SynthesisService = {
 
       // ── Meeting Links: logistics only, no content to analyze ────────────────
       if (resourceType === 'Meeting Link') {
-        if (!rows[i][1]) resourcesSheet.getRange(i + 1, 2).setValue('Meeting / Session Link');
-        resourcesSheet.getRange(i + 1, 4).setValue(1);         // relevanceScore
-        resourcesSheet.getRange(i + 1, 5).setValue('Accessible'); // engagementLevel
-        resourcesSheet.getRange(i + 1, 8).setValue('No');        // notebookLMReady
-        resourcesSheet.getRange(i + 1, 10).setValue('Session logistics link — no content to analyze.');
+        if (!rows[i][1]) rows[i][1] = 'Meeting / Session Link';
+        rows[i][3] = 1;          // relevanceScore
+        rows[i][4] = 'Accessible'; // engagementLevel
+        rows[i][7] = 'No';         // notebookLMReady
+        rows[i][9] = 'Session logistics link — no content to analyze.';
         processedCount++;
         continue;
       }
@@ -102,19 +102,17 @@ const SynthesisService = {
         );
 
         // Write results — preserve user-set type; only infer type when blank
-        resourcesSheet.getRange(i + 1, 2).setValue(meta.title || '');
+        rows[i][1] = meta.title || '';
         if (!resourceType) {
-          resourcesSheet.getRange(i + 1, 3).setValue(this._inferType(url));
+          rows[i][2] = this._inferType(url);
         }
-        resourcesSheet.getRange(i + 1, 4).setValue(meta.relevanceScore || '');
-        resourcesSheet.getRange(i + 1, 5).setValue(meta.engagementLevel || '');
-        resourcesSheet.getRange(i + 1, 6).setValue(
-          Array.isArray(meta.keyConceptTags) ? meta.keyConceptTags.join(', ') : ''
-        );
-        resourcesSheet.getRange(i + 1, 7).setValue(meta.relevanceScore >= 4 ? 'Yes' : 'No');
-        resourcesSheet.getRange(i + 1, 8).setValue(meta.notebookLMReady ? 'Yes' : 'No');
-        resourcesSheet.getRange(i + 1, 9).setValue(meta.relevanceStatement || '');
-        resourcesSheet.getRange(i + 1, 10).setValue(meta.summary || '');
+        rows[i][3] = meta.relevanceScore || '';
+        rows[i][4] = meta.engagementLevel || '';
+        rows[i][5] = Array.isArray(meta.keyConceptTags) ? meta.keyConceptTags.join(', ') : '';
+        rows[i][6] = meta.relevanceScore >= 4 ? 'Yes' : 'No';
+        rows[i][7] = meta.notebookLMReady ? 'Yes' : 'No';
+        rows[i][8] = meta.relevanceStatement || '';
+        rows[i][9] = meta.summary || '';
 
         // ── Planning Doc: enrich session brief if none exists ────────────────
         // The planning document IS the session context — use it to build a
@@ -141,8 +139,13 @@ const SynthesisService = {
         Utilities.sleep(500);
       } catch (e) {
         console.error('Failed to process row ' + (i + 1) + ': ' + e.message);
-        resourcesSheet.getRange(i + 1, 9).setValue('Error: ' + e.message);
+        rows[i][8] = 'Error: ' + e.message;
       }
+    }
+
+    // Batch write all updates to the Resources sheet
+    if (rows.length > 1) {
+      resourcesSheet.getRange(1, 1, rows.length, rows[0].length).setValues(rows);
     }
 
     // Also scan the 01_Research folder for any Docs/text files not yet in the DB
@@ -263,6 +266,7 @@ const SynthesisService = {
       const existingUrls = new Set(allRows.slice(1).map(r => String(r[0]).trim()));
 
       const files = researchFolder.getFiles();
+      const newRows = [];
       while (files.hasNext()) {
         const file = files.next();
         const mime = file.getMimeType();
@@ -290,7 +294,7 @@ const SynthesisService = {
             session.audience,
             sessionContext
           );
-          resourcesSheet.appendRow([
+          newRows.push([
             url,
             meta.title || file.getName(),
             'Document',
@@ -308,6 +312,10 @@ const SynthesisService = {
         } catch (e) {
           console.error('Failed to process file ' + file.getName() + ': ' + e.message);
         }
+      }
+
+      if (newRows.length > 0) {
+        resourcesSheet.getRange(resourcesSheet.getLastRow() + 1, 1, newRows.length, 10).setValues(newRows);
       }
     } catch (e) {
       console.error('_processResearchFolder failed: ' + e.message);

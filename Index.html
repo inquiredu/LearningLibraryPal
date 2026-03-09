@@ -40,8 +40,8 @@
     .alert-success { background: #D4EDDA; color: #155724; }
     .alert-error   { background: #F8D7DA; color: #721C24; }
 
-    .sessions-grid { display: flex; flex-direction: column; gap: 16px; }
-    .session-card { background: var(--white); border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.07); overflow: hidden; border: 1px solid var(--border); }
+    .sessions-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; align-items: start; }
+    .session-card { background: var(--white); border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.07); overflow: hidden; border: 1px solid var(--border); display: flex; flex-direction: column; height: 100%; }
     .session-card-header { padding: 18px 22px 14px; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
     .session-meta h3 { font-family: 'Montserrat', sans-serif; font-size: 1.05rem; color: var(--navy); margin-bottom: 4px; }
     .session-meta .sub { color: var(--muted); font-size: 0.82rem; }
@@ -49,7 +49,8 @@
     .status-badge.ready { background: #D4EDDA; color: #155724; }
     .status-badge.gems  { background: #CCE5FF; color: #004085; }
 
-    .session-card-body { padding: 0 22px 18px; }
+    .session-card-body { padding: 0 22px 18px; flex-grow: 1; display: flex; flex-direction: column; }
+    .session-card-body .action-spacer { flex-grow: 1; }
     .session-links { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 14px; }
     .session-links a { color: var(--navy); font-size: 0.82rem; font-weight: 600; text-decoration: none; display: flex; align-items: center; gap: 4px; }
     .session-links a:hover { color: var(--cyan); }

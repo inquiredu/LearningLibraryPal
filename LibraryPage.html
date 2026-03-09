@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;800&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+  <title>Learning Library — Mngaia</title>
+  <style>
+    :root {
+      --navy:    #0B2B46;
+      --cyan:    #5DCDF5;
+      --white:   #FFFFFF;
+      --bg:      #F0F4F8;
+      --border:  #DDE4ED;
+      --text:    #2C3E50;
+      --muted:   #7F8FA4;
+      --deep:    #004085;
+      --deep-bg: #CCE5FF;
+      --mid-bg:  #FFF3CD;
+      --mid:     #856404;
+      --acc-bg:  #D4EDDA;
+      --acc:     #155724;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Open Sans', sans-serif; background: var(--bg); color: var(--text); }
+    a { color: var(--navy); }
+    a:hover { color: var(--cyan); }
+
+    /* ── Header ── */
+    .hero {
+      background: linear-gradient(135deg, var(--navy) 0%, #1A4A6E 100%);
+      padding: 48px 32px 40px;
+      text-align: center;
+    }
+    .hero-label { color: var(--cyan); font-size: 0.75rem; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 12px; }
+    .hero-title { font-family: 'Montserrat', sans-serif; font-size: 2rem; color: var(--white); line-height: 1.25; margin-bottom: 10px; }
+    .hero-meta { color: rgba(255,255,255,0.65); font-size: 0.88rem; display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
+    .hero-meta span::before { content: '·'; margin-right: 8px; opacity: 0.5; }
+    .hero-meta span:first-child::before { content: ''; margin: 0; }
+
+    /* ── Layout ── */
+    .container { max-width: 860px; margin: 0 auto; padding: 32px 24px 60px; }
+    .section { margin-bottom: 40px; }
+    .section-header {
+      display: flex; align-items: center; gap: 10px;
+      margin-bottom: 18px; padding-bottom: 12px;
+      border-bottom: 2px solid var(--border);
+    }
+    .section-header h2 { font-family: 'Montserrat', sans-serif; font-size: 1.05rem; color: var(--navy); }
+    .section-icon { font-size: 1.25rem; }
+
+    /* ── Loading ── */
+    .loading { text-align: center; padding: 60px 20px; }
+    .spinner { width: 36px; height: 36px; border: 3px solid var(--border); border-top-color: var(--cyan); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 16px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading p { color: var(--muted); font-size: 0.9rem; }
+
+    /* ── Overview ── */
+    .overview-text { font-size: 1rem; line-height: 1.8; color: var(--text); }
+    .objectives-list { list-style: none; display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
+    .objectives-list li { display: flex; align-items: flex-start; gap: 10px; font-size: 0.92rem; line-height: 1.6; }
+    .obj-dot { width: 8px; height: 8px; background: var(--cyan); border-radius: 50%; margin-top: 8px; flex-shrink: 0; }
+
+    /* ── Inquiry Questions ── */
+    .questions-list { display: flex; flex-direction: column; gap: 10px; }
+    .question-item {
+      background: var(--white); border: 1px solid var(--border); border-radius: 8px;
+      padding: 16px 18px; cursor: pointer; transition: border-color 0.15s;
+      user-select: none;
+    }
+    .question-item:hover { border-color: var(--cyan); }
+    .question-item.open { border-color: var(--cyan); background: #F5FCFF; }
+    .question-q { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+    .question-q span { font-size: 0.92rem; line-height: 1.6; font-weight: 600; color: var(--navy); }
+    .question-toggle { color: var(--muted); font-size: 1.1rem; flex-shrink: 0; margin-top: 1px; transition: transform 0.2s; }
+    .question-item.open .question-toggle { transform: rotate(45deg); }
+    .question-detail { display: none; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); font-size: 0.85rem; color: var(--muted); line-height: 1.6; }
+    .question-item.open .question-detail { display: block; }
+
+    /* ── Resources ── */
+    .resources-grid { display: flex; flex-direction: column; gap: 12px; }
+    .resource-card {
+      background: var(--white); border: 1px solid var(--border); border-radius: 8px;
+      padding: 16px 18px; display: flex; gap: 16px; align-items: flex-start;
+    }
+    .resource-score {
+      width: 36px; height: 36px; border-radius: 50%; background: var(--navy); color: var(--white);
+      display: flex; align-items: center; justify-content: center; font-size: 0.88rem; font-weight: 700; flex-shrink: 0;
+    }
+    .resource-score.s5 { background: #155724; }
+    .resource-score.s4 { background: #004085; }
+    .resource-score.s3 { background: var(--navy); }
+    .resource-score.s2 { background: var(--muted); }
+    .resource-score.s1 { background: var(--border); color: var(--muted); }
+    .resource-content { flex: 1; min-width: 0; }
+    .resource-title { font-size: 0.92rem; font-weight: 700; color: var(--navy); margin-bottom: 4px; }
+    .resource-title a { text-decoration: none; color: inherit; }
+    .resource-title a:hover { color: var(--cyan); }
+    .resource-statement { font-size: 0.83rem; color: var(--text); line-height: 1.5; margin-bottom: 8px; }
+    .resource-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+    .tag { padding: 2px 8px; border-radius: 4px; font-size: 0.72rem; font-weight: 700; background: var(--bg); color: var(--muted); border: 1px solid var(--border); }
+    .tag.pre  { background: var(--acc-bg); color: var(--acc); border-color: #C3E6CB; }
+    .tag.deep { background: var(--deep-bg); color: var(--deep); border-color: #B8DAFF; }
+    .tag.mid  { background: var(--mid-bg); color: var(--mid); border-color: #FFEEBA; }
+    .tag.nlm  { background: #F3E5F5; color: #6A0080; border-color: #E1BEE7; }
+
+    /* ── Gems ── */
+    .gems-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+    .gem-card {
+      background: var(--white); border: 1px solid var(--border); border-radius: 10px;
+      padding: 20px; display: flex; flex-direction: column; gap: 12px;
+    }
+    .gem-header { display: flex; align-items: center; gap: 10px; }
+    .gem-emoji { font-size: 1.6rem; }
+    .gem-info h3 { font-family: 'Montserrat', sans-serif; font-size: 0.92rem; color: var(--navy); }
+    .gem-info p  { font-size: 0.75rem; color: var(--muted); }
+    .gem-persona { font-size: 0.83rem; color: var(--text); line-height: 1.55; font-style: italic; }
+    .gem-prompt-box {
+      background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+      padding: 12px; font-family: monospace; font-size: 0.78rem; line-height: 1.6;
+      color: var(--navy); white-space: pre-wrap; word-break: break-word; max-height: 180px; overflow-y: auto;
+    }
+    .gem-starters { margin-top: 2px; }
+    .gem-starters h4 { font-size: 0.72rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+    .gem-starters ul { list-style: none; display: flex; flex-direction: column; gap: 4px; }
+    .gem-starters li { font-size: 0.8rem; color: var(--text); line-height: 1.4; display: flex; gap: 6px; }
+    .gem-starters li::before { content: '→'; color: var(--cyan); flex-shrink: 0; }
+    .copy-btn {
+      background: var(--navy); color: var(--white); border: none; border-radius: 5px;
+      padding: 7px 14px; font-size: 0.78rem; font-weight: 700; cursor: pointer; width: 100%; transition: opacity 0.15s;
+    }
+    .copy-btn:hover { opacity: 0.85; }
+    .copy-btn.copied { background: #155724; }
+
+    /* ── NotebookLM ── */
+    .nlm-box { background: #F3E5F5; border: 1px solid #E1BEE7; border-radius: 8px; padding: 20px; }
+    .nlm-box h3 { font-family: 'Montserrat', sans-serif; font-size: 0.88rem; color: #6A0080; margin-bottom: 10px; }
+    .nlm-guide { font-size: 0.85rem; line-height: 1.7; color: var(--text); white-space: pre-line; margin-bottom: 14px; }
+    .nlm-prompt-label { font-size: 0.75rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+    .nlm-prompt-box { background: var(--white); border: 1px solid #E1BEE7; border-radius: 6px; padding: 12px; font-size: 0.85rem; line-height: 1.6; color: var(--text); margin-bottom: 10px; }
+
+    /* ── Checklist ── */
+    .checklist { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+    .check-item {
+      display: flex; align-items: flex-start; gap: 12px;
+      background: var(--white); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; cursor: pointer;
+      transition: border-color 0.15s;
+    }
+    .check-item:hover { border-color: var(--cyan); }
+    .check-item.done { background: var(--acc-bg); border-color: #C3E6CB; }
+    .check-box { width: 20px; height: 20px; border: 2px solid var(--border); border-radius: 4px; flex-shrink: 0; margin-top: 1px; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
+    .check-item.done .check-box { background: var(--acc); border-color: var(--acc); color: #fff; font-size: 0.8rem; }
+    .check-content { flex: 1; }
+    .check-content strong { display: block; font-size: 0.9rem; color: var(--navy); margin-bottom: 2px; }
+    .check-content span  { font-size: 0.8rem; color: var(--muted); line-height: 1.4; }
+
+    /* ── Empty ── */
+    .empty { text-align: center; padding: 30px; color: var(--muted); font-size: 0.88rem; background: var(--white); border-radius: 8px; border: 1px dashed var(--border); }
+
+    /* ── Footer ── */
+    .page-footer { text-align: center; padding: 32px 24px; color: var(--muted); font-size: 0.78rem; border-top: 1px solid var(--border); }
+    .page-footer a { color: var(--muted); text-decoration: none; }
+  </style>
+</head>
+<body>
+
+  <!-- Loading state -->
+  <div id="loading" class="loading">
+    <div class="spinner"></div>
+    <p>Loading your learning library...</p>
+  </div>
+
+  <!-- Content (hidden until data loads) -->
+  <div id="content" style="display:none;">
+    <!-- Hero -->
+    <div class="hero">
+      <div class="hero-label">Mngaia Learning Library</div>
+      <h1 class="hero-title" id="heroTitle"></h1>
+      <div class="hero-meta" id="heroMeta"></div>
+    </div>
+
+    <div class="container">
+
+      <!-- Overview + Objectives -->
+      <div class="section" id="secOverview">
+        <div class="section-header">
+          <span class="section-icon">🌐</span>
+          <h2>Session Overview</h2>
+        </div>
+        <p class="overview-text" id="overviewText"></p>
+        <br>
+        <ul class="objectives-list" id="objectivesList"></ul>
+      </div>
+
+      <!-- Inquiry Questions -->
+      <div class="section" id="secQuestions">
+        <div class="section-header">
+          <span class="section-icon">❓</span>
+          <h2>Inquiry Questions</h2>
+        </div>
+        <div class="questions-list" id="questionsList"></div>
+      </div>
+
+      <!-- Resources -->
+      <div class="section" id="secResources">
+        <div class="section-header">
+          <span class="section-icon">📚</span>
+          <h2>Resource Library</h2>
+        </div>
+        <div class="resources-grid" id="resourcesGrid"></div>
+      </div>
+
+      <!-- Gems Workshop -->
+      <div class="section" id="secGems">
+        <div class="section-header">
+          <span class="section-icon">💎</span>
+          <h2>Gems Workshop</h2>
+        </div>
+        <div class="gems-grid" id="gemsGrid"></div>
+      </div>
+
+      <!-- NotebookLM -->
+      <div class="section" id="secNotebookLM">
+        <div class="section-header">
+          <span class="section-icon">🔬</span>
+          <h2>NotebookLM Setup</h2>
+        </div>
+        <div id="nlmContent"></div>
+      </div>
+
+      <!-- Checklist -->
+      <div class="section" id="secChecklist">
+        <div class="section-header">
+          <span class="section-icon">✅</span>
+          <h2>Pre-Session Checklist</h2>
+        </div>
+        <ul class="checklist" id="checklistEl"></ul>
+      </div>
+
+    </div>
+
+    <div class="page-footer">
+      <p>Mngaia Content Engine &nbsp;·&nbsp; <span id="footerDate"></span></p>
+    </div>
+  </div>
+
+  <script>
+    var SESSION_ID = '__SESSION_ID__';
+
+    // ── Bootstrap ──────────────────────────────────────────────────────────────
+    window.onload = function() {
+      if (!SESSION_ID || SESSION_ID === '__SESSION_ID__') {
+        document.getElementById('loading').innerHTML = '<p style="color:#721C24;padding:40px;">No session ID provided.</p>';
+        return;
+      }
+      google.script.run
+        .withSuccessHandler(renderLibrary)
+        .withFailureHandler(function(err) {
+          document.getElementById('loading').innerHTML = '<p style="color:#721C24;padding:40px;">Error loading library: ' + err.message + '</p>';
+        })
+        .getLibraryData(SESSION_ID);
+    };
+
+    // ── Render ─────────────────────────────────────────────────────────────────
+    function renderLibrary(data) {
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('content').style.display = 'block';
+
+      var m = data.meta || {};
+      var brief = data.brief || {};
+
+      // Hero
+      document.getElementById('heroTitle').textContent = m.name || 'Session';
+      var metaItems = [];
+      if (m.theme) metaItems.push(m.theme);
+      if (m.date)  metaItems.push(m.date);
+      if (m.format)metaItems.push(m.format);
+      document.getElementById('heroMeta').innerHTML = metaItems.map(function(t, i) {
+        return '<span' + (i === 0 ? ' style="margin-left:0;"' : '') + '>' + esc(t) + '</span>';
+      }).join('');
+
+      document.title = (m.name || 'Session') + ' — Learning Library';
+      document.getElementById('footerDate').textContent = new Date().toLocaleDateString();
+
+      // Overview
+      document.getElementById('overviewText').textContent = brief.overview || 'No overview generated yet.';
+      var objList = document.getElementById('objectivesList');
+      (brief.learningObjectives || []).forEach(function(o) {
+        var li = document.createElement('li');
+        li.innerHTML = '<div class="obj-dot"></div><span>' + esc(o) + '</span>';
+        objList.appendChild(li);
+      });
+      if (!brief.learningObjectives || !brief.learningObjectives.length) objList.innerHTML = '<li style="color:var(--muted);font-size:0.85rem;">No objectives generated yet.</li>';
+
+      // Inquiry Questions
+      var qList = document.getElementById('questionsList');
+      (brief.inquiryQuestions || []).forEach(function(q, i) {
+        var div = document.createElement('div');
+        div.className = 'question-item';
+        div.innerHTML =
+          '<div class="question-q"><span>' + esc(q) + '</span><span class="question-toggle">+</span></div>' +
+          '<div class="question-detail">Take a moment to sit with this question before the session. There\'s no single answer — it\'s an invitation to think.</div>';
+        div.addEventListener('click', function() { div.classList.toggle('open'); });
+        qList.appendChild(div);
+      });
+      if (!brief.inquiryQuestions || !brief.inquiryQuestions.length) qList.innerHTML = '<div class="empty">No inquiry questions generated yet.</div>';
+
+      // Resources
+      renderResources(data.resources || []);
+
+      // Gems
+      renderGems(data.gems || []);
+
+      // NotebookLM
+      renderNotebookLM(data.notebookLM || {});
+
+      // Checklist
+      renderChecklist(data.checklist || []);
+    }
+
+    // ── Resources ──────────────────────────────────────────────────────────────
+    function renderResources(resources) {
+      var grid = document.getElementById('resourcesGrid');
+      if (!resources.length) { grid.innerHTML = '<div class="empty">No resources synthesized yet. Add URLs to the Project DB and run Synthesis from the Dashboard.</div>'; return; }
+
+      resources.forEach(function(r) {
+        var score = Math.max(1, Math.min(5, r.relevanceScore || 0));
+        var engTag = '';
+        if (r.engagementLevel === 'Deep') engTag = '<span class="tag deep">Deep</span>';
+        else if (r.engagementLevel === 'Intermediate') engTag = '<span class="tag mid">Intermediate</span>';
+        else if (r.engagementLevel) engTag = '<span class="tag acc">' + esc(r.engagementLevel) + '</span>';
+        var preTag = r.preReading ? '<span class="tag pre">Pre-Reading</span>' : '';
+        var nlmTag = r.notebookLMReady ? '<span class="tag nlm">NotebookLM</span>' : '';
+        var keyTags = (r.keyTags || []).map(function(t) { return '<span class="tag">' + esc(t) + '</span>'; }).join('');
+
+        var card = document.createElement('div');
+        card.className = 'resource-card';
+        card.innerHTML =
+          '<div class="resource-score s' + score + '">' + score + '</div>' +
+          '<div class="resource-content">' +
+            '<div class="resource-title"><a href="' + esc(r.url) + '" target="_blank">' + esc(r.title || r.url) + '</a></div>' +
+            (r.relevanceStatement ? '<div class="resource-statement">' + esc(r.relevanceStatement) + '</div>' : '') +
+            '<div class="resource-tags">' + preTag + engTag + nlmTag + keyTags + '</div>' +
+          '</div>';
+        grid.appendChild(card);
+      });
+    }
+
+    // ── Gems ───────────────────────────────────────────────────────────────────
+    function renderGems(gems) {
+      var grid = document.getElementById('gemsGrid');
+      if (!gems.length) { grid.innerHTML = '<div class="empty" style="grid-column:1/-1;">No Gems generated yet. Run "Generate Gems" from the Dashboard first.</div>'; return; }
+
+      gems.forEach(function(gem) {
+        var card = document.createElement('div');
+        card.className = 'gem-card';
+        var starters = (gem.starterQueries || []).map(function(q) { return '<li>' + esc(q) + '</li>'; }).join('');
+        var promptId = 'prompt-' + gem.id;
+        card.innerHTML =
+          '<div class="gem-header">' +
+            '<span class="gem-emoji">' + (gem.emoji || '💎') + '</span>' +
+            '<div class="gem-info"><h3>' + esc(gem.name) + '</h3><p>' + esc(gem.role || '') + '</p></div>' +
+          '</div>' +
+          '<div class="gem-persona">' + esc(gem.persona || '') + '</div>' +
+          '<div>' +
+            '<div style="font-size:0.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px;">System Prompt (copy into Gemini Gem)</div>' +
+            '<div class="gem-prompt-box" id="' + promptId + '">' + esc(gem.systemPrompt || '') + '</div>' +
+          '</div>' +
+          (starters ? '<div class="gem-starters"><h4>Starter Queries</h4><ul>' + starters + '</ul></div>' : '') +
+          '<button class="copy-btn" onclick="copyPrompt(\'' + promptId + '\', this)">Copy System Prompt</button>';
+        grid.appendChild(card);
+      });
+    }
+
+    function copyPrompt(elemId, btn) {
+      var text = document.getElementById(elemId).textContent;
+      navigator.clipboard.writeText(text).then(function() {
+        var orig = btn.textContent;
+        btn.textContent = '✓ Copied!';
+        btn.classList.add('copied');
+        setTimeout(function() { btn.textContent = orig; btn.classList.remove('copied'); }, 2000);
+      }).catch(function() {
+        var ta = document.createElement('textarea');
+        ta.value = text; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+        btn.textContent = '✓ Copied!'; btn.classList.add('copied');
+        setTimeout(function() { btn.textContent = 'Copy System Prompt'; btn.classList.remove('copied'); }, 2000);
+      });
+    }
+
+    // ── NotebookLM ─────────────────────────────────────────────────────────────
+    function renderNotebookLM(nlm) {
+      var el = document.getElementById('nlmContent');
+      var resources = nlm.resources || [];
+      var resHtml = resources.length ? resources.map(function(r, i) {
+        return (i + 1) + '. <a href="' + esc(r.url) + '" target="_blank">' + esc(r.title) + '</a>';
+      }).join('<br>') : 'No NotebookLM-ready resources yet.';
+
+      el.innerHTML =
+        '<div class="nlm-box">' +
+          '<h3>🔬 NotebookLM Setup Guide</h3>' +
+          '<div class="nlm-guide">' + esc(nlm.guide || '').replace(/\n/g, '<br>') + '</div>' +
+          (resources.length ? '<p style="font-size:0.83rem;margin-bottom:10px;"><strong>Resources to add:</strong><br>' + resHtml + '</p>' : '') +
+          (nlm.starterPrompt ? '<div class="nlm-prompt-label">Starter Prompt (paste into NotebookLM chat)</div><div class="nlm-prompt-box">' + esc(nlm.starterPrompt) + '</div><button class="copy-btn" onclick="copyText(\'' + esc(nlm.starterPrompt).replace(/'/g, "\\'") + '\', this)">Copy Starter Prompt</button>' : '') +
+        '</div>';
+    }
+
+    function copyText(text, btn) {
+      navigator.clipboard.writeText(text).then(function() {
+        var orig = btn.textContent; btn.textContent = '✓ Copied!'; btn.classList.add('copied');
+        setTimeout(function() { btn.textContent = orig; btn.classList.remove('copied'); }, 2000);
+      });
+    }
+
+    // ── Checklist ──────────────────────────────────────────────────────────────
+    function renderChecklist(items) {
+      var list = document.getElementById('checklistEl');
+      var savedKey = 'checklist-' + SESSION_ID;
+      var saved = {};
+      try { saved = JSON.parse(localStorage.getItem(savedKey) || '{}'); } catch(e) {}
+
+      items.forEach(function(item) {
+        var li = document.createElement('li');
+        li.className = 'check-item' + (saved[item.id] ? ' done' : '');
+        li.innerHTML =
+          '<div class="check-box">' + (saved[item.id] ? '✓' : '') + '</div>' +
+          '<div class="check-content"><strong>' + esc(item.label) + '</strong><span>' + esc(item.detail || '') + '</span></div>';
+        li.addEventListener('click', function() {
+          var isDone = li.classList.toggle('done');
+          li.querySelector('.check-box').textContent = isDone ? '✓' : '';
+          saved[item.id] = isDone;
+          try { localStorage.setItem(savedKey, JSON.stringify(saved)); } catch(e) {}
+        });
+        list.appendChild(li);
+      });
+      if (!items.length) list.innerHTML = '<li class="empty">No checklist items available.</li>';
+    }
+
+    // ── Util ───────────────────────────────────────────────────────────────────
+    function esc(str) {
+      return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+  </script>
+</body>
+</html>

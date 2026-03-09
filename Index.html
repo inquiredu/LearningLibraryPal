@@ -1,313 +1,452 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <base target="_top">
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;800&family=Open+Sans:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
-    <style>
-      :root {
-        --navy: #0B2B46;
-        --cyan: #5DCDF5;
-        --white: #FFFFFF;
-        --gray: #F5F5F5;
-      }
-      body {
-        font-family: 'Open Sans', sans-serif;
-        background-color: var(--gray);
-        color: var(--navy);
-        margin: 0;
-        padding: 20px;
-      }
-      header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 20px;
-      }
-      h1 {
-        font-family: 'Montserrat', sans-serif;
-        text-transform: uppercase;
-        margin: 0;
-        color: var(--navy);
-      }
-      .btn {
-        background-color: var(--cyan);
-        color: var(--navy);
-        border: none;
-        padding: 10px 20px;
-        font-family: 'Open Sans', sans-serif;
-        font-weight: 700;
-        border-radius: 4px;
-        cursor: pointer;
-        transition: opacity 0.2s;
-        text-decoration: none;
-        display: inline-block;
-      }
-      .btn:hover {
-        opacity: 0.8;
-      }
-      .btn-secondary {
-        background-color: var(--navy);
-        color: var(--white);
-      }
-      .btn-small {
-        padding: 5px 10px;
-        font-size: 0.8em;
-      }
-      .card {
-        background-color: var(--white);
-        border-radius: 8px;
-        padding: 20px;
-        margin-bottom: 15px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-      }
-      .card-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 15px;
-      }
-      .card-title {
-        font-family: 'Montserrat', sans-serif;
-        font-size: 1.2em;
-        margin: 0;
-      }
-      .badge {
-        background-color: var(--navy);
-        color: var(--cyan);
-        padding: 3px 8px;
-        border-radius: 12px;
-        font-size: 0.8em;
-        font-weight: 700;
-      }
-      .links a {
-        color: var(--cyan);
-        text-decoration: none;
-        font-weight: 700;
-        margin-right: 15px;
-      }
-      .links a:hover {
-        text-decoration: underline;
-      }
-      .actions {
-        margin-top: 15px;
-        padding-top: 15px;
-        border-top: 1px solid var(--gray);
-      }
-      
-      /* Modal Styles */
-      #wizardModal {
-        display: none;
-        position: fixed;
-        top: 0; left: 0; width: 100%; height: 100%;
-        background: rgba(11, 43, 70, 0.8);
-        z-index: 1000;
-        align-items: center;
-        justify-content: center;
-      }
-      .modal-content {
-        background: var(--white);
-        padding: 30px;
-        border-radius: 8px;
-        width: 100%;
-        max-width: 500px;
-        max-height: 90vh;
-        overflow-y: auto;
-      }
-      .form-group { margin-bottom: 15px; }
-      label { display: block; font-weight: bold; margin-bottom: 5px; }
-      input, select { width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
-      
-      .loader {
-        display: none;
-        border: 4px solid var(--gray);
-        border-top: 4px solid var(--cyan);
-        border-radius: 50%;
-        width: 30px;
-        height: 30px;
-        animation: spin 1s linear infinite;
-        margin: 10px auto;
-      }
-      @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-      
-      #globalMessage {
-        padding: 10px;
-        margin-bottom: 20px;
-        border-radius: 4px;
-        display: none;
-        font-weight: bold;
-        text-align: center;
-      }
-      .msg-success { background-color: #d4edda; color: #155724; }
-      .msg-error { background-color: #f8d7da; color: #721c24; }
-    </style>
-  </head>
-  <body>
-    <header>
-      <h1>Mngaia Engine</h1>
-      <button class="btn" onclick="openWizard()">+ Launch New Session</button>
-    </header>
-    
-    <div id="globalMessage"></div>
-    <div id="loader" class="loader" style="display: block;"></div>
-    <div id="dashboard"></div>
+<html lang="en">
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;800&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+  <title>Mngaia Content Engine</title>
+  <style>
+    :root {
+      --navy:   #0B2B46;
+      --cyan:   #5DCDF5;
+      --white:  #FFFFFF;
+      --bg:     #F0F4F8;
+      --border: #DDE4ED;
+      --text:   #2C3E50;
+      --muted:  #7F8FA4;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Open Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
 
-    <!-- Wizard Modal -->
-    <div id="wizardModal">
-      <div class="modal-content">
-        <h2 style="font-family: 'Montserrat', sans-serif; color: var(--navy); margin-top: 0;">Launch Session</h2>
-        
-        <div class="form-group">
-          <label>Session Name / Topic</label>
-          <input type="text" id="w_sessionName" placeholder="e.g., November Kickoff" required>
+    .header { background: var(--navy); padding: 16px 28px; display: flex; align-items: center; justify-content: space-between; }
+    .header-brand { display: flex; align-items: baseline; gap: 10px; }
+    .header-brand h1 { font-family: 'Montserrat', sans-serif; font-size: 1.3rem; color: var(--white); letter-spacing: 1px; }
+    .header-brand span { color: var(--cyan); font-size: 0.75rem; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; }
+
+    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 9px 18px; border: none; border-radius: 6px; font-family: 'Open Sans', sans-serif; font-size: 0.85rem; font-weight: 700; cursor: pointer; transition: opacity 0.15s, transform 0.1s; text-decoration: none; }
+    .btn:hover { opacity: 0.88; transform: translateY(-1px); }
+    .btn:active { transform: translateY(0); }
+    .btn-primary { background: var(--cyan); color: var(--navy); }
+    .btn-dark    { background: var(--navy); color: var(--white); }
+    .btn-outline { background: transparent; color: var(--cyan); border: 1.5px solid var(--cyan); }
+    .btn-sm { padding: 6px 12px; font-size: 0.78rem; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    .main { padding: 28px; max-width: 960px; margin: 0 auto; }
+    .page-title { font-family: 'Montserrat', sans-serif; font-size: 1rem; color: var(--muted); margin-bottom: 20px; text-transform: uppercase; letter-spacing: 1px; }
+
+    .alert { padding: 12px 16px; border-radius: 6px; margin-bottom: 20px; font-size: 0.9rem; font-weight: 600; display: none; }
+    .alert-success { background: #D4EDDA; color: #155724; }
+    .alert-error   { background: #F8D7DA; color: #721C24; }
+
+    .sessions-grid { display: flex; flex-direction: column; gap: 16px; }
+    .session-card { background: var(--white); border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.07); overflow: hidden; border: 1px solid var(--border); }
+    .session-card-header { padding: 18px 22px 14px; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+    .session-meta h3 { font-family: 'Montserrat', sans-serif; font-size: 1.05rem; color: var(--navy); margin-bottom: 4px; }
+    .session-meta .sub { color: var(--muted); font-size: 0.82rem; }
+    .status-badge { padding: 3px 10px; border-radius: 20px; font-size: 0.72rem; font-weight: 700; white-space: nowrap; background: var(--navy); color: var(--cyan); }
+    .status-badge.ready { background: #D4EDDA; color: #155724; }
+    .status-badge.gems  { background: #CCE5FF; color: #004085; }
+
+    .session-card-body { padding: 0 22px 18px; }
+    .session-links { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 14px; }
+    .session-links a { color: var(--navy); font-size: 0.82rem; font-weight: 600; text-decoration: none; display: flex; align-items: center; gap: 4px; }
+    .session-links a:hover { color: var(--cyan); }
+
+    .session-indicators { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+    .indicator { padding: 3px 9px; border-radius: 4px; font-size: 0.72rem; font-weight: 700; background: var(--bg); color: var(--muted); border: 1px solid var(--border); }
+    .indicator.done { background: #D4EDDA; color: #155724; border-color: #C3E6CB; }
+
+    .session-card-actions { padding: 14px 22px; background: var(--bg); border-top: 1px solid var(--border); display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .action-spacer { flex: 1; }
+
+    .empty-state { text-align: center; padding: 60px 20px; color: var(--muted); }
+    .empty-state .icon { font-size: 2.5rem; margin-bottom: 12px; }
+
+    .spinner { width: 32px; height: 32px; margin: 40px auto; border: 3px solid var(--border); border-top-color: var(--cyan); border-radius: 50%; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Email Modal */
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(11,43,70,0.75); z-index: 1000; align-items: center; justify-content: center; }
+    .modal-overlay.open { display: flex; }
+    .modal { background: var(--white); border-radius: 12px; width: 90%; max-width: 600px; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+    .modal-header { padding: 20px 24px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+    .modal-header h2 { font-family: 'Montserrat', sans-serif; font-size: 1.1rem; color: var(--navy); }
+    .modal-close { background: none; border: none; font-size: 1.4rem; cursor: pointer; color: var(--muted); line-height: 1; padding: 0; }
+    .modal-body { padding: 20px 24px; }
+    .modal-footer { padding: 16px 24px; border-top: 1px solid var(--border); display: flex; gap: 8px; justify-content: flex-end; }
+    .form-group { margin-bottom: 16px; }
+    .form-group label { display: block; font-size: 0.82rem; font-weight: 700; color: var(--navy); margin-bottom: 6px; }
+    .form-group input, .form-group textarea { width: 100%; padding: 9px 12px; border: 1.5px solid var(--border); border-radius: 6px; font-family: 'Open Sans', sans-serif; font-size: 0.88rem; color: var(--text); transition: border-color 0.15s; }
+    .form-group input:focus, .form-group textarea:focus { outline: none; border-color: var(--cyan); }
+    .form-group textarea { min-height: 200px; resize: vertical; }
+    .draft-loading { text-align: center; padding: 30px; color: var(--muted); font-size: 0.9rem; }
+
+    /* Resources modal specifics */
+    .res-section-label { font-size:0.72rem; font-weight:700; text-transform:uppercase; letter-spacing:0.8px; color:var(--muted); margin:16px 0 8px; padding-bottom:6px; border-bottom:1px solid var(--border); }
+    .res-section-label:first-of-type { margin-top:0; }
+    .resource-list { display:flex; flex-direction:column; gap:7px; }
+    .resource-item { display:flex; align-items:center; gap:9px; background:var(--bg); border:1px solid var(--border); border-radius:7px; padding:9px 11px; }
+    .resource-icon { font-size:1.1rem; flex-shrink:0; }
+    .resource-name { flex:1; font-size:0.82rem; font-weight:600; color:var(--navy); min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .resource-type select { padding:4px 6px; border:1px solid var(--border); border-radius:4px; font-size:0.74rem; color:var(--text); background:#fff; }
+    .resource-remove { background:none; border:none; cursor:pointer; color:var(--muted); font-size:0.95rem; padding:2px 4px; flex-shrink:0; }
+    .resource-remove:hover { color:#721C24; }
+    .link-rows { display:flex; flex-direction:column; gap:6px; margin-top:6px; }
+    .link-row { display:flex; gap:6px; align-items:center; background:var(--bg); border:1px solid var(--border); border-radius:7px; padding:8px 10px; }
+    .link-row input { padding:5px 8px; border:1px solid var(--border); border-radius:4px; font-size:0.82rem; background:#fff; font-family:'Open Sans',sans-serif; }
+    .link-row input:focus { outline:none; border-color:var(--cyan); }
+    .link-row select { padding:5px 6px; border:1px solid var(--border); border-radius:4px; font-size:0.74rem; background:#fff; flex-shrink:0; }
+    .res-empty { text-align:center; padding:16px; color:var(--muted); font-size:0.82rem; background:var(--bg); border-radius:6px; border:1px dashed var(--border); }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <div class="header-brand">
+      <h1>Mngaia</h1>
+      <span>Content Engine</span>
+    </div>
+    <button class="btn btn-primary" onclick="openNewSessionWizard()">+ New Session</button>
+  </div>
+
+  <div class="main">
+    <p class="page-title">Sessions Dashboard</p>
+    <div id="alert" class="alert"></div>
+    <div id="loader" class="spinner"></div>
+    <div id="sessions-grid" class="sessions-grid" style="display:none;"></div>
+  </div>
+
+  <!-- Resources Modal -->
+  <div id="resourcesModal" class="modal-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>📁 Add Source Materials</h2>
+        <button class="modal-close" onclick="closeResourcesModal()">×</button>
+      </div>
+      <div class="modal-body">
+        <!-- Drive folder browser -->
+        <div class="res-section-label">Browse a Drive Folder</div>
+        <div style="display:flex;gap:6px;margin-bottom:8px;">
+          <input type="url" id="res-folderUrl" placeholder="Paste Drive folder URL..." style="flex:1;padding:7px 10px;border:1.5px solid var(--border);border-radius:6px;font-family:'Open Sans',sans-serif;font-size:0.82rem;">
+          <button class="btn btn-dark btn-sm" id="res-loadBtn" onclick="loadDriveFolder()">Load Files</button>
         </div>
-        <div class="form-group">
-          <label>Date</label>
-          <input type="date" id="w_date">
+        <div id="res-fileList" style="display:none;margin-bottom:14px;"></div>
+
+        <!-- Individual URL paste -->
+        <div class="res-section-label">Or Add Individual Links</div>
+        <p style="font-size:0.73rem;color:var(--muted);margin-bottom:8px;">Paste any Drive share link or URL — file IDs are extracted automatically.</p>
+        <div style="margin-bottom:6px;">
+          <button class="btn btn-dark btn-sm" onclick="addResLinkRow()">+ Add Resource</button>
         </div>
-        <div class="form-group">
-          <label>Format</label>
-          <select id="w_format">
-            <option>Newsletter (Rich Media)</option>
-            <option>Webpage / Google Site</option>
-            <option>Training Module (Multimodal)</option>
-            <option>Email Campaign</option>
-            <option>Resource Kit</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label>Audience</label>
-          <input type="text" id="w_audience" value="Community Members">
-        </div>
-        <div class="form-group">
-          <label>Brand Identity</label>
-          <select id="w_brand">
-            <option value="None">None / Default</option>
-            <option value="MNGAIA" selected>MNGAIA</option>
-          </select>
-        </div>
-        
-        <div id="w_loader" class="loader"></div>
-        <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;">
-          <button class="btn btn-secondary" onclick="closeWizard()">Cancel</button>
-          <button class="btn" id="w_submit" onclick="submitWizard()">Deploy Workspace</button>
-        </div>
+        <div class="link-rows" id="res-linkRows"></div>
+      </div>
+      <div class="modal-footer">
+        <div class="spinner" id="res-spinner" style="display:none;"></div>
+        <span style="flex:1;font-size:0.78rem;color:var(--muted);" id="res-status"></span>
+        <button class="btn btn-outline btn-sm" onclick="closeResourcesModal()">Cancel</button>
+        <button class="btn btn-primary btn-sm" id="res-submit" onclick="submitResources()">Add to Session</button>
       </div>
     </div>
+  </div>
 
-    <script>
-      // Load Dashboard
-      function loadDashboard() {
-        document.getElementById('loader').style.display = 'block';
-        document.getElementById('dashboard').innerHTML = '';
-        google.script.run
-          .withSuccessHandler(renderDashboard)
-          .withFailureHandler(showError)
-          .getDashboardData();
+  <!-- Email Draft Modal -->
+  <div id="emailModal" class="modal-overlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h2>📧 Pre-Session Email</h2>
+        <button class="modal-close" onclick="closeEmailModal()">×</button>
+      </div>
+      <div class="modal-body" id="emailModalBody">
+        <div class="draft-loading">Generating email draft with AI...</div>
+      </div>
+      <div class="modal-footer" id="emailModalFooter" style="display:none;">
+        <button class="btn btn-outline btn-sm" onclick="closeEmailModal()">Cancel</button>
+        <button class="btn btn-primary btn-sm" id="sendEmailBtn" onclick="sendApprovedEmail()">Send Email</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    var _emailSessionId = null;
+
+    function loadDashboard() {
+      document.getElementById('loader').style.display = 'block';
+      document.getElementById('sessions-grid').style.display = 'none';
+      google.script.run
+        .withSuccessHandler(renderSessions)
+        .withFailureHandler(function(err) {
+          document.getElementById('loader').style.display = 'none';
+          showAlert('Failed to load sessions: ' + (err && err.message ? err.message : JSON.stringify(err)), 'error');
+        })
+        .getDashboardData();
+    }
+
+    function renderSessions(sessions) {
+      document.getElementById('loader').style.display = 'none';
+      var grid = document.getElementById('sessions-grid');
+      grid.style.display = 'flex';
+      grid.innerHTML = '';
+      if (!sessions || sessions.length === 0) {
+        grid.innerHTML = '<div class="empty-state"><div class="icon">🚀</div><p>No sessions yet. Click <strong>+ New Session</strong> to begin.</p></div>';
+        return;
       }
+      sessions.forEach(function(s) {
+        var card = document.createElement('div');
+        card.className = 'session-card';
+        var badgeClass = s.hasGems ? 'gems' : (s.hasBrief ? 'ready' : '');
+        var badgeLabel = s.hasGems ? 'Gems Ready' : (s.hasBrief ? 'Brief Ready' : (s.status || 'Active'));
+        var dateStr = s.date ? ' &middot; ' + esc(s.date) : '';
+        var emailLabel = (s.emailSent && s.emailSent !== 'No') ? '✓ Sent' : '○';
+        var libraryLink = s.libraryUrl ? '<a href="' + s.libraryUrl + '" target="_blank">📚 Learning Library</a>' : '';
+        var libraryBtn  = s.libraryUrl ? '<div class="action-spacer"></div><a href="' + s.libraryUrl + '" target="_blank" class="btn btn-outline btn-sm">Open Library →</a>' : '';
+        card.innerHTML =
+          '<div class="session-card-header">' +
+            '<div class="session-meta">' +
+              '<h3>' + esc(s.name) + '</h3>' +
+              '<div class="sub">' + esc(s.theme) + dateStr + ' &middot; ' + esc(s.format || '') + '</div>' +
+            '</div>' +
+            '<span class="status-badge ' + badgeClass + '">' + esc(badgeLabel) + '</span>' +
+          '</div>' +
+          '<div class="session-card-body">' +
+            '<div class="session-links">' +
+              (s.folderUrl ? '<a href="' + s.folderUrl + '" target="_blank">📁 Drive Folder</a>' : '') +
+              (s.dbUrl ? '<a href="' + s.dbUrl + '" target="_blank">🗄️ Project DB</a>' : '') +
+              libraryLink +
+            '</div>' +
+            '<div class="session-indicators">' +
+              '<span class="indicator ' + (s.hasBrief ? 'done' : '') + '">Brief ' + (s.hasBrief ? '✓' : '○') + '</span>' +
+              '<span class="indicator ' + (s.hasGems ? 'done' : '') + '">Gems ' + (s.hasGems ? '✓' : '○') + '</span>' +
+              '<span class="indicator ' + ((s.emailSent && s.emailSent !== 'No') ? 'done' : '') + '">Email ' + emailLabel + '</span>' +
+            '</div>' +
+          '</div>' +
+          '<div class="session-card-actions">' +
+            '<button class="btn btn-dark btn-sm" onclick="openResourcesModal(\'' + s.id + '\')">📁 Add Resources</button>' +
+            '<button class="btn btn-dark btn-sm" onclick="runSynthesis(\'' + s.id + '\', this)">🔬 Synthesize</button>' +
+            '<button class="btn btn-dark btn-sm" onclick="runGems(\'' + s.id + '\', this)">💎 Generate Gems</button>' +
+            '<button class="btn btn-dark btn-sm" onclick="openEmailModal(\'' + s.id + '\')">📧 Draft Email</button>' +
+            libraryBtn +
+          '</div>';
+        grid.appendChild(card);
+      });
+    }
 
-      function renderDashboard(data) {
-        document.getElementById('loader').style.display = 'none';
-        const container = document.getElementById('dashboard');
-        
-        if (data.length === 0) {
-          container.innerHTML = '<p>No sessions found. Click "Launch New Session" to begin.</p>';
-          return;
+    function runSynthesis(sessionId, btn) {
+      setBtnLoading(btn, 'Synthesizing...');
+      google.script.run
+        .withSuccessHandler(function(res) { resetBtn(btn, '🔬 Synthesize'); showAlert('Synthesis complete! ' + (res.count || 0) + ' resources analyzed.', 'success'); loadDashboard(); })
+        .withFailureHandler(function(err) { resetBtn(btn, '🔬 Synthesize'); showAlert(err.message, 'error'); })
+        .webRunSynthesis(sessionId);
+    }
+
+    function runGems(sessionId, btn) {
+      setBtnLoading(btn, 'Generating...');
+      google.script.run
+        .withSuccessHandler(function() { resetBtn(btn, '💎 Generate Gems'); showAlert('Gems generated! View them in the Learning Library.', 'success'); loadDashboard(); })
+        .withFailureHandler(function(err) { resetBtn(btn, '💎 Generate Gems'); showAlert(err.message, 'error'); })
+        .webGenerateGems(sessionId);
+    }
+
+    function openEmailModal(sessionId) {
+      _emailSessionId = sessionId;
+      document.getElementById('emailModal').classList.add('open');
+      document.getElementById('emailModalBody').innerHTML = '<div class="draft-loading">✨ Generating email draft with AI (~15 sec)...</div>';
+      document.getElementById('emailModalFooter').style.display = 'none';
+      google.script.run
+        .withSuccessHandler(function(draft) {
+          if (!draft) { showAlert('Could not generate draft. Check session brief.', 'error'); closeEmailModal(); return; }
+          document.getElementById('emailModalBody').innerHTML =
+            '<div class="form-group"><label>Recipients (comma-separated)</label><input type="text" id="emailRecipients" placeholder="alice@example.com, bob@example.com"></div>' +
+            '<div class="form-group"><label>Subject</label><input type="text" id="emailSubject" value="' + esc(draft.subject || '') + '"></div>' +
+            '<div class="form-group"><label>Email Body (HTML)</label><textarea id="emailBody">' + esc(draft.body || '') + '</textarea></div>';
+          document.getElementById('emailModalFooter').style.display = 'flex';
+        })
+        .withFailureHandler(function(err) { showAlert(err.message, 'error'); closeEmailModal(); })
+        .webGetEmailDraft(sessionId);
+    }
+
+    function closeEmailModal() {
+      document.getElementById('emailModal').classList.remove('open');
+      _emailSessionId = null;
+    }
+
+    function sendApprovedEmail() {
+      var recipientsRaw = document.getElementById('emailRecipients').value;
+      var recipients = recipientsRaw.split(',').map(function(e) { return e.trim(); }).filter(Boolean);
+      if (!recipients.length) { alert('Enter at least one recipient email.'); return; }
+      var subject = document.getElementById('emailSubject').value;
+      var body = document.getElementById('emailBody').value;
+      var btn = document.getElementById('sendEmailBtn');
+      setBtnLoading(btn, 'Sending...');
+      google.script.run
+        .withSuccessHandler(function(res) { resetBtn(btn, 'Send Email'); closeEmailModal(); showAlert('Email sent to ' + res.recipientCount + ' recipient(s)!', 'success'); loadDashboard(); })
+        .withFailureHandler(function(err) { resetBtn(btn, 'Send Email'); showAlert(err.message, 'error'); })
+        .webSendEmail(_emailSessionId, recipients, subject, body);
+    }
+
+    function openNewSessionWizard() {
+      window.location.href = window.location.href.split('?')[0] + '?page=wizard';
+    }
+
+    // ── Resources Modal ────────────────────────────────────────────────────────
+
+    var _resSessionId = null;
+
+    var RES_TYPES = ['Reading','Video','Slide Deck','Facilitator Guide','Planning Doc','Meeting Link','Web Resource','Audio / Podcast','Other'];
+    var MIME_TO_TYPE = {
+      'application/vnd.google-apps.document':     'Reading',
+      'application/vnd.google-apps.presentation': 'Slide Deck',
+      'application/vnd.google-apps.spreadsheet':  'Reading',
+      'application/vnd.google-apps.video':        'Video',
+      'application/pdf':                          'Reading'
+    };
+
+    function openResourcesModal(sessionId) {
+      _resSessionId = sessionId;
+      document.getElementById('resourcesModal').classList.add('open');
+      document.getElementById('res-folderUrl').value = '';
+      document.getElementById('res-fileList').style.display = 'none';
+      document.getElementById('res-fileList').innerHTML = '';
+      document.getElementById('res-linkRows').innerHTML = '';
+      document.getElementById('res-status').textContent = '';
+      document.getElementById('res-submit').disabled = false;
+    }
+
+    function closeResourcesModal() {
+      document.getElementById('resourcesModal').classList.remove('open');
+      _resSessionId = null;
+    }
+
+    function loadDriveFolder() {
+      var url = document.getElementById('res-folderUrl').value.trim();
+      if (!url) return;
+      var btn = document.getElementById('res-loadBtn');
+      btn.disabled = true; btn.textContent = 'Loading...';
+      google.script.run
+        .withSuccessHandler(function(result) {
+          btn.disabled = false; btn.textContent = 'Load Files';
+          if (result.error) { showAlert(result.error, 'error'); return; }
+          renderFolderFiles(result);
+        })
+        .withFailureHandler(function(err) {
+          btn.disabled = false; btn.textContent = 'Load Files';
+          showAlert('Error: ' + err.message, 'error');
+        })
+        .getDriveFilesInFolder(url);
+    }
+
+    function renderFolderFiles(result) {
+      var el = document.getElementById('res-fileList');
+      if (!result.files || !result.files.length) {
+        el.innerHTML = '<div class="res-empty">No files found in "' + esc(result.folderName) + '"</div>';
+        el.style.display = 'block';
+        return;
+      }
+      var html = '<div style="font-size:0.75rem;font-weight:700;color:var(--muted);margin-bottom:6px;">📁 ' + esc(result.folderName) + ' · ' + result.files.length + ' file(s) — check to add</div>';
+      html += '<div style="max-height:220px;overflow-y:auto;display:flex;flex-direction:column;gap:2px;">';
+      result.files.forEach(function(f) {
+        var type = MIME_TO_TYPE[f.mimeType] || 'Reading';
+        var icon = resIcon(type, f.mimeType);
+        html += '<label style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--bg);border:1px solid var(--border);border-radius:5px;cursor:pointer;font-size:0.82rem;">' +
+          '<input type="checkbox" data-file-id="' + esc(f.fileId) + '" data-url="' + esc(f.url) + '" data-name="' + esc(f.name) + '" data-type="' + esc(type) + '">' +
+          '<span>' + icon + '</span>' +
+          '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + esc(f.name) + '">' + esc(f.name) + '</span>' +
+          '</label>';
+      });
+      html += '</div>';
+      el.innerHTML = html;
+      el.style.display = 'block';
+    }
+
+    // Extract Google Drive file ID from a share/view URL
+    function getDriveFileId(url) {
+      var m = url.match(/\/d\/([a-zA-Z0-9_-]{25,})/);
+      if (m) return m[1];
+      m = url.match(/[?&]id=([a-zA-Z0-9_-]{25,})/);
+      if (m) return m[1];
+      return null;
+    }
+
+    function addResLinkRow() {
+      var rows = document.getElementById('res-linkRows');
+      var row = document.createElement('div');
+      row.className = 'link-row';
+      var opts = RES_TYPES.map(function(t) { return '<option>' + t + '</option>'; }).join('');
+      row.innerHTML =
+        '<input type="text" placeholder="Name" style="width:28%;">' +
+        '<input type="url" placeholder="https:// (Drive links work too)" style="flex:1;">' +
+        '<select>' + opts + '</select>' +
+        '<button style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:1rem;padding:0 4px;" onclick="this.parentElement.remove()">×</button>';
+      rows.appendChild(row);
+    }
+
+    function submitResources() {
+      var resources = [];
+
+      // Checked Drive folder files
+      document.querySelectorAll('#res-fileList input[type=checkbox]:checked').forEach(function(cb) {
+        resources.push({ fileId: cb.dataset.fileId, url: cb.dataset.url, name: cb.dataset.name, type: cb.dataset.type });
+      });
+
+      // URL link rows
+      document.querySelectorAll('#res-linkRows .link-row').forEach(function(row) {
+        var inputs = row.querySelectorAll('input');
+        var sel = row.querySelector('select');
+        var url = inputs[1].value.trim();
+        if (url) {
+          var entry = { name: inputs[0].value.trim() || url, url: url, type: sel ? sel.value : 'Web Resource' };
+          var fileId = getDriveFileId(url);
+          if (fileId) entry.fileId = fileId;
+          resources.push(entry);
         }
+      });
 
-        data.forEach(session => {
-          const card = document.createElement('div');
-          card.className = 'card';
-          card.innerHTML = `
-            <div class="card-header">
-              <h3 class="card-title">${session.sessionName}</h3>
-              <span class="badge">${session.status}</span>
-            </div>
-            <div class="links">
-              ${session.planningDocUrl ? `<a href="${session.planningDocUrl}" target="_blank">📝 Planning Doc</a>` : ''}
-              ${session.decisionDocUrl ? `<a href="${session.decisionDocUrl}" target="_blank">🧠 Decision Doc</a>` : ''}
-              ${session.dbUrl ? `<a href="${session.dbUrl}" target="_blank">🗄️ Project DB</a>` : ''}
-              ${session.folderUrl ? `<a href="${session.folderUrl}" target="_blank">📁 Drive Folder</a>` : ''}
-            </div>
-            <div class="actions">
-              <button class="btn btn-secondary btn-small" onclick="generateDecision(${session.rowNumber}, this)">Generate Decision Doc</button>
-              <button class="btn btn-secondary btn-small" onclick="synthesize(${session.rowNumber}, this)">Synthesize Research</button>
-            </div>
-          `;
-          container.appendChild(card);
-        });
-      }
+      var linkRows = resources; // alias for count display
+      if (!resources.length) { closeResourcesModal(); return; }
 
-      // Action Handlers
-      function generateDecision(rowNum, btn) {
-        btn.textContent = 'Generating...';
-        btn.disabled = true;
-        google.script.run
-          .withSuccessHandler(() => { showMessage('Decision Doc generated successfully!'); loadDashboard(); })
-          .withFailureHandler(err => { showError(err); btn.textContent = 'Generate Decision Doc'; btn.disabled = false; })
-          .webTriggerDecisionDoc(rowNum);
-      }
+      document.getElementById('res-spinner').style.display = 'block';
+      document.getElementById('res-status').textContent = 'Adding ' + resources.length + ' resource(s)...';
+      document.getElementById('res-submit').disabled = true;
 
-      function synthesize(rowNum, btn) {
-        btn.textContent = 'Synthesizing...';
-        btn.disabled = true;
-        google.script.run
-          .withSuccessHandler(() => { showMessage('Synthesis complete!'); loadDashboard(); })
-          .withFailureHandler(err => { showError(err); btn.textContent = 'Synthesize Research'; btn.disabled = false; })
-          .webTriggerSynthesis(rowNum);
-      }
+      google.script.run
+        .withSuccessHandler(function(res) {
+          document.getElementById('res-spinner').style.display = 'none';
+          closeResourcesModal();
+          showAlert(res.added + ' resource(s) added · ' + (res.shortcuts || 0) + ' Drive shortcut(s) created in 01_Research', 'success');
+        })
+        .withFailureHandler(function(err) {
+          document.getElementById('res-spinner').style.display = 'none';
+          document.getElementById('res-status').textContent = '';
+          document.getElementById('res-submit').disabled = false;
+          showAlert('Error: ' + err.message, 'error');
+        })
+        .webAddResources(_resSessionId, resources);
+    }
 
-      // Wizard Handlers
-      function openWizard() { document.getElementById('wizardModal').style.display = 'flex'; }
-      function closeWizard() { document.getElementById('wizardModal').style.display = 'none'; }
-      
-      function submitWizard() {
-        const name = document.getElementById('w_sessionName').value;
-        if (!name) return alert("Session Name required");
-        
-        document.getElementById('w_submit').disabled = true;
-        document.getElementById('w_loader').style.display = 'block';
-        
-        const options = {
-          sessionName: name,
-          date: document.getElementById('w_date').value,
-          format: document.getElementById('w_format').value,
-          audience: document.getElementById('w_audience').value,
-          brand: document.getElementById('w_brand').value
-        };
+    function resIcon(type, mime) {
+      if (type === 'Video' || (mime && mime.includes('video'))) return '🎥';
+      if (type === 'Slide Deck' || (mime && mime.includes('presentation'))) return '📊';
+      if (type === 'Facilitator Guide') return '📋';
+      if (type === 'Planning Doc') return '📝';
+      if (type === 'Meeting Link') return '🔗';
+      if (type === 'Audio / Podcast') return '🎧';
+      return '📄';
+    }
 
-        google.script.run
-          .withSuccessHandler(() => {
-            closeWizard();
-            showMessage('Workspace deployed successfully!');
-            document.getElementById('w_submit').disabled = false;
-            document.getElementById('w_loader').style.display = 'none';
-            loadDashboard();
-          })
-          .withFailureHandler(err => {
-            alert('Error: ' + err.message);
-            document.getElementById('w_submit').disabled = false;
-            document.getElementById('w_loader').style.display = 'none';
-          })
-          .processWizardUI(options);
-      }
+    function showAlert(msg, type) {
+      var el = document.getElementById('alert');
+      el.textContent = msg;
+      el.className = 'alert ' + (type === 'error' ? 'alert-error' : 'alert-success');
+      el.style.display = 'block';
+      if (type !== 'error') setTimeout(function() { el.style.display = 'none'; }, 6000);
+    }
 
-      // UI Helpers
-      function showMessage(msg) {
-        const el = document.getElementById('globalMessage');
-        el.textContent = msg;
-        el.className = 'msg-success';
-        el.style.display = 'block';
-        setTimeout(() => el.style.display = 'none', 5000);
-      }
-      function showError(err) {
-        const el = document.getElementById('globalMessage');
-        el.textContent = 'Error: ' + err.message;
-        el.className = 'msg-error';
-        el.style.display = 'block';
-      }
+    function setBtnLoading(btn, label) { btn.disabled = true; btn._orig = btn.textContent; btn.textContent = label; }
+    function resetBtn(btn, label) { btn.disabled = false; btn.textContent = label || btn._orig || label; }
+    function esc(str) { return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
-      // Initialize
-      window.onload = loadDashboard;
-    </script>
-  </body>
+    window.onload = loadDashboard;
+  </script>
+</body>
 </html>

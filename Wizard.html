@@ -1,163 +1,422 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <base target="_top">
-    <style>
-      body {
-        font-family: Arial, sans-serif;
-        padding: 20px;
-        color: #333;
-      }
-      h2 {
-        color: #1a73e8;
-        font-size: 1.4rem;
-        margin-top: 0;
-        margin-bottom: 5px;
-      }
-      .subtitle {
-        color: #666;
-        font-size: 0.9rem;
-        margin-top: 0;
-        margin-bottom: 20px;
-      }
-      .form-group {
-        margin-bottom: 15px;
-      }
-      label {
-        display: block;
-        font-weight: bold;
-        margin-bottom: 5px;
-        font-size: 0.9rem;
-      }
-      select, input[type="text"], input[type="date"] {
-        width: 100%;
-        padding: 8px;
-        box-sizing: border-box;
-        border: 1px solid #ccc;
-        border-radius: 4px;
-        font-family: inherit;
-      }
-      button {
-        background-color: #1a73e8;
-        color: white;
-        padding: 12px 15px;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-        width: 100%;
-        font-size: 1rem;
-        font-weight: bold;
-        margin-top: 10px;
-        transition: background-color 0.2s;
-      }
-      button:hover {
-        background-color: #1557b0;
-      }
-      button:disabled {
-        background-color: #a0c1f2;
-        cursor: not-allowed;
-      }
-      #status {
-        margin-top: 15px;
-        font-size: 0.9em;
-        color: #555;
-        text-align: center;
-      }
-      .spinner {
-        display: none;
-        margin: 15px auto;
-        border: 4px solid #f3f3f3;
-        border-top: 4px solid #1a73e8;
-        border-radius: 50%;
-        width: 24px;
-        height: 24px;
-        animation: spin 1s linear infinite;
-      }
-      @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-      }
-    </style>
-  </head>
-  <body>
-    <h2>Launch New Session</h2>
-    <p class="subtitle">Deploy a new content project workspace.</p>
-    
-    <div class="form-group">
-      <label for="sessionName">Session Name / Topic</label>
-      <input type="text" id="sessionName" placeholder="e.g., November Leadership Kickoff" required>
+<html lang="en">
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;800&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root { --navy:#0B2B46; --cyan:#5DCDF5; --bg:#F0F4F8; --border:#DDE4ED; --text:#2C3E50; --muted:#7F8FA4; --green:#155724; --green-bg:#D4EDDA; }
+    * { box-sizing:border-box; margin:0; padding:0; }
+    body { font-family:'Open Sans',sans-serif; background:#fff; color:var(--text); }
+
+    /* Steps header */
+    .steps-bar { background:var(--navy); padding:16px 24px; }
+    .steps-bar h1 { font-family:'Montserrat',sans-serif; font-size:1.1rem; color:#fff; margin-bottom:10px; }
+    .steps { display:flex; gap:0; }
+    .step { flex:1; text-align:center; padding:6px 4px; font-size:0.72rem; font-weight:700; letter-spacing:0.5px; color:rgba(255,255,255,0.45); border-bottom:2px solid rgba(255,255,255,0.15); position:relative; }
+    .step.active { color:var(--cyan); border-bottom-color:var(--cyan); }
+    .step.done   { color:rgba(255,255,255,0.7); border-bottom-color:rgba(255,255,255,0.4); }
+
+    /* Layout */
+    .panel { display:none; flex-direction:column; min-height: calc(100vh - 80px); }
+    .panel.active { display:flex; }
+    .panel-body { padding:20px 24px; flex:1; overflow-y:auto; }
+    .panel-footer { padding:14px 24px; border-top:1px solid var(--border); background:var(--bg); display:flex; gap:8px; justify-content:flex-end; align-items:center; }
+
+    /* Form */
+    .form-group { margin-bottom:16px; }
+    .form-group label { display:block; font-size:0.8rem; font-weight:700; color:var(--navy); margin-bottom:5px; }
+    .form-group input, .form-group select, .form-group textarea {
+      width:100%; padding:9px 11px; border:1.5px solid var(--border); border-radius:6px;
+      font-family:'Open Sans',sans-serif; font-size:0.88rem; color:var(--text); transition:border-color 0.15s; background:#fff;
+    }
+    .form-group input:focus, .form-group select:focus, .form-group textarea:focus { outline:none; border-color:var(--cyan); }
+    .form-group textarea { min-height:72px; resize:vertical; }
+    .hint { font-size:0.73rem; color:var(--muted); margin-top:4px; line-height:1.4; }
+
+    /* Buttons */
+    .btn { display:inline-flex; align-items:center; gap:5px; padding:9px 18px; border:none; border-radius:6px; font-family:'Open Sans',sans-serif; font-size:0.85rem; font-weight:700; cursor:pointer; transition:opacity 0.15s; }
+    .btn:hover { opacity:0.85; }
+    .btn:disabled { opacity:0.45; cursor:not-allowed; }
+    .btn-primary { background:var(--cyan); color:var(--navy); }
+    .btn-dark    { background:var(--navy); color:#fff; }
+    .btn-ghost   { background:transparent; color:var(--muted); border:1.5px solid var(--border); }
+    .btn-sm      { padding:6px 12px; font-size:0.78rem; }
+
+    /* Spinner */
+    .spinner { display:none; width:20px; height:20px; border:2.5px solid var(--border); border-top-color:var(--navy); border-radius:50%; animation:spin 0.8s linear infinite; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    .status { font-size:0.78rem; color:var(--muted); }
+
+    /* Section header */
+    .section-label { font-size:0.75rem; font-weight:700; text-transform:uppercase; letter-spacing:0.8px; color:var(--muted); margin-bottom:8px; padding-bottom:6px; border-bottom:1px solid var(--border); }
+
+    /* Link URL input row */
+    .link-row { display:flex; gap:6px; align-items:center; background:var(--bg); border:1px solid var(--border); border-radius:7px; padding:8px 10px; }
+    .link-row input { flex:1; padding:5px 8px; border:1px solid var(--border); border-radius:4px; font-size:0.82rem; background:#fff; }
+    .link-row input:focus { outline:none; border-color:var(--cyan); }
+    .link-row select { padding:5px 6px; border:1px solid var(--border); border-radius:4px; font-size:0.75rem; background:#fff; flex-shrink:0; }
+    .link-rows { display:flex; flex-direction:column; gap:6px; margin-top:8px; }
+
+    /* Brief preview */
+    .brief-box { background:var(--bg); border-radius:8px; padding:14px 16px; font-size:0.82rem; line-height:1.6; margin-bottom:16px; }
+    .brief-box strong { display:block; font-size:0.72rem; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:var(--muted); margin-bottom:4px; }
+    .brief-box ul { padding-left:16px; }
+    .brief-box li { margin-bottom:3px; }
+
+    /* Success state */
+    .success-wrap { text-align:center; padding:32px 20px; }
+    .success-wrap .icon { font-size:2.2rem; margin-bottom:10px; }
+    .success-wrap h2 { font-family:'Montserrat',sans-serif; color:var(--navy); margin-bottom:6px; font-size:1.1rem; }
+    .success-wrap p { color:var(--muted); font-size:0.85rem; margin-bottom:16px; }
+    .link-list { list-style:none; text-align:left; background:var(--bg); border-radius:8px; padding:12px 16px; }
+    .link-list li { margin-bottom:8px; }
+    .link-list a { color:var(--navy); font-weight:700; font-size:0.85rem; text-decoration:none; display:flex; align-items:center; gap:6px; }
+    .link-list a:hover { color:var(--cyan); }
+
+  </style>
+</head>
+<body>
+
+  <!-- Step indicator -->
+  <div class="steps-bar">
+    <h1>🚀 Launch New Session</h1>
+    <div class="steps">
+      <div class="step active" id="step1-tab">1 · Session Details</div>
+      <div class="step" id="step2-tab">2 · Source Materials</div>
     </div>
+  </div>
 
-    <div class="form-group">
-      <label for="date">Target Date</label>
-      <input type="date" id="date">
+  <!-- ── Step 1: Session Details ─────────────────────────────────────────── -->
+  <div class="panel active" id="panel1">
+    <div class="panel-body">
+      <div class="form-group">
+        <label>Session Name *</label>
+        <input type="text" id="w_name" placeholder="e.g., AI &amp; Community Design — March Gathering">
+      </div>
+      <div class="form-group">
+        <label>Theme / Core Question *</label>
+        <textarea id="w_theme" placeholder="What is this session really exploring? 1-3 sentences. The more specific, the better Gemini can build your brief, Gems, and inquiry questions."></textarea>
+      </div>
+      <div class="form-group">
+        <label>Session Date</label>
+        <input type="date" id="w_date">
+      </div>
+      <div class="form-group">
+        <label>Format</label>
+        <select id="w_format">
+          <option value="Collaborative Monthly Gathering">Collaborative Monthly Gathering</option>
+          <option value="Workshop / Training">Workshop / Training</option>
+          <option value="Seminar / Panel">Seminar / Panel</option>
+          <option value="Study Circle">Study Circle</option>
+          <option value="Community Forum">Community Forum</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Audience</label>
+        <input type="text" id="w_audience" value="Community Members">
+      </div>
+      <div class="form-group">
+        <label>Brand</label>
+        <select id="w_brand">
+          <option value="Mngaia" selected>Mngaia</option>
+          <option value="None">None / Default</option>
+        </select>
+      </div>
     </div>
-
-    <div class="form-group">
-      <label for="format">Output Format</label>
-      <select id="format">
-        <option value="Newsletter (Rich Media)">Newsletter (Rich Media)</option>
-        <option value="Webpage / Google Site">Webpage / Google Site</option>
-        <option value="Training Module (Multimodal)">Training Module (Multimodal)</option>
-        <option value="Email Campaign">Email Campaign</option>
-        <option value="Resource Kit">Resource Kit</option>
-      </select>
+    <div class="panel-footer">
+      <div class="spinner" id="s1-spinner"></div>
+      <span class="status" id="s1-status"></span>
+      <button class="btn btn-ghost" onclick="closeOrRedirect()">Cancel</button>
+      <button class="btn btn-primary" id="s1-submit" onclick="submitStep1()">Create &amp; Generate Brief →</button>
     </div>
+  </div>
 
-    <div class="form-group">
-      <label for="audience">Target Audience</label>
-      <input type="text" id="audience" placeholder="e.g., Internal Team, Customers" value="Community Members">
+  <!-- ── Step 2: Source Materials ───────────────────────────────────────── -->
+  <div class="panel" id="panel2">
+    <div class="panel-body">
+
+      <!-- AI Brief preview -->
+      <div id="briefPreview" class="brief-box" style="display:none;"></div>
+
+      <!-- Drive folder browser -->
+      <div class="section-label">Browse a Drive Folder</div>
+      <div style="display:flex;gap:6px;margin-bottom:8px;">
+        <input type="url" id="w-folderUrl" placeholder="Paste Drive folder URL..." style="flex:1;padding:7px 10px;border:1.5px solid var(--border);border-radius:6px;font-family:'Open Sans',sans-serif;font-size:0.82rem;background:#fff;">
+        <button class="btn btn-dark btn-sm" id="w-loadBtn" onclick="loadDriveFolder()">Load Files</button>
+      </div>
+      <div id="w-fileList" style="display:none;margin-bottom:14px;"></div>
+
+      <!-- Individual URL paste -->
+      <div class="section-label">Or Add Individual Links</div>
+      <p style="font-size:0.73rem;color:var(--muted);margin-bottom:8px;">Paste any Drive share link or URL — file IDs are extracted automatically.</p>
+      <div style="margin-bottom:4px;">
+        <button class="btn btn-dark btn-sm" onclick="addLinkRow()">+ Add Resource</button>
+      </div>
+      <div class="link-rows" id="linkRows"></div>
+
     </div>
-
-    <div class="form-group">
-      <label for="brand">Brand Identity</label>
-      <select id="brand">
-        <option value="None">None / Default</option>
-        <option value="MNGAIA">MNGAIA</option>
-      </select>
+    <div class="panel-footer">
+      <div class="spinner" id="s2-spinner"></div>
+      <span class="status" id="s2-status"></span>
+      <button class="btn btn-ghost" onclick="skipResources()">Skip for Now</button>
+      <button class="btn btn-primary" id="s2-submit" onclick="submitStep2()">Add to Session &amp; Finish</button>
     </div>
+  </div>
 
-    <button id="submitBtn" onclick="submitWizard()">Scaffold Project Workspace</button>
-    <div class="spinner" id="spinner"></div>
-    <div id="status"></div>
+  <!-- ── Success ──────────────────────────────────────────────────────────── -->
+  <div class="panel" id="panelDone">
+    <div class="panel-body">
+      <div class="success-wrap">
+        <div class="icon">✅</div>
+        <h2>Session Ready!</h2>
+        <p>Workspace created, AI brief generated, and source materials added.</p>
+        <ul class="link-list" id="resultLinks"></ul>
+      </div>
+    </div>
+    <div class="panel-footer">
+      <button class="btn btn-primary" onclick="closeOrRedirect()">← Back to Dashboard</button>
+    </div>
+  </div>
 
-    <script>
-      function submitWizard() {
-        const sessionName = document.getElementById('sessionName').value;
-        if (!sessionName) {
-          alert("Please enter a Session Name.");
-          return;
+  <script>
+    // ── State ──────────────────────────────────────────────────────────────────
+    var _sessionId = null;
+    var _sessionResult = null;
+
+    var RESOURCE_TYPES = [
+      'Reading', 'Video', 'Slide Deck', 'Facilitator Guide',
+      'Planning Doc', 'Meeting Link', 'Web Resource', 'Audio / Podcast', 'Other'
+    ];
+
+    var MIME_TO_TYPE = {
+      'application/vnd.google-apps.document':     'Reading',
+      'application/vnd.google-apps.presentation': 'Slide Deck',
+      'application/vnd.google-apps.spreadsheet':  'Reading',
+      'application/vnd.google-apps.video':        'Video',
+      'application/pdf':                          'Reading'
+    };
+
+    // ── Step 1 ─────────────────────────────────────────────────────────────────
+    function submitStep1() {
+      var name  = document.getElementById('w_name').value.trim();
+      var theme = document.getElementById('w_theme').value.trim();
+      if (!name || !theme) { alert('Session Name and Theme are required.'); return; }
+
+      setStep1Loading(true, 'Creating workspace + generating AI brief (~20 sec)...');
+
+      google.script.run
+        .withSuccessHandler(function(result) {
+          _sessionId = result.sessionId;
+          _sessionResult = result;
+          setStep1Loading(false, '');
+          goToStep2(result);
+        })
+        .withFailureHandler(function(err) {
+          setStep1Loading(false, '');
+          alert('Error: ' + err.message);
+        })
+        .processWizardSubmit({
+          name:     name,
+          theme:    theme,
+          date:     document.getElementById('w_date').value,
+          format:   document.getElementById('w_format').value,
+          audience: document.getElementById('w_audience').value,
+          brand:    document.getElementById('w_brand').value
+        });
+    }
+
+    function goToStep2(result) {
+      document.getElementById('panel1').classList.remove('active');
+      document.getElementById('step1-tab').classList.replace('active', 'done');
+      document.getElementById('step2-tab').classList.add('active');
+      document.getElementById('panel2').classList.add('active');
+
+      // Show brief preview
+      var brief = result.brief;
+      if (brief && brief.overview) {
+        var el = document.getElementById('briefPreview');
+        var objHtml = (brief.learningObjectives || []).map(function(o) { return '<li>' + esc(o) + '</li>'; }).join('');
+        el.innerHTML =
+          '<strong>AI Brief</strong>' + esc(brief.overview) +
+          (objHtml ? '<ul style="margin-top:6px;">' + objHtml + '</ul>' : '');
+        el.style.display = 'block';
+      }
+    }
+
+    // ── Step 2: Drive folder browser ──────────────────────────────────────────
+    function loadDriveFolder() {
+      var url = document.getElementById('w-folderUrl').value.trim();
+      if (!url) return;
+      var btn = document.getElementById('w-loadBtn');
+      btn.disabled = true; btn.textContent = 'Loading...';
+      google.script.run
+        .withSuccessHandler(function(result) {
+          btn.disabled = false; btn.textContent = 'Load Files';
+          if (result.error) { alert(result.error); return; }
+          renderFolderFiles(result);
+        })
+        .withFailureHandler(function(err) {
+          btn.disabled = false; btn.textContent = 'Load Files';
+          alert('Error: ' + err.message);
+        })
+        .getDriveFilesInFolder(url);
+    }
+
+    function renderFolderFiles(result) {
+      var el = document.getElementById('w-fileList');
+      if (!result.files || !result.files.length) {
+        el.innerHTML = '<div class="empty-resources">No files found in "' + esc(result.folderName) + '"</div>';
+        el.style.display = 'block';
+        return;
+      }
+      var html = '<div style="font-size:0.75rem;font-weight:700;color:var(--muted);margin-bottom:6px;">📁 ' + esc(result.folderName) + ' · ' + result.files.length + ' file(s) — check to add</div>';
+      html += '<div style="max-height:220px;overflow-y:auto;display:flex;flex-direction:column;gap:2px;">';
+      result.files.forEach(function(f) {
+        var type = MIME_TO_TYPE[f.mimeType] || 'Reading';
+        html += '<label style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--bg);border:1px solid var(--border);border-radius:5px;cursor:pointer;font-size:0.82rem;">' +
+          '<input type="checkbox" data-file-id="' + esc(f.fileId) + '" data-url="' + esc(f.url) + '" data-name="' + esc(f.name) + '" data-type="' + esc(type) + '">' +
+          '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + esc(f.name) + '">' + esc(f.name) + '</span>' +
+          '<span style="font-size:0.72rem;color:var(--muted);">' + esc(type) + '</span>' +
+          '</label>';
+      });
+      html += '</div>';
+      el.innerHTML = html;
+      el.style.display = 'block';
+    }
+
+    // ── Step 2: Link rows ──────────────────────────────────────────────────────
+    function addLinkRow() {
+      var container = document.getElementById('linkRows');
+      var row = document.createElement('div');
+      row.className = 'link-row';
+      var typeOpts = RESOURCE_TYPES.map(function(t) { return '<option>' + t + '</option>'; }).join('');
+      row.innerHTML =
+        '<input type="text" placeholder="Name" style="width:28%">' +
+        '<input type="url" placeholder="https:// (Drive share links work too)" style="flex:1;">' +
+        '<select>' + typeOpts + '</select>' +
+        '<button style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:1rem;padding:2px 6px;" onclick="this.parentElement.remove()">×</button>';
+      container.appendChild(row);
+    }
+
+    function getLinkRows() {
+      var rows = document.querySelectorAll('.link-row');
+      var links = [];
+      rows.forEach(function(row) {
+        var inputs = row.querySelectorAll('input');
+        var sel    = row.querySelector('select');
+        var name   = inputs[0].value.trim();
+        var url    = inputs[1].value.trim();
+        var type   = sel ? sel.value : 'Web Resource';
+        if (url) {
+          var fileId = getDriveFileId(url);
+          var entry = { name: name || url, url: url, type: type };
+          if (fileId) entry.fileId = fileId;
+          links.push(entry);
         }
+      });
+      return links;
+    }
 
-        const btn = document.getElementById('submitBtn');
-        const spinner = document.getElementById('spinner');
-        const status = document.getElementById('status');
-        
-        btn.disabled = true;
-        spinner.style.display = 'block';
-        status.textContent = 'Building folders and copying templates...';
+    // ── Step 2 Submit ──────────────────────────────────────────────────────────
+    function submitStep2() {
+      var resources = [];
 
-        const options = {
-          sessionName: sessionName,
-          date: document.getElementById('date').value,
-          format: document.getElementById('format').value,
-          audience: document.getElementById('audience').value,
-          brand: document.getElementById('brand').value
-        };
+      // Checked Drive folder files
+      document.querySelectorAll('#w-fileList input[type=checkbox]:checked').forEach(function(cb) {
+        resources.push({ fileId: cb.dataset.fileId, url: cb.dataset.url, name: cb.dataset.name, type: cb.dataset.type });
+      });
 
-        google.script.run
-          .withSuccessHandler(function(url) {
-            status.innerHTML = `✅ Workspace deployed!<br><br><a href="${url}" target="_blank" style="color:#1a73e8; font-weight:bold;">Open Planning Doc</a><br><br><span style="font-size:0.8em;">(You can close this window)</span>`;
-            spinner.style.display = 'none';
-            btn.textContent = 'Done!';
-          })
-          .withFailureHandler(function(error) {
-            status.innerHTML = '❌ Error: ' + error.message;
-            spinner.style.display = 'none';
-            btn.disabled = false;
-          })
-          .processWizardUI(options);
+      // URL link rows
+      getLinkRows().forEach(function(r) { resources.push(r); });
+
+      if (!resources.length) { skipResources(); return; }
+
+      setStep2Loading(true, 'Adding ' + resources.length + ' resource(s) + creating shortcuts...');
+
+      google.script.run
+        .withSuccessHandler(function(res) {
+          setStep2Loading(false, '');
+          showDone(res);
+        })
+        .withFailureHandler(function(err) {
+          setStep2Loading(false, '');
+          alert('Error adding resources: ' + err.message);
+        })
+        .webAddResources(_sessionId, resources);
+    }
+
+    function skipResources() {
+      showDone(null);
+    }
+
+    function showDone(addResult) {
+      document.getElementById('panel2').classList.remove('active');
+      document.getElementById('step2-tab').classList.replace('active', 'done');
+      document.getElementById('panelDone').classList.add('active');
+
+      var links = document.getElementById('resultLinks');
+      links.innerHTML = '';
+      if (_sessionResult && _sessionResult.folderUrl)
+        links.innerHTML += '<li><a href="' + _sessionResult.folderUrl + '" target="_blank">📁 Drive Folder</a></li>';
+      if (_sessionResult && _sessionResult.dbUrl)
+        links.innerHTML += '<li><a href="' + _sessionResult.dbUrl + '" target="_blank">🗄️ Project Database</a></li>';
+      if (addResult && addResult.added)
+        links.innerHTML += '<li style="font-size:0.8rem;color:var(--muted);margin-top:4px;">' + addResult.added + ' resource(s) added · ' + (addResult.shortcuts || 0) + ' Drive shortcut(s) created</li>';
+
+      // Auto-redirect to dashboard after 3 seconds in web app mode
+      if (_isWebApp) {
+        var countdown = document.createElement('p');
+        countdown.style.cssText = 'font-size:0.75rem;color:var(--muted);margin-top:16px;';
+        countdown.textContent = 'Returning to dashboard in 3 seconds...';
+        document.querySelector('.success-wrap').appendChild(countdown);
+        setTimeout(function() {
+          window.location.href = window.location.href.replace(/[?&]page=wizard/, '').replace(/\?$/, '');
+        }, 3000);
       }
-    </script>
-  </body>
+    }
+
+    // ── Navigation ─────────────────────────────────────────────────────────────
+    // In a Sheets modal dialog, google.script.host.origin === 'https://docs.google.com'
+    // In a web app page, it equals 'https://script.google.com' (or other)
+    var _isDialogMode = (window.google && google.script && google.script.host &&
+                         google.script.host.origin === 'https://docs.google.com');
+    var _isWebApp = !_isDialogMode;
+
+    function closeOrRedirect() {
+      if (_isWebApp) {
+        // Strip ?page=wizard to return to dashboard
+        window.location.href = window.location.href.replace(/[?&]page=wizard/, '').replace(/\?$/, '');
+      } else {
+        google.script.host.close();
+      }
+    }
+
+    // Extract Google Drive file ID from a share/view URL
+    function getDriveFileId(url) {
+      var m = url.match(/\/d\/([a-zA-Z0-9_-]{25,})/);
+      if (m) return m[1];
+      m = url.match(/[?&]id=([a-zA-Z0-9_-]{25,})/);
+      if (m) return m[1];
+      return null;
+    }
+
+    // ── Utilities ──────────────────────────────────────────────────────────────
+    function setStep1Loading(on, msg) {
+      document.getElementById('s1-spinner').style.display = on ? 'block' : 'none';
+      document.getElementById('s1-status').textContent = msg || '';
+      document.getElementById('s1-submit').disabled = on;
+    }
+
+    function setStep2Loading(on, msg) {
+      document.getElementById('s2-spinner').style.display = on ? 'block' : 'none';
+      document.getElementById('s2-status').textContent = msg || '';
+      document.getElementById('s2-submit').disabled = on;
+    }
+
+    function esc(str) {
+      return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+  </script>
+</body>
 </html>

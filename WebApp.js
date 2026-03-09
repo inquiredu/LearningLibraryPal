@@ -1,124 +1,192 @@
 /**
- * Web App Configuration & Backend Handlers
+ * WebApp.js
+ * GAS Web App entry point and all server-side API handlers.
+ * Routes: ?page=dashboard (default) | ?page=library&session=ID
  */
+
+// ─── Routing ─────────────────────────────────────────────────────────────────
 
 function doGet(e) {
+  const page = e && e.parameter && e.parameter.page ? e.parameter.page : 'dashboard';
+
+  if (page === 'diag') {
+    try {
+      const ss = SpreadsheetApp.getActiveSpreadsheet();
+      const sheet = ss ? ss.getSheetByName('Sessions') : null;
+      const data = sheet ? sheet.getDataRange().getValues() : [];
+      const info = {
+        spreadsheetId:   ss ? ss.getId() : null,
+        spreadsheetName: ss ? ss.getName() : null,
+        sheets:          ss ? ss.getSheets().map(s => s.getName()) : [],
+        sessionRowCount: Math.max(0, data.length - 1),
+        firstFourRows:   data.slice(0, 4)
+      };
+      return HtmlService.createHtmlOutput('<pre style="font-family:monospace;padding:20px">' + JSON.stringify(info, null, 2) + '</pre>');
+    } catch (err) {
+      return HtmlService.createHtmlOutput('<pre style="color:red;padding:20px">ERROR: ' + err.message + '\n' + err.stack + '</pre>');
+    }
+  }
+
+  if (page === 'wizard') {
+    return HtmlService.createHtmlOutputFromFile('Wizard')
+      .setTitle('New Session — Mngaia')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  }
+
+  if (page === 'library') {
+    const sessionId = e.parameter.session || '';
+    const output = HtmlService.createHtmlOutputFromFile('LibraryPage')
+      .setTitle('Learning Library — Mngaia')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+
+    // Inject session ID into the page for client-side fetch
+    const html = output.getContent().replace('__SESSION_ID__', sessionId);
+    return HtmlService.createHtmlOutput(html)
+      .setTitle('Learning Library — Mngaia')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  }
+
   return HtmlService.createHtmlOutputFromFile('Index')
-    .setTitle('Mngaia Command Center')
-    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL); // Required to embed in Google Sites
+    .setTitle('Mngaia Content Engine')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
+// ─── Dashboard API ────────────────────────────────────────────────────────────
+
 /**
- * Returns session data to the Web App frontend.
+ * Returns all sessions for the dashboard.
  */
 function getDashboardData() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  if (!ss) throw new Error("Could not connect to database spreadsheet.");
-  
-  const sheet = ss.getSheetByName("Sessions");
-  if (!sheet) return [];
-  
-  const data = sheet.getDataRange().getValues();
-  if (data.length <= 1) return []; // Only headers
-  
-  const headers = data.shift();
-  return data.map((row, index) => {
-    return {
-      rowNumber: index + 2, // 1-based index + 1 for header
-      sessionName: row[0],
-      date: row[1],
-      brand: row[2],
-      format: row[3],
-      audience: row[4],
-      status: row[5],
-      planningDocUrl: extractUrlFromFormula(row[6]),
-      decisionDocUrl: extractUrlFromFormula(row[7]),
-      dbUrl: extractUrlFromFormula(row[8]),
-      folderUrl: extractUrlFromFormula(row[9])
-    };
-  }).reverse(); // Show newest first
+  SessionService.ensureMasterSheet(); // create Sessions tab if it doesn't exist yet
+  const sessions = SessionService.getAllSessions();
+  const baseUrl = _getWebAppUrl();
+  return sessions.reverse().map(s => ({
+    id:         s.id,
+    name:       s.name,
+    theme:      s.theme,
+    date:       s.date,
+    format:     s.format,
+    audience:   s.audience,
+    status:     s.status,
+    folderUrl:  s.folderUrl,
+    dbUrl:      s.dbUrl,
+    emailSent:  s.emailSent,
+    hasGems:    !!(s.gems && s.gems.length),
+    hasBrief:   !!(s.brief && s.brief.overview),
+    libraryUrl: baseUrl ? baseUrl + '?page=library&session=' + s.id : ''
+  }));
 }
 
-function extractUrlFromFormula(formula) {
-  if (!formula || typeof formula !== 'string') return null;
-  const match = formula.match(/HYPERLINK\("([^"]+)"/);
-  return match ? match[1] : null;
+// ─── Session API ──────────────────────────────────────────────────────────────
+
+/**
+ * Runs Synthesis for a session. Called from dashboard.
+ */
+function webRunSynthesis(sessionId) {
+  const count = SynthesisService.synthesizeAll(sessionId);
+  return { success: true, count: count };
 }
 
 /**
- * Trigger Decision Doc from Web App
+ * Generates Gems for a session. Called from dashboard.
  */
-function webTriggerDecisionDoc(rowNumber) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName("Sessions");
-  
-  const sessionName = sheet.getRange(rowNumber, 1).getValue();
-  const brand = sheet.getRange(rowNumber, 3).getValue();
-  const format = sheet.getRange(rowNumber, 4).getValue();
-  const audience = sheet.getRange(rowNumber, 5).getValue();
-  const planningDocFormula = sheet.getRange(rowNumber, 7).getFormula();
-  const folderFormula = sheet.getRange(rowNumber, 10).getFormula();
-  
-  if (!planningDocFormula) throw new Error("No Planning Doc found.");
-  
-  const docUrl = extractUrlFromFormula(planningDocFormula);
-  const folderUrl = extractUrlFromFormula(folderFormula);
-  
-  if (!docUrl || !folderUrl) throw new Error("Could not extract URLs.");
-  
-  const docId = docUrl.match(/[-\w]{25,}/)[0];
-  const folderId = folderUrl.match(/[-\w]{25,}/)[0];
-  
-  // 1. Get Text
-  const text = DocumentApp.openById(docId).getBody().getText();
-  
-  // 2. Build Options
-  const options = { format, audience, brand, tone: "Professional", calendarContext: "" };
-  if (brand && typeof BRANDS !== 'undefined' && BRANDS[brand]) {
-    options.brandContext = BRANDS[brand];
-  } else {
-    options.brandContext = "No specific brand guidelines provided.";
+function webGenerateGems(sessionId) {
+  const gems = GemsService.generateGems(sessionId);
+  return { success: true, gems: gems };
+}
+
+/**
+ * Returns draft email content for review modal. Called from dashboard.
+ */
+function webGetEmailDraft(sessionId) {
+  const draft = EmailService.getDraft(sessionId);
+  return draft;
+}
+
+/**
+ * Sends approved email draft to recipients. Called from dashboard.
+ */
+function webSendEmail(sessionId, recipients, subject, htmlBody) {
+  return EmailService.sendApprovedDraft(sessionId, recipients, subject, htmlBody);
+}
+
+// ─── Library API ──────────────────────────────────────────────────────────────
+
+/**
+ * Returns the full library data for a session page. Called from LibraryPage.html.
+ */
+function getLibraryData(sessionId) {
+  // Cache for performance — library data doesn't change during a page load
+  const cacheKey = 'library_' + sessionId;
+  const cache = CacheService.getScriptCache();
+  const cached = cache.get(cacheKey);
+  if (cached) {
+    try { return JSON.parse(cached); } catch (e) { /* fall through */ }
   }
-  
-  // 3. Analyze
-  const analysis = GeminiService.analyzeBrainstorm(text, options);
-  
-  // 4. Create Decision Doc
-  const adminFolder = DriveApp.getFolderById(folderId).getFoldersByName("00_Admin").next();
-  const decisionDocUrl = createDecisionDocFile(adminFolder, sessionName, analysis, options); // Call existing Code.js func
-  
-  // 5. Update Sheet
-  sheet.getRange(rowNumber, 8).setFormula(`=HYPERLINK("${decisionDocUrl}", "Open Decision Doc")`);
-  sheet.getRange(rowNumber, 6).setValue("2. Synthesizing");
-  
-  return decisionDocUrl;
+
+  const data = LibraryService.buildLibraryData(sessionId);
+
+  // Cache for 5 minutes (300 seconds)
+  try {
+    cache.put(cacheKey, JSON.stringify(data), 300);
+  } catch (e) { /* data may be too large for cache — skip */ }
+
+  return data;
 }
 
 /**
- * Trigger Synthesis from Web App
+ * Invalidates the library cache for a session (call after synthesis or gems update).
  */
-function webTriggerSynthesis(rowNumber) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName("Sessions");
-  
-  const sessionName = sheet.getRange(rowNumber, 1).getValue();
-  const dbFormula = sheet.getRange(rowNumber, 9).getFormula();
-  const folderFormula = sheet.getRange(rowNumber, 10).getFormula();
-  
-  if (!dbFormula || !folderFormula) throw new Error("Missing DB or Folder links.");
-  
-  const dbUrl = extractUrlFromFormula(dbFormula);
-  const folderUrl = extractUrlFromFormula(folderFormula);
-  
-  const dbId = dbUrl.match(/[-\w]{25,}/)[0];
-  const folderId = folderUrl.match(/[-\w]{25,}/)[0];
-  
-  const projectFolder = DriveApp.getFolderById(folderId);
-  const researchFolder = projectFolder.getFoldersByName("01_Research").next();
-  const draftsFolder = projectFolder.getFoldersByName("02_Drafts").next();
-  
-  SynthesisService.synthesizeAll(dbId, researchFolder.getId(), draftsFolder.getId());
-  
-  sheet.getRange(rowNumber, 6).setValue("3. Synthesis Complete");
+function invalidateLibraryCache(sessionId) {
+  CacheService.getScriptCache().remove('library_' + sessionId);
   return true;
+}
+
+/**
+ * Adds resources to a session. Called from Wizard.html and Index.html.
+ * @param {string} sessionId
+ * @param {Object[]} resources - [{ fileId?, url, name, type, mimeType? }]
+ */
+function webAddResources(sessionId, resources) {
+  return ResourceService.addResources(sessionId, resources);
+}
+
+// ─── Drive Folder Browser ─────────────────────────────────────────────────────
+
+/**
+ * Lists files in a Drive folder by URL. Called from Resources modal and Wizard.
+ * @param {string} folderUrl - Full Google Drive folder share URL
+ * @returns {{ folderName, files: [{fileId, name, url, mimeType}] } | { error }}
+ */
+function getDriveFilesInFolder(folderUrl) {
+  var m = folderUrl.match(/\/folders\/([a-zA-Z0-9_-]{25,})/);
+  var folderId = m ? m[1] : null;
+  if (!folderId) {
+    m = folderUrl.match(/[?&]id=([a-zA-Z0-9_-]{25,})/);
+    folderId = m ? m[1] : null;
+  }
+  if (!folderId) return { error: 'Could not find folder ID in that URL. Paste the full Google Drive folder share link.' };
+
+  try {
+    var folder = DriveApp.getFolderById(folderId);
+    var files = [];
+    var iter = folder.getFiles();
+    while (iter.hasNext() && files.length < 100) {
+      var f = iter.next();
+      files.push({ fileId: f.getId(), name: f.getName(), url: f.getUrl(), mimeType: f.getMimeType() });
+    }
+    return { folderName: folder.getName(), files: files };
+  } catch (e) {
+    return { error: 'Could not access folder: ' + e.message };
+  }
+}
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function _getWebAppUrl() {
+  try {
+    return ScriptApp.getService().getUrl();
+  } catch (e) {
+    return '';
+  }
 }

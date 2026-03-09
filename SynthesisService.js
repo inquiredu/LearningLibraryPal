@@ -1,201 +1,194 @@
 /**
- * Synthesis Service
- * Handles Phase 2: Transforming raw research into synthesized metadata and drafts.
+ * SynthesisService
+ * Phase 2: Processes resources from the session's 01_Research folder
+ * and the Project Database. Enriches each resource with Gemini-generated metadata.
  */
 
 const SynthesisService = {
-  
+
   /**
-   * Processes all research found in the database and research folder.
-   * @param {string} spreadsheetId - The ID of the Project Database.
-   * @param {string} researchFolderId - The ID of the 01_Research folder.
-   * @param {string} draftsFolderId - The ID of the 02_Drafts folder.
+   * Main entry point. Synthesizes all resources for a session.
+   * Reads URLs from the Project DB, fetches content, analyzes with Gemini,
+   * writes enriched metadata back.
+   * @param {string} sessionId
+   * @returns {number} Count of resources processed
    */
-  synthesizeAll: function(spreadsheetId, researchFolderId, draftsFolderId) {
-    const spreadsheet = SpreadsheetApp.openById(spreadsheetId);
-    const urlSheet = spreadsheet.getSheetByName("Saved URLs");
-    const data = urlSheet.getDataRange().getValues();
-    const headers = data.shift(); // Remove headers
-    
-    console.log(`Starting synthesis for ${data.length} entries in spreadsheet...`);
-    
-    data.forEach((row, index) => {
-      const [title, url, type, relevance, engagement, usedIn, notes] = row;
-      
-      // Only process if it hasn't been processed yet (check if Relevance is empty)
-      if (url && !relevance) {
-        console.log(`Processing URL: ${url}`);
+  synthesizeAll: function(sessionId) {
+    const session = SessionService.getSession(sessionId);
+    if (!session) throw new Error('Session not found: ' + sessionId);
+    if (!session.dbUrl) throw new Error('No Project Database URL for session: ' + sessionId);
+
+    const dbId = this._extractId(session.dbUrl);
+    const db = SpreadsheetApp.openById(dbId);
+    const resourcesSheet = db.getSheetByName('Resources');
+    if (!resourcesSheet) throw new Error('No Resources sheet found in Project DB.');
+
+    const rows = resourcesSheet.getDataRange().getValues();
+    if (rows.length <= 1) return 0;
+
+    let processedCount = 0;
+
+    for (let i = 1; i < rows.length; i++) {
+      const url = rows[i][0];
+      if (!url || String(url).trim() === '') continue;
+
+      // Skip already-synthesized rows (Relevance Score filled)
+      if (rows[i][3] && String(rows[i][3]).trim() !== '') continue;
+
+      try {
+        const content = this._fetchContent(url);
+        const meta = GeminiService.analyzeResource(content, session.theme, session.audience);
+
+        resourcesSheet.getRange(i + 1, 2).setValue(meta.title || '');
+        resourcesSheet.getRange(i + 1, 3).setValue(this._inferType(url));
+        resourcesSheet.getRange(i + 1, 4).setValue(meta.relevanceScore || '');
+        resourcesSheet.getRange(i + 1, 5).setValue(meta.engagementLevel || '');
+        resourcesSheet.getRange(i + 1, 6).setValue(Array.isArray(meta.keyConceptTags) ? meta.keyConceptTags.join(', ') : '');
+        resourcesSheet.getRange(i + 1, 7).setValue(meta.relevanceScore >= 4 ? 'Yes' : 'No');
+        resourcesSheet.getRange(i + 1, 8).setValue(meta.notebookLMReady ? 'Yes' : 'No');
+        resourcesSheet.getRange(i + 1, 9).setValue(meta.relevanceStatement || '');
+        resourcesSheet.getRange(i + 1, 10).setValue(meta.summary || '');
+
+        processedCount++;
+        Utilities.sleep(500);
+      } catch (e) {
+        console.error('Failed to process row ' + (i + 1) + ': ' + e.message);
+        resourcesSheet.getRange(i + 1, 9).setValue('Error: ' + e.message);
+      }
+    }
+
+    const folderCount = this._processResearchFolder(session, resourcesSheet);
+    processedCount += folderCount;
+
+    return processedCount;
+  },
+
+  /**
+   * Gets all synthesized resources for a session as plain objects.
+   * Used by LibraryService.
+   */
+  getResources: function(sessionId) {
+    const session = SessionService.getSession(sessionId);
+    if (!session || !session.dbUrl) return [];
+
+    try {
+      const dbId = this._extractId(session.dbUrl);
+      const db = SpreadsheetApp.openById(dbId);
+      const sheet = db.getSheetByName('Resources');
+      if (!sheet) return [];
+
+      const rows = sheet.getDataRange().getValues();
+      if (rows.length <= 1) return [];
+
+      return rows.slice(1)
+        .filter(row => row[0] && String(row[0]).trim())
+        .map(row => ({
+          url:               String(row[0]).trim(),
+          title:             row[1] || 'Untitled Resource',
+          type:              row[2] || 'Article',
+          relevanceScore:    Number(row[3]) || 0,
+          engagementLevel:   row[4] || '',
+          keyTags:           row[5] ? String(row[5]).split(', ') : [],
+          preReading:        row[6] === 'Yes',
+          notebookLMReady:   row[7] === 'Yes',
+          relevanceStatement: row[8] || '',
+          summary:           row[9] || ''
+        }))
+        .sort((a, b) => b.relevanceScore - a.relevanceScore);
+    } catch (e) {
+      console.error('getResources failed: ' + e.message);
+      return [];
+    }
+  },
+
+  // ─── Private ────────────────────────────────────────────────────────────────
+
+  _processResearchFolder: function(session, resourcesSheet) {
+    if (!session.folderUrl) return 0;
+    let count = 0;
+    try {
+      const folderId = this._extractId(session.folderUrl);
+      const sessionFolder = DriveApp.getFolderById(folderId);
+      const researchIter = sessionFolder.getFoldersByName('01_Research');
+      if (!researchIter.hasNext()) return 0;
+      const researchFolder = researchIter.next();
+
+      const files = researchFolder.getFiles();
+      while (files.hasNext()) {
+        const file = files.next();
+        const mimeType = file.getMimeType();
+        let text = '';
+
+        if (mimeType === MimeType.GOOGLE_DOCS) {
+          text = DocumentApp.openById(file.getId()).getBody().getText();
+        } else if (mimeType === MimeType.PLAIN_TEXT) {
+          text = file.getBlob().getDataAsString();
+        } else {
+          continue;
+        }
+
+        if (!text.trim()) continue;
+
         try {
-          const synthesis = this.synthesizeContent(url, title);
-          
-          // Update Spreadsheet
-          urlSheet.getRange(index + 2, 4).setValue(synthesis.relevance); // Relevance / So What
-          urlSheet.getRange(index + 2, 5).setValue(synthesis.engagementLevel); // Engagement Level
-          
-          // Create Draft Doc
-          this.createDraftDoc(draftsFolderId, title || "Untitled Resource", synthesis);
-          
+          const meta = GeminiService.analyzeResource(text, session.theme, session.audience);
+          resourcesSheet.appendRow([
+            file.getUrl(),
+            meta.title || file.getName(),
+            'Document',
+            meta.relevanceScore || '',
+            meta.engagementLevel || '',
+            Array.isArray(meta.keyConceptTags) ? meta.keyConceptTags.join(', ') : '',
+            meta.relevanceScore >= 4 ? 'Yes' : 'No',
+            meta.notebookLMReady ? 'Yes' : 'No',
+            meta.relevanceStatement || '',
+            meta.summary || ''
+          ]);
+          count++;
+          Utilities.sleep(500);
         } catch (e) {
-          console.error(`Failed to synthesize ${url}: ${e.message}`);
-          urlSheet.getRange(index + 2, 4).setValue(`Error: ${e.message}`);
+          console.error('Failed to process file ' + file.getName() + ': ' + e.message);
         }
       }
-    });
-
-    // Also process files in the 01_Research folder that aren't in the spreadsheet
-    this.processResearchFolder(researchFolderId, urlSheet, draftsFolderId);
+    } catch (e) {
+      console.error('_processResearchFolder failed: ' + e.message);
+    }
+    return count;
   },
 
-  /**
-   * Extracts content from a URL/File and uses Gemini to synthesize it.
-   */
-  synthesizeContent: function(url, title) {
-    // In a real implementation, we'd use a service to fetch the page or extract video transcript
-    // For now, we'll pass the URL and Title to Gemini and ask it to provide a "likely" synthesis
-    // or use its internal knowledge if it's a known resource.
-    
-    const prompt = `
-      You are a Research Assistant. Analyze the following resource for a learning library.
-      
-      Resource Title: ${title || "Unknown"}
-      Resource URL: ${url}
-      
-      Task:
-      1. Provide a concise "Relevance / So What" statement (2-3 sentences). Why does this matter to someone learning about this topic?
-      2. Assign an "Engagement Level": "5-minute skim", "Deep Dive", or "Interactive".
-      3. Provide a brief 1-paragraph summary of the key takeaways.
-      
-      Output must be valid JSON:
-      {
-        "relevance": "string",
-        "engagementLevel": "string",
-        "summary": "string"
+  _fetchContent: function(url) {
+    try {
+      const response = UrlFetchApp.fetch(url, {
+        muteHttpExceptions: true,
+        followRedirects: true,
+        headers: { 'User-Agent': 'Mozilla/5.0' }
+      });
+      if (response.getResponseCode() !== 200) {
+        return '[Could not fetch content. HTTP ' + response.getResponseCode() + ']';
       }
-    `;
-
-    const apiKey = getGeminiApiKey();
-    const payload = {
-      "contents": [{ "parts": [{ "text": prompt }] }],
-      "generationConfig": { "responseMimeType": "application/json" }
-    };
-    
-    const options = {
-      "method": "post",
-      "contentType": "application/json",
-      "payload": JSON.stringify(payload),
-      "muteHttpExceptions": true
-    };
-
-    const response = UrlFetchApp.fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, options);
-    const json = JSON.parse(response.getContentText());
-    
-    if (json.error) {
-      throw new Error(`Gemini API Error: ${json.error.message}`);
-    }
-    
-    const contentText = json.candidates[0].content.parts[0].text;
-    const cleanText = contentText.replace(/^```(json)?\s*/i, '').replace(/```\s*$/i, '').trim();
-    return JSON.parse(cleanText);
-  },
-
-  /**
-   * Processes files dropped into the 01_Research folder.
-   */
-  processResearchFolder: function(folderId, urlSheet, draftsFolderId) {
-    const folder = DriveApp.getFolderById(folderId);
-    const files = folder.getFiles();
-    
-    while (files.hasNext()) {
-      const file = files.next();
-      const fileName = file.getName();
-      
-      // Check if file is already in the spreadsheet
-      const sheetData = urlSheet.getDataRange().getValues();
-      const alreadyInSheet = sheetData.some(row => row[1] === file.getUrl() || row[0] === fileName);
-      
-      if (!alreadyInSheet) {
-        console.log(`Processing new file from folder: ${fileName}`);
-        
-        try {
-          const content = getFileContent(file);
-          const synthesis = this.synthesizeRawText(content, fileName);
-          
-          // Add to Spreadsheet
-          urlSheet.appendRow([fileName, file.getUrl(), file.getMimeType(), synthesis.relevance, synthesis.engagementLevel, "", ""]);
-          
-          // Create Draft Doc
-          this.createDraftDoc(draftsFolderId, fileName, synthesis);
-        } catch (err) {
-          console.error(`Failed to process ${fileName}: ${err.message}`);
-          urlSheet.appendRow([fileName, file.getUrl(), file.getMimeType(), `Error: ${err.message}`, "", "", ""]);
-        }
-      }
+      return response.getContentText()
+        .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+        .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/\s{2,}/g, ' ')
+        .trim()
+        .substring(0, 8000);
+    } catch (e) {
+      return '[Could not fetch URL: ' + e.message + ']';
     }
   },
 
-  /**
-   * Synthesizes raw text content.
-   */
-  synthesizeRawText: function(text, title) {
-    const apiKey = getGeminiApiKey();
-    const prompt = `
-      Analyze this research material:
-      Title: ${title}
-      Content: ${text.substring(0, 10000)} // Truncate for safety
-      
-      Task:
-      1. Relevance / So What.
-      2. Engagement Level.
-      3. 1-paragraph summary.
-      
-      Output JSON: { "relevance": "string", "engagementLevel": "string", "summary": "string" }
-    `;
-
-    const payload = {
-      "contents": [{ "parts": [{ "text": prompt }] }],
-      "generationConfig": { "responseMimeType": "application/json" }
-    };
-    
-    const options = {
-      "method": "post",
-      "contentType": "application/json",
-      "payload": JSON.stringify(payload),
-      "muteHttpExceptions": true
-    };
-
-    const response = UrlFetchApp.fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, options);
-    const json = JSON.parse(response.getContentText());
-    
-    if (json.error) {
-      throw new Error(`Gemini API Error: ${json.error.message}`);
-    }
-    
-    const contentText = json.candidates[0].content.parts[0].text;
-    const cleanText = contentText.replace(/^```(json)?\s*/i, '').replace(/```\s*$/i, '').trim();
-    return JSON.parse(cleanText);
+  _inferType: function(url) {
+    const u = String(url).toLowerCase();
+    if (u.includes('youtube.com') || u.includes('youtu.be') || u.includes('vimeo.com')) return 'Video';
+    if (u.includes('docs.google.com')) return 'Google Doc';
+    if (u.includes('podcast') || u.includes('spotify') || u.includes('anchor.fm')) return 'Podcast';
+    if (u.includes('github.com')) return 'GitHub';
+    return 'Article';
   },
 
-  /**
-   * Creates a formatted Google Doc in the Drafts folder.
-   */
-  createDraftDoc: function(folderId, title, synthesis) {
-    const doc = DocumentApp.create(`DRAFT: ${title}`);
-    const body = doc.getBody();
-    
-    body.appendParagraph(title).setHeading(DocumentApp.ParagraphHeading.HEADING1);
-    body.appendParagraph(`Engagement Level: ${synthesis.engagementLevel}`).setHeading(DocumentApp.ParagraphHeading.SUBTITLE);
-    
-    body.appendParagraph("The 'So What'").setHeading(DocumentApp.ParagraphHeading.HEADING2);
-    body.appendParagraph(synthesis.relevance);
-    
-    body.appendParagraph("Summary").setHeading(DocumentApp.ParagraphHeading.HEADING2);
-    body.appendParagraph(synthesis.summary);
-    
-    doc.saveAndClose();
-    
-    // Move to drafts folder
-    const file = DriveApp.getFileById(doc.getId());
-    DriveApp.getFolderById(folderId).addFile(file);
-    DriveApp.getRootFolder().removeFile(file);
+  _extractId: function(url) {
+    const match = String(url).match(/[-\w]{25,}/);
+    return match ? match[0] : null;
   }
+
 };

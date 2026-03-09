@@ -1,40 +1,74 @@
-# LearningLibrary
-A project to create a human first process to create learning libraries for any event.
-# Mngaia Content Engine
+# Mngaia Dynamic Content Engine
 
-## Vision
-The Mngaia Content Engine is a **digital utility belt** for community architects. It is not just a script; it is a multi-modal infrastructure layer that wraps around your existing workflow. Whether you start with a messy Google Doc or a structured NotebookLM export, the Engine builds the necessary scaffolding around your content to transform it into a polished learning experience.
+A Google Apps Script web application that manages the full content lifecycle for Mngaia's monthly collaborative learning sessions — from intake through synthesis, AI-powered Gems, a shareable learning library, and pre-session email.
 
-## What It Is
-A "Human-in-the-Loop" orchestration system built on Google Workspace and Gemini 1.5 Pro. Unlike rigid project management tools, it meets you where you are:
-*   **Context Aware:** Connects to an existing Session Doc or NotebookLM export and builds the project structure *around* it.
-*   **Multi-Modal:** Generates code, analyzes video transcripts, and synthesizes PDFs.
-*   **Frictionless:** No need to migrate files to "new folders." The system adapts to your Drive organization.
+## What It Does
 
-## Core Capabilities
+A facilitator runs through a 5-phase cycle for each session:
 
-### 1. The Launch Wizard (Intake)
-*   **Input:** A Google Doc *or* a NotebookLM Markdown export.
-*   **Action:** "Snaps" a project structure onto the file's current location.
-*   **Output:**
-    *   **Infrastructure:** Automatically generates `/Research`, `/Drafts`, and `/Gems` folders alongside your source file.
-    *   **Strategy:** Reads your notes and generates a **Decision Matrix** (Strategic angles, Pros/Cons) to guide the month's theme.
+| Phase | Trigger | Output |
+|-------|---------|--------|
+| **1. Wizard** | New Session form | Drive folders, Master Sheet row, Gemini session brief |
+| **2. Synthesis** | Synthesize button | Gemini analysis of each resource → written to Project DB |
+| **3. Gems** | Generate Gems button | 4 AI persona prompt structures (deep-researcher, synthesis-companion, facilitation-guide, reflection-catalyst) |
+| **4. Library** | Auto (on doGet) | Shareable learning library page per session |
+| **5. Email** | Draft Email button | Gemini-drafted pre-session email → Gmail send |
 
-### 2. The Synthesis Library (Processing)
-*   **Action:** Watches the `/Research` folder for inputs (PDFs, YouTube links, MP3s).
-*   **Output:** Generates a "Resource Kit" with standardized JSON metadata:
-    *   **Relevance:** Why this specific item matters to the monthly theme.
-    *   **The "So What":** Explicit value proposition.
-    *   **Engagement Level:** "5-minute skim" vs. "Deep Dive".
+## Tech Stack
 
-### 3. Engagement Gems (Pre-work)
-*   **Action:** Takes the synthesized themes and codes custom AI experiences.
-*   **Output:** System Instructions for "Gems" (e.g., a "Devil's Advocate" bot) that attendees can interact with to prime their thinking before the session.
+- **Runtime:** Google Apps Script (V8), no npm / TypeScript
+- **AI:** Gemini 1.5 Flash via Google AI Studio REST API
+- **Storage:** Google Drive (folders, shortcuts) + Google Sheets (Master Sheet + per-session Project DB)
+- **Frontend:** `HtmlService` web app (`doGet`) — dashboard, wizard, and library pages
+- **Deploy:** `clasp` for local development, GAS web app deployment
 
-## Innovative AI Approaches
-*   **NotebookLM Integration:** Ingests deep research exports (Markdown) to jumpstart the wizard with high-fidelity context.
-*   **In-Place Construction:** The code uses Drive APIs to detect the context of the input file and deploy resources locally, preserving the user's organizational logic.
-*   **Strategic Reasoning:** We use Gemini not just for copy, but for *consultancy*—analyzing the "white space" in a topic to suggest novel angles.
+## Setup
 
-## Final Outcome
-A utility belt that turns a single document into a full-fledged **Learning Engine**. It reduces planning time from days to hours, ensuring that every monthly meeting is backed by deep research, curated assets, and interactive AI pre-work—all without leaving your Google Drive.
+1. Clone repo and `cd LearningLibrary`
+2. `clasp login` then `clasp push`
+3. In the GAS editor → Project Settings → Script Properties, add:
+   - `GEMINI_API_KEY` — from [Google AI Studio](https://aistudio.google.com/)
+   - `ROOT_FOLDER_ID` — (optional) a Drive folder ID; auto-created in My Drive if missing
+4. Deploy as Web App: **Execute as** `User accessing the web app` · **Who has access** `Anyone`
+5. Authorize scopes by running any function in the editor the first time
+
+## Key Files
+
+| File | Role |
+|------|------|
+| `Code.js` | Menu items, triggers, `getGeminiApiKey()` |
+| `WebApp.js` | `doGet()` routing (dashboard / wizard / library / diag), all `google.script.run` handlers |
+| `SessionService.js` | Session CRUD, Drive folder scaffolding, Master Sheet ops |
+| `GeminiService.js` | All Gemini calls — brief, resource analysis, Gems prompts, email draft |
+| `SynthesisService.js` | Fetch resource content → Gemini → write back to Project DB |
+| `GemsService.js` | Generate 4 AI persona Gems per session |
+| `ResourceService.js` | Add resources to Project DB, create Drive shortcuts in `01_Research` |
+| `EmailService.js` | Gmail send with HTML wrapper |
+| `LibraryService.js` | Aggregate all session data into library payload |
+| `SessionService.js` | Master Sheet ops, Drive scaffolding |
+| `Index.html` | Facilitator dashboard — session cards, Resources modal, Email modal |
+| `Wizard.html` | New Session intake — Step 1 (details) → Step 2 (source materials) |
+| `LibraryPage.html` | Per-session shareable learning library |
+
+## Data Model
+
+**Master Sheet** (`Sessions` tab, 15 cols):
+`ID · Name · Theme · Date · Format · Audience · Brand · Status · FolderURL · LibraryURL · ProjectDB URL · EmailSent · BriefJSON · GemsJSON · CreatedAt`
+
+**Per-session Project DB** (separate Spreadsheet):
+- `Resources` tab (10 cols): URL, Name, Type, FileID, Summary, KeyThemes, SoWhat, EngagementLevel, RelevanceScore, AddedAt
+- `Participants` tab
+
+**Drive folder structure** per session:
+```
+[Session Name]/
+  00_Admin/
+  01_Research/   ← Drive shortcuts created here
+  02_Drafts/
+  03_Gems/
+  04_Final/
+```
+
+## Brand
+
+Navy `#0B2B46` · Cyan `#5DCDF5` · Montserrat (headings) · Open Sans (body)

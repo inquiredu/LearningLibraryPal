@@ -1,0 +1,147 @@
+/**
+ * EmailService
+ * Phase 5: Drafts and sends pre-session engagement emails.
+ * Uses Gemini to draft, then sends via GmailApp.
+ */
+
+const EmailService = {
+
+  /**
+   * Drafts a pre-session email using Gemini and sends it to the recipient list.
+   * @param {string} sessionId
+   * @param {string[]} recipients - Array of email addresses
+   * @returns {{ subject, recipientCount }}
+   */
+  draftAndSend: function(sessionId, recipients) {
+    const session = SessionService.getSession(sessionId);
+    if (!session) throw new Error('Session not found: ' + sessionId);
+    if (!session.brief) throw new Error('No session brief. Complete the Wizard first.');
+
+    // Get library URL for this session
+    const libraryUrl = session.libraryUrl || this._buildLibraryUrl(sessionId);
+
+    // Get top pre-reading resources
+    const allResources = SynthesisService.getResources(sessionId);
+    const preReadingResources = allResources
+      .filter(r => r.preReading)
+      .slice(0, 3)
+      .map(r => ({ url: r.url, title: r.title, relevanceStatement: r.relevanceStatement }));
+
+    // If no pre-reading flagged yet, take top 3 by score
+    const resources = preReadingResources.length > 0
+      ? preReadingResources
+      : allResources.slice(0, 3).map(r => ({ url: r.url, title: r.title, relevanceStatement: r.relevanceStatement }));
+
+    // Draft with Gemini
+    const draft = GeminiService.draftPreSessionEmail(
+      session.brief,
+      resources,
+      session.date,
+      libraryUrl
+    );
+
+    const subject = draft.subject || 'Getting Ready for Our Next Session';
+    const htmlBody = this._wrapInEmailTemplate(draft.body || '', session, libraryUrl);
+
+    // Send to all recipients
+    recipients.forEach(email => {
+      GmailApp.sendEmail(email, subject, '', { htmlBody: htmlBody });
+    });
+
+    // Mark email as sent in session row
+    SessionService.updateSession(sessionId, {
+      EMAIL_SENT: 'Yes — ' + new Date().toLocaleDateString()
+    });
+
+    return { subject, recipientCount: recipients.length };
+  },
+
+  /**
+   * Returns just the draft (subject + body) without sending.
+   * Used by the web app for the human-review preview modal.
+   */
+  getDraft: function(sessionId) {
+    const session = SessionService.getSession(sessionId);
+    if (!session || !session.brief) return null;
+
+    const libraryUrl = session.libraryUrl || this._buildLibraryUrl(sessionId);
+    const allResources = SynthesisService.getResources(sessionId);
+    const resources = allResources
+      .filter(r => r.preReading)
+      .slice(0, 3)
+      .map(r => ({ url: r.url, title: r.title, relevanceStatement: r.relevanceStatement }));
+
+    return GeminiService.draftPreSessionEmail(
+      session.brief,
+      resources.length > 0 ? resources : allResources.slice(0, 3).map(r => ({
+        url: r.url, title: r.title, relevanceStatement: r.relevanceStatement
+      })),
+      session.date,
+      libraryUrl
+    );
+  },
+
+  /**
+   * Sends a pre-approved draft directly (called from web app after review).
+   */
+  sendApprovedDraft: function(sessionId, recipients, subject, htmlBody) {
+    recipients.forEach(email => {
+      GmailApp.sendEmail(email, subject, '', { htmlBody: htmlBody });
+    });
+    SessionService.updateSession(sessionId, {
+      EMAIL_SENT: 'Yes — ' + new Date().toLocaleDateString()
+    });
+    return { success: true, recipientCount: recipients.length };
+  },
+
+  // ─── Private ────────────────────────────────────────────────────────────────
+
+  _buildLibraryUrl: function(sessionId) {
+    try {
+      const base = ScriptApp.getService().getUrl();
+      return base ? base + '?page=library&session=' + sessionId : '';
+    } catch (e) {
+      return '';
+    }
+  },
+
+  _wrapInEmailTemplate: function(body, session, libraryUrl) {
+    const brandColor = '#0B2B46';
+    const accentColor = '#5DCDF5';
+    const libraryLink = libraryUrl
+      ? `<p style="text-align:center;margin:24px 0;">
+           <a href="${libraryUrl}" style="background:${accentColor};color:${brandColor};padding:12px 28px;border-radius:6px;text-decoration:none;font-weight:bold;display:inline-block;">
+             Open Learning Library →
+           </a>
+         </p>`
+      : '';
+
+    return `
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"></head>
+<body style="margin:0;padding:0;background:#f5f7fa;font-family:'Open Sans',Arial,sans-serif;">
+  <div style="max-width:600px;margin:0 auto;background:#ffffff;border-radius:8px;overflow:hidden;margin-top:24px;">
+    <!-- Header -->
+    <div style="background:${brandColor};padding:28px 32px;">
+      <p style="color:${accentColor};font-size:12px;letter-spacing:2px;text-transform:uppercase;margin:0 0 6px;">Mngaia Learning Community</p>
+      <h1 style="color:#ffffff;font-size:22px;margin:0;">${session.name || 'Upcoming Session'}</h1>
+    </div>
+    <!-- Body -->
+    <div style="padding:32px;color:#2d2d2d;font-size:15px;line-height:1.7;">
+      ${body}
+      ${libraryLink}
+    </div>
+    <!-- Footer -->
+    <div style="background:#f5f7fa;padding:20px 32px;border-top:1px solid #e0e6ed;">
+      <p style="color:#8a9bae;font-size:12px;margin:0;">
+        Mngaia Learning Community &nbsp;·&nbsp; ${session.date || ''}
+      </p>
+    </div>
+  </div>
+</body>
+</html>
+    `.trim();
+  }
+
+};

@@ -1,66 +1,95 @@
-# Mngaia Content Engine Architecture
+# Mngaia Content Engine — Architecture
 
-## Overview
-The Mngaia Content Engine is a frictionless, multi-modal content pipeline designed to transform raw brainstorms into structured "Resource Kits" and "Gems" for professional communities.
+## System Overview
 
-## Core Principles
-1.  **Human-in-the-Loop (HITL):** AI generates drafts; Humans make decisions. No auto-publishing.
-2.  **Data Sovereignty:** All data resides within the Google Workspace tenant.
-3.  **Frictionless UX:** Automation handles the heavy lifting of organization and synthesis.
+Single Google Apps Script project, container-bound to a Google Spreadsheet (the Master Sheet). Deployed as a GAS Web App (`doGet`).
 
-## Tech Stack
-*   **Orchestration:** Google Apps Script (GAS) managed via CLASP.
-*   **Intelligence:** Gemini 1.5 Pro via Google AI Studio API.
-*   **Storage:** Google Drive (Docs, PDFs, Shortcuts).
-*   **Frontend:** Google Sites.
-
-## Workflow Phases
-
-### Phase 1: Intake (The Wizard)
-*   **Input:** Raw "Inbound Brainstorm" Google Doc.
-*   **Input:** Google Doc or NotebookLM Markdown export.
-*   **Process:**
-    *   **In-Place Scaffolding:** Ensure folder structure exists in the source file's parent folder.
-    *   Analyze content using Gemini.
-    *   Generate a **Decision Document** (Strategic choices).
-    *   Scaffold Folder Map (`/Research`, `/Drafts`, `/Gems`, `/Final_Assets`).
-*   **Output:** A structured project folder in Drive.
-*   **Output:** A structured project environment around the source file.
-
-### Phase 2: Synthesis (The Library)
-*   **Input:** Links, PDFs, Videos in `/Research`.
-*   **Process:**
-    *   Extract text/transcript.
-    *   Generate Metadata (Relevance, Engagement Level, "So What").
-*   **Output:** JSON metadata and summary Docs in `/Drafts`.
-
-### Phase 3: Engagement (The Gems)
-*   **Input:** Synthesized themes.
-*   **Process:** Draft System Instructions for AI Agents.
-*   **Output:** "Gem" definitions ready for testing.
-
-## Data Structure
-
-### Folder Map
-```text
-/[Project Name]
-├── 00_Admin
-│   └── Decision_Doc.gdoc
-├── 01_Research (Raw inputs)
-├── 02_Drafts (AI outputs pending review)
-├── 03_Gems (AI Persona definitions)
-└── 04_Final_Assets (Approved content for Sites)
+```
+Browser
+  │
+  ├── /exec               → Index.html (facilitator dashboard)
+  ├── /exec?page=wizard   → Wizard.html (new session intake)
+  ├── /exec?page=library&session=ID → LibraryPage.html (shareable library)
+  └── /exec?page=diag     → raw JSON diagnostic dump
+         │
+         │  google.script.run (RPC)
+         ▼
+    WebApp.js (handlers: getDashboardData, processWizardSubmit,
+               getDriveFilesInFolder, webAddResources, webRunSynthesis,
+               webGenerateGems, webGetEmailDraft, webSendEmail)
+         │
+         ├── SessionService.js   (Master Sheet CRUD, Drive scaffolding)
+         ├── GeminiService.js    (Gemini 1.5 Flash REST calls)
+         ├── SynthesisService.js (fetch resource content + Gemini analysis)
+         ├── GemsService.js      (4 AI persona prompt structures)
+         ├── ResourceService.js  (add resources, create Drive shortcuts)
+         ├── EmailService.js     (Gmail send)
+         └── LibraryService.js   (assemble library payload)
 ```
 
-### Metadata Schema (JSON)
-Used for Google Sites integration.
-```json
-{
-  "title": "String",
-  "url": "String",
-  "type": "Article|Video|PDF",
-  "engagementLevel": "Skim|Deep Dive",
-  "relevance": "String (Why this matters)",
-  "valueProp": "String (The So What)"
-}
+## Content Lifecycle (5 Phases)
+
 ```
+[Wizard] ──► SessionService.setupSession()
+               • Creates Drive folder (00_Admin / 01_Research / 02_Drafts / 03_Gems / 04_Final)
+               • Creates per-session Project DB (Spreadsheet with Resources + Participants tabs)
+               • Appends row to Master Sheet (Sessions tab)
+               • Calls GeminiService.generateSessionBrief() → BriefJSON stored in col 12
+
+[Synthesis] ► SynthesisService.synthesizeAll(sessionId)
+               • Reads resources from Project DB
+               • URL-fetches each resource (or uses Gemini for Drive docs)
+               • GeminiService.analyzeResource() → writes Summary, KeyThemes, SoWhat, EngagementLevel back to DB
+
+[Gems] ──────► GemsService.generateGems(sessionId)
+               • GeminiService.generateGemsPrompts() → 4 persona prompt structures
+               • Stored as GemsJSON in Master Sheet col 13
+
+[Library] ───► LibraryService.buildLibraryData(sessionId)
+               • Aggregates session + all resources + Gems into one payload
+               • doGet injects into LibraryPage.html via __SESSION_ID__ placeholder
+
+[Email] ─────► EmailService.draftAndSend(sessionId, recipients)
+               • GeminiService.draftPreSessionEmail() → subject + HTML body
+               • Shown in modal for review before sending
+               • GmailApp.sendEmail() on approval
+```
+
+## Key Design Decisions
+
+**Container-bound script** — `SpreadsheetApp.getActiveSpreadsheet()` always returns the Master Sheet, both in the Sheets menu context and in the web app context. No spreadsheet ID needed in code.
+
+**Drive Picker removed** — GAS web app pages are sandboxed to `*.googleusercontent.com`; the Picker API validates origin against `docs.google.com`/`script.google.com` and rejects the web app origin. Replaced with:
+1. **Folder browser** — user pastes a Drive folder URL → `getDriveFilesInFolder()` (server-side `DriveApp`) returns file list → checkbox selection
+2. **URL paste** — user pastes individual Drive share links; `fileId` extracted client-side via regex; shortcut created in `01_Research` server-side
+
+**Web app vs. dialog mode detection** — `google.script.host.origin === 'https://docs.google.com'` is true only in Sheets modal dialogs; false in web app pages. Used in Wizard.html to route `Cancel` back to dashboard vs. `google.script.host.close()`.
+
+**Deployment versioning** — `clasp push` only updates HEAD. Production deployments require a "New version" update in GAS Editor → Deploy → Manage deployments.
+
+## Master Sheet Column Index (0-based)
+
+| # | Column |
+|---|--------|
+| 0 | Session ID |
+| 1 | Name |
+| 2 | Theme |
+| 3 | Date |
+| 4 | Format |
+| 5 | Audience |
+| 6 | Brand |
+| 7 | Status |
+| 8 | Folder URL |
+| 9 | Library URL |
+| 10 | Project DB URL |
+| 11 | Email Sent |
+| 12 | Brief JSON |
+| 13 | Gems JSON |
+| 14 | Created At |
+
+## Script Properties
+
+| Key | Description |
+|-----|-------------|
+| `GEMINI_API_KEY` | Google AI Studio API key |
+| `ROOT_FOLDER_ID` | Parent Drive folder for all sessions (auto-created if missing) |

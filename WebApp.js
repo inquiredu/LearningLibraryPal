@@ -164,6 +164,15 @@ function webAddResources(sessionId, resources) {
   return ResourceService.addResources(sessionId, resources);
 }
 
+/**
+ * Generates Google Sites embed code for a session. Called from dashboard.
+ * @param {string} sessionId
+ * @returns {{ docUrl: string }}
+ */
+function webGenerateSiteCode(sessionId) {
+  return SitesService.generateSiteCode(sessionId);
+}
+
 // ─── Drive Folder Browser ─────────────────────────────────────────────────────
 
 /**

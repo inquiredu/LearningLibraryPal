@@ -250,6 +250,7 @@
             '<button class="btn btn-dark btn-sm" onclick="runGems(\'' + s.id + '\', this)">💎 Generate Gems</button>' +
             (s.hasGems ? '<button class="btn btn-dark btn-sm" onclick="openGemLinksModal(\'' + s.id + '\')">🔗 Set Gem Links</button>' : '') +
             '<button class="btn btn-dark btn-sm" onclick="openEmailModal(\'' + s.id + '\')">📧 Draft Email</button>' +
+            '<button class="btn btn-dark btn-sm" onclick="generateSiteCode(\'' + s.id + '\', this)">🌐 Site Code</button>' +
             libraryBtn +
           '</div>';
         grid.appendChild(card);
@@ -367,6 +368,18 @@
         .withSuccessHandler(function(res) { resetBtn(btn, 'Send Email'); closeEmailModal(); showAlert('Email sent to ' + res.recipientCount + ' recipient(s)!', 'success'); loadDashboard(); })
         .withFailureHandler(function(err) { resetBtn(btn, 'Send Email'); showAlert(err.message, 'error'); })
         .webSendEmail(_emailSessionId, recipients, subject, body);
+    }
+
+    function generateSiteCode(sessionId, btn) {
+      setBtnLoading(btn, 'Building...');
+      google.script.run
+        .withSuccessHandler(function(res) {
+          resetBtn(btn, '🌐 Site Code');
+          showAlert('Site code generated! Opening doc...', 'success');
+          if (res && res.docUrl) window.open(res.docUrl, '_blank');
+        })
+        .withFailureHandler(function(err) { resetBtn(btn, '🌐 Site Code'); showAlert(err.message, 'error'); })
+        .webGenerateSiteCode(sessionId);
     }
 
     function openNewSessionWizard() {

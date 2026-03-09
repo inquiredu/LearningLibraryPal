@@ -14,6 +14,7 @@ function onOpen() {
     .addItem('🔬  Synthesize Research', 'menuTriggerSynthesis')
     .addItem('💎  Generate Gems', 'menuTriggerGems')
     .addItem('📧  Draft & Send Pre-Session Email', 'menuTriggerEmail')
+    .addItem('🌐  Generate Site Code', 'menuTriggerSiteCode')
     .addSeparator()
     .addItem('🌐  Open Dashboard', 'openDashboard')
     .addItem('⚙️   Settings', 'showSettings')
@@ -88,6 +89,19 @@ function menuTriggerEmail() {
     ui.alert(`✅ Email sent to ${recipients.length} recipient(s)!\nSubject: ${result.subject}`);
   } catch (e) {
     ui.alert('❌ Email failed: ' + e.message);
+  }
+}
+
+function menuTriggerSiteCode() {
+  const { sessionId, session } = _getSelectedSession();
+  if (!sessionId) return;
+  const ui = SpreadsheetApp.getUi();
+  try {
+    ui.alert(`Generating site code for: ${session.name}...\nThis takes ~10 seconds.`);
+    const result = SitesService.generateSiteCode(sessionId);
+    ui.alert(`✅ Site code created!\n\nOpen the doc to copy each section:\n${result.docUrl}`);
+  } catch (e) {
+    ui.alert('❌ Site code failed: ' + e.message);
   }
 }
 

@@ -122,6 +122,165 @@ Rules:
     return this._call(prompt, 0.3);
   },
 
+  // ─── Phase 2 (enhanced): Type-Aware Resource Analysis ───────────────────────
+
+  /**
+   * Analyzes a resource using type-specific Gemini instructions.
+   * Keeps the same output schema as analyzeResource for full backwards compatibility.
+   * @param {string} content        - Extracted text (or URL fallback if unreadable)
+   * @param {string} type           - User-set resource type (Planning Doc, Video, etc.)
+   * @param {string} url            - Original resource URL (context when content is sparse)
+   * @param {string} theme
+   * @param {string} audience
+   * @param {Object} sessionContext - { overview, objectives[] }
+   * @returns {{ title, relevanceScore, relevanceStatement, engagementLevel, keyConceptTags, notebookLMReady, summary }}
+   */
+  analyzeResourceByType: function(content, type, url, theme, audience, sessionContext) {
+    const ctx = sessionContext || {};
+    const objectivesText = ctx.objectives && ctx.objectives.length
+      ? '\nLearning Objectives:\n- ' + ctx.objectives.join('\n- ')
+      : '';
+    const overviewText = ctx.overview ? '\nSession Overview: ' + ctx.overview : '';
+    const typeNote = this._typeInstructions(type);
+
+    const prompt = `
+You are a learning curator preparing resources for a collaborative session.
+
+Resource Type: ${type || 'Resource'}
+${typeNote}
+
+Session Theme: "${theme}"
+Audience: ${audience}${overviewText}${objectivesText}
+
+Analyze the following resource. Score and describe its value specifically for THIS session.
+
+Resource Content (URL: ${url}):
+---
+${(content || '[No readable content available — URL: ' + url + ']').substring(0, 7000)}
+---
+
+Return valid JSON with this exact schema:
+{
+  "title": "Inferred or extracted title of the resource",
+  "relevanceScore": 4,
+  "relevanceStatement": "1-2 sentences on how this resource serves this session",
+  "engagementLevel": "Accessible",
+  "keyConceptTags": ["tag1", "tag2", "tag3"],
+  "notebookLMReady": true,
+  "summary": "3-4 sentences describing the resource's key content and value for this session"
+}
+
+Rules:
+- relevanceScore: integer 1-5 (5 = directly serves the session; 1 = logistics only)
+- engagementLevel: exactly one of "Accessible", "Intermediate", "Deep"
+- keyConceptTags: exactly 3 short tags
+- Follow any type-specific rules stated above for notebookLMReady and relevanceScore
+    `.trim();
+    return this._call(prompt, 0.3);
+  },
+
+  /**
+   * Returns type-specific instructions to inject into the Gemini analysis prompt.
+   * Each type tells Gemini what to extract and how to set key fields.
+   */
+  _typeInstructions: function(type) {
+    switch (type) {
+      case 'Planning Doc':
+        return 'IMPORTANT: This is the FACILITATOR\'S PLANNING DOCUMENT — it defines the session\'s intent, goals, and structure. ' +
+               'Extract: stated session goals and outcomes, key topics the facilitator wants to explore, audience considerations, and any logistics or constraints. ' +
+               'Your summary should be a distilled extraction of the facilitator\'s intent that anchors all other session preparation. ' +
+               'Set relevanceScore to 5. Set notebookLMReady to true if the doc has substantive planning content.';
+
+      case 'Facilitator Guide':
+        return 'This is a FACILITATOR GUIDE — internal facilitation support, not for participants. ' +
+               'Extract: key discussion prompts and questions (quote them verbatim where possible), facilitation moves or activities, timing structures, and core messages to land. ' +
+               'Your summary should list the most actionable discussion prompts and facilitation structures from this guide. ' +
+               'Set notebookLMReady to true if the guide contains rich discussion questions.';
+
+      case 'Video':
+        return 'This is a VIDEO resource. Analyze any available transcript, title, description, or caption text. ' +
+               'If content is sparse, use the URL and any metadata for your best assessment. ' +
+               'Set notebookLMReady to false — videos cannot be uploaded to NotebookLM directly. ' +
+               'In the summary, recommend when participants should watch this (before, during, or after the session). ' +
+               'If file size in MB is mentioned in the content, note it in the summary.';
+
+      case 'Audio / Podcast':
+        return 'This is an AUDIO or PODCAST resource. Audio cannot be directly read. ' +
+               'Use any available title, description, episode notes, or show metadata. ' +
+               'Set notebookLMReady to false. ' +
+               'In the summary, note that participants need to listen independently and estimate listening time if episode length is mentioned.';
+
+      case 'Meeting Link':
+        return 'This is a MEETING LINK (video call URL, calendar invite, or session logistics link) — not a content resource. ' +
+               'Set relevanceScore to 1, notebookLMReady to false, engagementLevel to "Accessible". ' +
+               'Use "Meeting / Session Link" as the title unless a better name is evident. ' +
+               'Your summary should briefly confirm this is a logistics link.';
+
+      case 'Slide Deck':
+        return 'This is a SLIDE DECK. Analyze the slide text for key concepts, main arguments, and narrative arc. ' +
+               'Assess whether the deck is standalone-readable or requires presenter context. ' +
+               'Set notebookLMReady to true for content-rich decks; false for image-heavy or presenter-only decks.';
+
+      case 'Web Resource':
+        return 'This is an external WEB RESOURCE. Analyze the fetched content for session relevance, source authority, and accessibility for the audience.';
+
+      default: // Reading, Other
+        return 'Analyze this resource for its relevance to the session theme and value for participants.';
+    }
+  },
+
+  // ─── Planning Doc Brief Enrichment ───────────────────────────────────────────
+
+  /**
+   * Generates a session brief grounded in the actual content of a Planning Doc.
+   * Called automatically by SynthesisService when a Planning Doc is processed
+   * and no session brief exists yet. Produces a richer brief than the generic
+   * theme-only version because it reads the facilitator's actual intent.
+   *
+   * @param {string} content  - Planning document text
+   * @param {string} theme
+   * @param {string} format
+   * @param {string} audience
+   * @returns {{ overview, learningObjectives, inquiryQuestions, notebookLMStarterPrompt }}
+   */
+  enrichBriefFromPlanningDoc: function(content, theme, format, audience) {
+    const prompt = `
+You are an expert learning designer reading a facilitator's planning document.
+
+Session Context:
+- Theme: ${theme}
+- Format: ${format}
+- Audience: ${audience}
+
+Planning Document:
+---
+${content.substring(0, 8000)}
+---
+
+Based on this planning document, generate a structured session brief that reflects the facilitator's actual stated intent.
+Prioritize information from the document. Where the document is silent, infer from the theme and format.
+
+Return valid JSON with this exact schema:
+{
+  "overview": "2-3 sentences grounded in the planning document's stated goals — what this session aims to achieve and why it matters now",
+  "learningObjectives": [
+    "Objective 1 grounded in the planning doc",
+    "Objective 2",
+    "Objective 3"
+  ],
+  "inquiryQuestions": [
+    "Open-ended question 1 — drawn from or informed by the planning doc",
+    "Question 2",
+    "Question 3",
+    "Question 4",
+    "Question 5"
+  ],
+  "notebookLMStarterPrompt": "A prompt participants can paste into NotebookLM after uploading pre-reading resources to begin a generative dialogue about this session's theme"
+}
+    `.trim();
+    return this._call(prompt, 0.6);
+  },
+
   // ─── Phase 3: Gems Instruction Sets ─────────────────────────────────────────
 
   /**

@@ -19,8 +19,9 @@ const SynthesisService = {
     if (!session.dbUrl) throw new Error('No Project Database URL for session: ' + sessionId);
 
     // Build session context for Gemini — grounded in the brief generated in Phase 1
-    const brief = session.brief || {};
-    const sessionContext = {
+    // Both are `let` so a Planning Doc can enrich them mid-synthesis
+    let brief = session.brief || {};
+    let sessionContext = {
       overview:   brief.overview   || '',
       objectives: brief.learningObjectives || []
     };
@@ -42,26 +43,68 @@ const SynthesisService = {
       // Skip already-synthesized rows (relevanceScore filled means done)
       if (rows[i][3] && String(rows[i][3]).trim() !== '') continue;
 
+      // Read the user-set resource type — this drives the Gemini prompt and special handling
+      const resourceType = String(rows[i][2] || '').trim();
+
+      // ── Meeting Links: logistics only, no content to analyze ────────────────
+      if (resourceType === 'Meeting Link') {
+        if (!rows[i][1]) resourcesSheet.getRange(i + 1, 2).setValue('Meeting / Session Link');
+        resourcesSheet.getRange(i + 1, 4).setValue(1);         // relevanceScore
+        resourcesSheet.getRange(i + 1, 5).setValue('Accessible'); // engagementLevel
+        resourcesSheet.getRange(i + 1, 8).setValue('No');        // notebookLMReady
+        resourcesSheet.getRange(i + 1, 10).setValue('Session logistics link — no content to analyze.');
+        processedCount++;
+        continue;
+      }
+
       try {
-        // Try to read native Drive content first; fall back to URL fetch
         const fileId = this._extractDriveFileId(url);
+
+        // ── Video size check for Drive-hosted files ──────────────────────────
+        let sizeNote = '';
+        if (resourceType === 'Video' && fileId) {
+          try {
+            const bytes = DriveApp.getFileById(fileId).getSize();
+            const mb = (bytes / (1024 * 1024)).toFixed(1);
+            sizeNote = '[Drive Video — ' + mb + ' MB] ';
+          } catch (e) { /* file may not be accessible */ }
+        }
+
+        // ── Read content — native Drive first, then URL fetch ────────────────
         let content = null;
         if (fileId) {
           content = this._readDriveContent(fileId);
         }
         if (!content) {
-          content = this._fetchContent(url);
+          if (resourceType === 'Audio / Podcast') {
+            // Attempt URL fetch for show notes / episode description
+            content = this._fetchContent(url);
+            if (!content || content.startsWith('[Could not')) {
+              content = '[Audio resource — no transcript available. URL: ' + url + ']';
+            }
+          } else {
+            content = this._fetchContent(url);
+          }
         }
 
-        const meta = GeminiService.analyzeResource(
+        // Prepend size note so Gemini can reference it in the summary
+        if (sizeNote) content = sizeNote + (content || url);
+
+        // ── Type-aware Gemini analysis ───────────────────────────────────────
+        const meta = GeminiService.analyzeResourceByType(
           content,
+          resourceType,
+          url,
           session.theme,
           session.audience,
           sessionContext
         );
 
+        // Write results — preserve user-set type; only infer type when blank
         resourcesSheet.getRange(i + 1, 2).setValue(meta.title || '');
-        resourcesSheet.getRange(i + 1, 3).setValue(this._inferType(url));
+        if (!resourceType) {
+          resourcesSheet.getRange(i + 1, 3).setValue(this._inferType(url));
+        }
         resourcesSheet.getRange(i + 1, 4).setValue(meta.relevanceScore || '');
         resourcesSheet.getRange(i + 1, 5).setValue(meta.engagementLevel || '');
         resourcesSheet.getRange(i + 1, 6).setValue(
@@ -71,6 +114,27 @@ const SynthesisService = {
         resourcesSheet.getRange(i + 1, 8).setValue(meta.notebookLMReady ? 'Yes' : 'No');
         resourcesSheet.getRange(i + 1, 9).setValue(meta.relevanceStatement || '');
         resourcesSheet.getRange(i + 1, 10).setValue(meta.summary || '');
+
+        // ── Planning Doc: enrich session brief if none exists ────────────────
+        // The planning document IS the session context — use it to build a
+        // grounded brief rather than relying solely on the theme/format fields.
+        if (resourceType === 'Planning Doc' && content && !(brief && brief.overview)) {
+          try {
+            const enrichedBrief = GeminiService.enrichBriefFromPlanningDoc(
+              content, session.theme, session.format || '', session.audience
+            );
+            SessionService.updateSession(sessionId, { BRIEF_JSON: JSON.stringify(enrichedBrief) });
+            brief = enrichedBrief;
+            // Update session context so subsequent resources benefit from the new brief
+            sessionContext = {
+              overview:   enrichedBrief.overview || '',
+              objectives: enrichedBrief.learningObjectives || []
+            };
+            console.log('Session brief enriched from Planning Doc.');
+          } catch (e) {
+            console.error('Brief enrichment from Planning Doc failed: ' + e.message);
+          }
+        }
 
         processedCount++;
         Utilities.sleep(500);

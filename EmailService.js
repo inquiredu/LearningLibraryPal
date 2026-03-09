@@ -83,8 +83,12 @@ const EmailService = {
 
   /**
    * Sends a pre-approved draft directly (called from web app after review).
+   * Applies the branded email template around the body content before sending.
    */
-  sendApprovedDraft: function(sessionId, recipients, subject, htmlBody) {
+  sendApprovedDraft: function(sessionId, recipients, subject, bodyContent) {
+    const session = SessionService.getSession(sessionId);
+    const libraryUrl = session ? (session.libraryUrl || this._buildLibraryUrl(sessionId)) : '';
+    const htmlBody = this._wrapInEmailTemplate(bodyContent, session || {}, libraryUrl);
     recipients.forEach(email => {
       GmailApp.sendEmail(email, subject, '', { htmlBody: htmlBody });
     });

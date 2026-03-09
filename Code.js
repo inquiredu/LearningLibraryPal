@@ -1,5 +1,5 @@
 /**
- * Mngaia Dynamic Content Engine — Master Orchestration
+ * MNGAIA Dynamic Content Engine — Master Orchestration
  * Spreadsheet-bound. All top-level GAS entry points live here.
  */
 
@@ -8,7 +8,7 @@
 function onOpen() {
   SessionService.ensureMasterSheet();
   SpreadsheetApp.getUi()
-    .createMenu('Mngaia Engine')
+    .createMenu('MNGAIA Engine')
     .addItem('🚀  Launch New Session', 'showWizard')
     .addSeparator()
     .addItem('🔬  Synthesize Research', 'menuTriggerSynthesis')

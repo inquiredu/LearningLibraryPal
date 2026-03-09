@@ -50,7 +50,7 @@ const CollaboratorService = {
         try {
           GmailApp.sendEmail(
             email,
-            'You\'ve been added as a collaborator — ' + (session.name || 'Mngaia Session'),
+            'You\'ve been added as a collaborator — ' + (session.name || 'MNGAIA Session'),
             '',
             { htmlBody: self._buildNotificationEmail(session, dashboardUrl) }
           );
@@ -130,7 +130,7 @@ const CollaboratorService = {
       '<body style="margin:0;padding:0;background:#f5f7fa;font-family:\'Open Sans\',Arial,sans-serif;">' +
         '<div style="max-width:560px;margin:24px auto;background:#fff;border-radius:8px;overflow:hidden;">' +
           '<div style="background:' + navy + ';padding:24px 28px;">' +
-            '<p style="color:' + cyan + ';font-size:11px;letter-spacing:2px;text-transform:uppercase;margin:0 0 5px;">Mngaia Learning Community</p>' +
+            '<p style="color:' + cyan + ';font-size:11px;letter-spacing:2px;text-transform:uppercase;margin:0 0 5px;">MNGAIA Learning Community</p>' +
             '<h1 style="color:#fff;font-size:20px;margin:0;">' + (session.name || 'Upcoming Session') + '</h1>' +
           '</div>' +
           '<div style="padding:24px 28px;color:#2d2d2d;font-size:15px;line-height:1.7;">' +
@@ -140,7 +140,7 @@ const CollaboratorService = {
             '<p style="margin-top:16px;font-size:13px;color:#888;">From the dashboard you can add resources, run AI synthesis, review Gems, manage participants, and preview the Learning Library.</p>' +
           '</div>' +
           '<div style="background:#f5f7fa;padding:16px 28px;border-top:1px solid #e0e6ed;">' +
-            '<p style="color:#8a9bae;font-size:12px;margin:0;">Mngaia Learning Community &nbsp;·&nbsp; ' + (session.date || '') + '</p>' +
+            '<p style="color:#8a9bae;font-size:12px;margin:0;">MNGAIA Learning Community &nbsp;·&nbsp; ' + (session.date || '') + '</p>' +
           '</div>' +
         '</div>' +
       '</body></html>';

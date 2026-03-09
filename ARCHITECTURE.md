@@ -1,4 +1,4 @@
-# Mngaia Content Engine — Architecture
+# MNGAIA Content Engine — Architecture
 
 ## System Overview
 

@@ -1,4 +1,4 @@
-# Mngaia Content Engine — Handoff (March 9, 2026)
+# MNGAIA Content Engine — Handoff (March 9, 2026)
 
 ## Current Status: All features implemented and pushed — deployment version update required
 

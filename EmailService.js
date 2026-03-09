@@ -128,7 +128,7 @@ const EmailService = {
   <div style="max-width:600px;margin:0 auto;background:#ffffff;border-radius:8px;overflow:hidden;margin-top:24px;">
     <!-- Header -->
     <div style="background:${brandColor};padding:28px 32px;">
-      <p style="color:${accentColor};font-size:12px;letter-spacing:2px;text-transform:uppercase;margin:0 0 6px;">Mngaia Learning Community</p>
+      <p style="color:${accentColor};font-size:12px;letter-spacing:2px;text-transform:uppercase;margin:0 0 6px;">MNGAIA Learning Community</p>
       <h1 style="color:#ffffff;font-size:22px;margin:0;">${session.name || 'Upcoming Session'}</h1>
     </div>
     <!-- Body -->
@@ -139,7 +139,7 @@ const EmailService = {
     <!-- Footer -->
     <div style="background:#f5f7fa;padding:20px 32px;border-top:1px solid #e0e6ed;">
       <p style="color:#8a9bae;font-size:12px;margin:0;">
-        Mngaia Learning Community &nbsp;·&nbsp; ${session.date || ''}
+        MNGAIA Learning Community &nbsp;·&nbsp; ${session.date || ''}
       </p>
     </div>
   </div>

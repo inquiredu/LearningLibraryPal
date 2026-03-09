@@ -108,7 +108,7 @@ const SessionService = {
     row[this.COL.DATE]       = date;
     row[this.COL.FORMAT]     = format;
     row[this.COL.AUDIENCE]   = audience;
-    row[this.COL.BRAND]      = brand || 'Mngaia';
+    row[this.COL.BRAND]      = brand || 'MNGAIA';
     row[this.COL.STATUS]     = 'Active';
     row[this.COL.FOLDER_URL] = sessionFolder.getUrl();
     row[this.COL.LIBRARY_URL]= '';
@@ -253,7 +253,7 @@ const SessionService = {
     const ssFile = DriveApp.getFileById(ss2.getId());
     const parents = ssFile.getParents();
     const parent = parents.hasNext() ? parents.next() : DriveApp.getRootFolder();
-    const newFolder = parent.createFolder('Mngaia — Learning Library');
+    const newFolder = parent.createFolder('MNGAIA — Learning Library');
     folderId = newFolder.getId();
     props.setProperty('ROOT_FOLDER_ID', folderId);
     return folderId;

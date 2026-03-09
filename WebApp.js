@@ -39,25 +39,25 @@ function doGet(e) {
 
   if (page === 'wizard') {
     return HtmlService.createHtmlOutputFromFile('Wizard')
-      .setTitle('New Session — Mngaia')
+      .setTitle('New Session — MNGAIA')
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   }
 
   if (page === 'library') {
     const sessionId = e.parameter.session || '';
     const output = HtmlService.createHtmlOutputFromFile('LibraryPage')
-      .setTitle('Learning Library — Mngaia')
+      .setTitle('Learning Library — MNGAIA')
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 
     // Inject session ID into the page for client-side fetch
     const html = output.getContent().replace('__SESSION_ID__', sessionId);
     return HtmlService.createHtmlOutput(html)
-      .setTitle('Learning Library — Mngaia')
+      .setTitle('Learning Library — MNGAIA')
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   }
 
   return HtmlService.createHtmlOutputFromFile('Index')
-    .setTitle('Mngaia Content Engine')
+    .setTitle('MNGAIA Content Engine')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 

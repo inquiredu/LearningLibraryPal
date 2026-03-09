@@ -1,6 +1,6 @@
-# Mngaia Dynamic Content Engine
+# MNGAIA Dynamic Content Engine
 
-A Google Apps Script web application that manages the full content lifecycle for Mngaia's monthly collaborative learning sessions — from intake through synthesis, AI-powered Gems, a shareable learning library, and pre-session email.
+A Google Apps Script web application that manages the full content lifecycle for MNGAIA's monthly collaborative learning sessions — from intake through synthesis, AI-powered Gems, a shareable learning library, and pre-session email.
 
 ## What It Does
 

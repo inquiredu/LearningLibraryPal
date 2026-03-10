@@ -109,11 +109,27 @@ function menuTriggerSiteCode() {
 }
 
 function triggerCalendarAuth() {
-  try {
-    CalendarApp.getDefaultCalendar();
-    SpreadsheetApp.getUi().alert('✅ Calendar access authorized.\n\nThe Dashboard will now load without delays. Reload the web app to confirm.');
-  } catch (e) {
-    SpreadsheetApp.getUi().alert('❌ Calendar authorization failed: ' + e.message + '\n\nIf this persists, create a new deployment version: GAS Editor → Deploy → Manage → New version.');
+  var authInfo = ScriptApp.getAuthorizationInfo(ScriptApp.AuthMode.FULL);
+  if (authInfo.getAuthorizationStatus() === ScriptApp.AuthorizationStatus.REQUIRED) {
+    var authUrl = authInfo.getAuthorizationUrl();
+    var html = HtmlService.createHtmlOutput(
+      '<!DOCTYPE html><html><body style="font-family:\'Google Sans\',Arial,sans-serif;padding:20px;">' +
+      '<p style="margin:0 0 14px;color:#444;font-size:13px;">Calendar access requires re-authorization.<br>Click the button below to grant access.</p>' +
+      '<a href="' + authUrl + '" target="_blank" ' +
+        'style="display:inline-block;background:#0B2B46;color:#fff;padding:10px 22px;border-radius:6px;' +
+        'text-decoration:none;font-size:13px;font-weight:700;">Authorize Calendar Access &rarr;</a>' +
+      '<p style="margin-top:12px;font-size:0.75rem;color:#888;">After authorizing, reload the web app. The dashboard will load without delays.</p>' +
+      '</body></html>'
+    ).setWidth(380).setHeight(180);
+    SpreadsheetApp.getUi().showModalDialog(html, 'Calendar Authorization Required');
+  } else {
+    // Already authorized — confirm it works
+    try {
+      CalendarApp.getDefaultCalendar();
+      SpreadsheetApp.getUi().alert('✅ Calendar access is already authorized. Reload the web app — the dashboard should load normally.');
+    } catch (e) {
+      SpreadsheetApp.getUi().alert('Calendar check failed: ' + e.message);
+    }
   }
 }
 

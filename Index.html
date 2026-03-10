@@ -114,14 +114,25 @@
     .people-tab.active { color: var(--navy); border-bottom-color: var(--cyan); }
     .people-tab:hover { color: var(--navy); }
 
-    /* ── Newsletter wizard modal ── */
-    .newsletter-modal { max-width: 900px !important; }
-    .newsletter-grid { display: grid; grid-template-columns: 320px 1fr; gap: 24px; align-items: start; }
-    .newsletter-editor { display: flex; flex-direction: column; gap: 12px; }
-    .newsletter-editor .form-group { margin-bottom: 0; }
-    .newsletter-editor .form-group textarea { min-height: unset; }
-    .nl-preview-label { font-size: 0.68rem; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
-    .nl-preview-wrap { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; max-height: 540px; overflow-y: auto; background: #F5F7FA; }
+    /* ── Newsletter visual editor modal ── */
+    .newsletter-modal { max-width: 640px !important; }
+    .nl-meta-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+    .nl-meta-row label { width: 58px; flex-shrink: 0; font-size: 0.78rem; font-weight: 700; color: var(--navy); margin: 0; }
+    .nl-meta-row input { flex: 1; padding: 6px 10px; border: 1.5px solid var(--border); border-radius: 6px; font-size: 0.82rem; font-family: inherit; outline: none; }
+    .nl-meta-row input:focus { border-color: var(--cyan); }
+    .nl-ve-body { background: #F5F7FA; padding: 8px; border-radius: 8px; margin-top: 4px; }
+    .nl-ve-hint { font-size: 0.7rem; color: var(--muted); margin: 0 0 8px; text-align: center; }
+    .nl-ve-label { font-size: 8.5px; font-weight: 700; letter-spacing: 1.4px; text-transform: uppercase; color: #BCC5CF; margin: 14px 0 4px 2px; display: block; }
+    .nl-ve-field { outline: none; border-radius: 3px; transition: background 0.15s, box-shadow 0.15s; cursor: text; display: block; }
+    .nl-ve-field:hover { background: rgba(93,205,245,0.08); }
+    .nl-ve-field:focus { background: rgba(93,205,245,0.12); box-shadow: 0 0 0 2px rgba(93,205,245,0.28); }
+    .nl-bullet-row { display: flex; align-items: baseline; gap: 4px; margin-bottom: 3px; }
+    .nl-bullet { outline: none; border-radius: 3px; padding: 2px 4px; transition: background 0.15s; cursor: text; flex: 1; }
+    .nl-bullet:hover, .nl-bullet:focus { background: rgba(93,205,245,0.08); }
+    .nl-bullet-del { background: none; border: none; color: #BCC5CF; cursor: pointer; font-size: 15px; padding: 0 2px; line-height: 1; opacity: 0; transition: opacity 0.12s; flex-shrink: 0; }
+    .nl-bullet-row:hover .nl-bullet-del { opacity: 1; }
+    .nl-add-bullet { background: none; border: 1px dashed #BCC5CF; color: #8A9BAE; cursor: pointer; font-size: 11px; padding: 3px 10px; border-radius: 4px; margin-top: 5px; }
+    .nl-add-bullet:hover { border-color: var(--cyan); color: var(--navy); }
 
     /* ── Resources modal ── */
     .res-section-label { font-size:0.72rem; font-weight:700; text-transform:uppercase; letter-spacing:0.8px; color:var(--muted); margin:16px 0 8px; padding-bottom:6px; border-bottom:1px solid var(--border); }
@@ -1049,49 +1060,128 @@
     }
 
     function _renderNewsletterEditor(data) {
+      var navy = '#0B2B46', cyan = '#5DCDF5';
+      var d = data || {};
+
+      var chips = [
+        d.sessionDate ? String(d.sessionDate).substring(0, 10) : null,
+        d.sessionFormat, d.sessionAudience
+      ].filter(Boolean);
+      var chipsHtml = chips.map(function(c) {
+        return '<span style="display:inline-block;background:rgba(93,205,245,0.18);color:' + cyan + ';border:1px solid rgba(93,205,245,0.35);padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;margin-right:6px;margin-top:4px;">' + esc(c) + '</span>';
+      }).join('');
+
+      var bulletsHtml = (d.highlights || []).map(function(h) {
+        return '<div class="nl-bullet-row">' +
+          '<span style="color:#7F8FA4;font-size:13px;flex-shrink:0;">•</span>' +
+          '<div class="nl-bullet" contenteditable="true" onkeydown="if(event.key===\'Enter\'){event.preventDefault();addNlBullet(this);}" style="font-size:13px;line-height:1.7;color:#2C3E50;">' + esc(h) + '</div>' +
+          '<button class="nl-bullet-del" onclick="removeNlBullet(this)" title="Remove">×</button>' +
+        '</div>';
+      }).join('');
+
+      var resources = d.resources || [];
+      var resourcesHtml = resources.map(function(r) {
+        return '<div style="padding:10px 0;border-bottom:1px solid #EEF2F7;">' +
+          '<div style="font-size:13px;font-weight:700;color:' + navy + ';">' + esc(r.title || r.name || '') + '</div>' +
+          (r.relevanceStatement ? '<div style="font-size:12px;color:#7F8FA4;margin:3px 0 0;line-height:1.5;">' + esc(r.relevanceStatement) + '</div>' : '') +
+        '</div>';
+      }).join('');
+
       document.getElementById('newsletterModalBody').innerHTML =
-        '<div class="newsletter-grid">' +
-          // Editor column
-          '<div class="newsletter-editor">' +
-            '<div class="form-group"><label>Recipients</label>' +
-              '<input type="text" id="nl-recipients" placeholder="alice@example.com, bob@example.com">' +
-              '<div style="font-size:0.72rem;color:var(--muted);margin-top:4px;">Pre-filled from participants · edit as needed</div>' +
-            '</div>' +
-            '<div class="form-group"><label>Subject Line</label>' +
-              '<input type="text" id="nl-subject" oninput="updateNlPreview()" value="' + esc(data.subject || '') + '">' +
-            '</div>' +
-            '<div class="form-group"><label>Opening Hook</label>' +
-              '<input type="text" id="nl-heroLine" oninput="updateNlPreview()" value="' + esc(data.heroLine || '') + '" placeholder="A punchy one-liner…">' +
-            '</div>' +
-            '<div class="form-group"><label>Intro Paragraph</label>' +
-              '<textarea id="nl-intro" rows="4" oninput="updateNlPreview()" style="min-height:unset;">' + esc(data.intro || '') + '</textarea>' +
-            '</div>' +
-            '<div class="form-group"><label>What We\'ll Explore <span style="font-weight:400;color:var(--muted);">(one bullet per line)</span></label>' +
-              '<textarea id="nl-highlights" rows="4" oninput="updateNlPreview()" style="min-height:unset;">' + esc((data.highlights || []).join('\n')) + '</textarea>' +
-            '</div>' +
-            '<div class="form-group" style="margin-bottom:0;"><label>Pre-Reading Note</label>' +
-              '<input type="text" id="nl-preReadNote" oninput="updateNlPreview()" value="' + esc(data.preReadingNote || '') + '" placeholder="Why these resources matter…">' +
-            '</div>' +
+        // To + Subject fields
+        '<div style="padding-bottom:14px;border-bottom:1px solid var(--border);margin-bottom:12px;">' +
+          '<div class="nl-meta-row"><label>To</label>' +
+            '<input type="text" id="nl-recipients" placeholder="alice@example.com, bob@example.com">' +
           '</div>' +
-          // Preview column
-          '<div>' +
-            '<div class="nl-preview-label">📧 Live Preview</div>' +
-            '<div class="nl-preview-wrap" id="nl-preview"></div>' +
+          '<div class="nl-meta-row"><label>Subject</label>' +
+            '<input type="text" id="nl-subject" value="' + esc(d.subject || '') + '" placeholder="Subject line…">' +
+          '</div>' +
+        '</div>' +
+        // Visual email (the editor IS the preview — click to edit)
+        '<p class="nl-ve-hint">✎ Click any section below to edit it directly</p>' +
+        '<div class="nl-ve-body">' +
+          '<div style="background:#fff;border-radius:6px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.07);">' +
+            // Header — navy band, non-editable
+            '<div style="background:' + navy + ';padding:24px 28px;">' +
+              '<div style="color:' + cyan + ';font-size:10px;letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-bottom:6px;">MNGAIA Learning Community</div>' +
+              '<div style="color:#fff;font-size:18px;font-weight:800;line-height:1.3;' + (chipsHtml ? 'margin-bottom:10px;' : '') + '">' + esc(d.sessionName || '') + '</div>' +
+              (chipsHtml ? '<div>' + chipsHtml + '</div>' : '') +
+            '</div>' +
+            // Editable body
+            '<div style="padding:20px 28px 24px;">' +
+              '<span class="nl-ve-label">Opening Hook ✎</span>' +
+              '<div id="nl-heroLine" class="nl-ve-field" contenteditable="true" onkeydown="if(event.key===\'Enter\')event.preventDefault();" ' +
+                'style="font-size:15px;font-weight:700;color:' + navy + ';line-height:1.4;border-left:3px solid ' + cyan + ';padding:4px 8px 4px 14px;">' +
+                esc(d.heroLine || '') +
+              '</div>' +
+              '<span class="nl-ve-label">Intro Paragraph ✎</span>' +
+              '<div id="nl-intro" class="nl-ve-field" contenteditable="true" ' +
+                'style="font-size:14px;line-height:1.8;color:#2C3E50;padding:4px 6px;">' +
+                esc(d.intro || '') +
+              '</div>' +
+              '<span class="nl-ve-label">What We\'ll Explore ✎</span>' +
+              '<div id="nl-bullets">' + bulletsHtml + '</div>' +
+              '<button class="nl-add-bullet" onclick="addNlBullet()">+ Add bullet</button>' +
+              (resources.length ?
+                '<span class="nl-ve-label">Pre-Reading Note ✎</span>' +
+                '<div id="nl-preReadNote" class="nl-ve-field" contenteditable="true" onkeydown="if(event.key===\'Enter\')event.preventDefault();" ' +
+                  'style="font-size:13px;color:#555;line-height:1.6;padding:4px 6px;">' +
+                  esc(d.preReadingNote || '') +
+                '</div>' +
+                '<div style="background:#F7FAFC;border:1px solid #DDE4ED;border-radius:6px;padding:0 14px;margin-top:12px;">' + resourcesHtml + '</div>'
+              : '') +
+              (d.libraryUrl ?
+                '<div style="text-align:center;padding-top:20px;">' +
+                  '<div style="display:inline-block;background:' + cyan + ';color:' + navy + ';padding:12px 28px;border-radius:6px;font-weight:700;font-size:14px;cursor:default;">Open Learning Library →</div>' +
+                '</div>'
+              : '') +
+            '</div>' +
+            // Footer — non-editable
+            '<div style="background:#F5F7FA;padding:14px 28px;border-top:1px solid #DDE4ED;">' +
+              '<div style="color:#8A9BAE;font-size:11px;">MNGAIA Learning Community · ' + esc(String(d.sessionDate || '').substring(0, 10)) + '</div>' +
+            '</div>' +
           '</div>' +
         '</div>';
+
       document.getElementById('newsletterModalFooter').style.display = 'flex';
-      updateNlPreview();
     }
 
-    function updateNlPreview() {
-      var preview = document.getElementById('nl-preview');
-      if (!preview || !_newsletterDraft) return;
-      var heroLine = (document.getElementById('nl-heroLine') || {}).value || '';
-      var intro = (document.getElementById('nl-intro') || {}).value || '';
-      var highlightsRaw = (document.getElementById('nl-highlights') || {}).value || '';
-      var preReadNote = (document.getElementById('nl-preReadNote') || {}).value || '';
-      var highlights = highlightsRaw.split('\n').map(function(l) { return l.trim(); }).filter(Boolean);
-      preview.innerHTML = _buildNlHtml(heroLine, intro, highlights, preReadNote);
+    // ── Newsletter visual editor helpers ───────────────────────────────────────
+
+    function addNlBullet(afterEl) {
+      var container = document.getElementById('nl-bullets');
+      if (!container) return;
+      var row = document.createElement('div');
+      row.className = 'nl-bullet-row';
+      row.innerHTML =
+        '<span style="color:#7F8FA4;font-size:13px;flex-shrink:0;">•</span>' +
+        '<div class="nl-bullet" contenteditable="true" onkeydown="if(event.key===\'Enter\'){event.preventDefault();addNlBullet(this);}" style="font-size:13px;line-height:1.7;color:#2C3E50;"></div>' +
+        '<button class="nl-bullet-del" onclick="removeNlBullet(this)" title="Remove">×</button>';
+      if (afterEl) {
+        var parentRow = afterEl.closest ? afterEl.closest('.nl-bullet-row') : afterEl.parentElement;
+        container.insertBefore(row, parentRow ? parentRow.nextSibling : null);
+      } else {
+        container.appendChild(row);
+      }
+      var bullet = row.querySelector('.nl-bullet');
+      if (bullet) bullet.focus();
+    }
+
+    function removeNlBullet(btn) {
+      var row = btn.closest ? btn.closest('.nl-bullet-row') : btn.parentElement;
+      if (row) row.remove();
+    }
+
+    // Safely extract plain text from a contenteditable element
+    function _nlText(idOrEl) {
+      var el = typeof idOrEl === 'string' ? document.getElementById(idOrEl) : idOrEl;
+      if (!el) return '';
+      var html = el.innerHTML || '';
+      // Normalize browser-inserted <br> and <div> to newlines, then strip remaining tags
+      var text = html.replace(/<br\s*\/?>/gi, '\n').replace(/<div>/gi, '\n').replace(/<\/div>/gi, '').replace(/<[^>]+>/g, '');
+      var tmp = document.createElement('textarea');
+      tmp.innerHTML = text; // decode HTML entities
+      return tmp.value.trim();
     }
 
     function _buildNlHtml(heroLine, intro, highlights, preReadNote) {
@@ -1167,11 +1257,13 @@
       var subject = (document.getElementById('nl-subject') || {}).value || '';
       if (!subject.trim()) { alert('Enter a subject line.'); return; }
 
-      var heroLine = (document.getElementById('nl-heroLine') || {}).value || '';
-      var intro = (document.getElementById('nl-intro') || {}).value || '';
-      var highlightsRaw = (document.getElementById('nl-highlights') || {}).value || '';
-      var preReadNote = (document.getElementById('nl-preReadNote') || {}).value || '';
-      var highlights = highlightsRaw.split('\n').map(function(l) { return l.trim(); }).filter(Boolean);
+      var heroLine = _nlText('nl-heroLine');
+      var intro = _nlText('nl-intro');
+      var preReadNote = _nlText('nl-preReadNote');
+      var highlights = [];
+      document.querySelectorAll('#nl-bullets .nl-bullet').forEach(function(el) {
+        var t = _nlText(el); if (t) highlights.push(t);
+      });
 
       // Build the full sendable HTML (DOCTYPE + body wrapper)
       var innerHtml = _buildNlHtml(heroLine, intro, highlights, preReadNote);

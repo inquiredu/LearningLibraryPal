@@ -313,6 +313,46 @@ function webFixPermissions(fileIds) {
   return PermissionService.fixPermissions(fileIds);
 }
 
+// ─── Calendar Browser ────────────────────────────────────────────────────────
+
+/**
+ * Returns upcoming calendar events from the user's primary calendar.
+ * Extracts Google Meet links from description/location text via regex.
+ * @param {number} [daysAhead=60] - How many days forward to search
+ * @returns {{ id, title, dateLabel, timeLabel, startIso, location, meetUrl, hasMeet }[]}
+ */
+function webGetCalendarEvents(daysAhead) {
+  const MEET_RE = /https:\/\/meet\.google\.com\/[a-z]{3}-[a-z]{4}-[a-z]{3}/i;
+  const now    = new Date();
+  const future = new Date(now.getTime() + ((daysAhead || 60) * 24 * 60 * 60 * 1000));
+
+  try {
+    const cal    = CalendarApp.getDefaultCalendar();
+    const events = cal.getEvents(now, future);
+    return events
+      .filter(ev => !ev.isAllDayEvent() && ev.getTitle())
+      .slice(0, 60)
+      .map(ev => {
+        const desc    = ev.getDescription() || '';
+        const loc     = ev.getLocation()    || '';
+        const hit     = (desc + ' ' + loc).match(MEET_RE);
+        const start   = ev.getStartTime();
+        return {
+          id:        ev.getId(),
+          title:     ev.getTitle(),
+          dateLabel: start.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
+          timeLabel: start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
+          startIso:  start.toISOString(),
+          location:  loc,
+          meetUrl:   hit ? hit[0] : null,
+          hasMeet:   !!hit
+        };
+      });
+  } catch (e) {
+    throw new Error('Could not access Google Calendar: ' + e.message);
+  }
+}
+
 // ─── Drive Folder Browser ─────────────────────────────────────────────────────
 
 /**

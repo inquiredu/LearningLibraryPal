@@ -139,6 +139,20 @@
     .link-row input:focus { outline:none; border-color:var(--cyan); }
     .link-row select { padding:5px 6px; border:1px solid var(--border); border-radius:4px; font-size:0.74rem; background:#fff; flex-shrink:0; }
     .res-empty { text-align:center; padding:16px; color:var(--muted); font-size:0.82rem; background:var(--bg); border-radius:6px; border:1px dashed var(--border); }
+
+    /* ── Calendar event rows ── */
+    .cal-event-rows { display:flex; flex-direction:column; gap:3px; max-height:260px; overflow-y:auto; }
+    .cal-event-row {
+      display:flex; align-items:center; gap:9px; padding:7px 10px;
+      background:var(--bg); border:1px solid var(--border); border-radius:6px;
+      cursor:pointer; font-size:0.82rem; transition:border-color 0.12s;
+    }
+    .cal-event-row.meet { border-color:#C3E6CB; background:#F0FFF4; }
+    .cal-event-row:hover { border-color:var(--cyan); }
+    .cal-meet-badge { font-size:0.62rem; font-weight:700; background:#28a745; color:#fff; padding:2px 7px; border-radius:8px; flex-shrink:0; letter-spacing:0.3px; }
+    .cal-ev-title { flex:1; font-weight:600; color:var(--navy); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .cal-ev-date  { font-size:0.74rem; color:var(--muted); white-space:nowrap; flex-shrink:0; }
+    .cal-group-label { font-size:0.68rem; font-weight:700; text-transform:uppercase; letter-spacing:0.9px; color:var(--muted); margin:8px 0 3px; }
   </style>
 </head>
 <body>
@@ -256,6 +270,13 @@
           <button class="btn btn-dark btn-sm" id="res-loadBtn" onclick="loadDriveFolder()">Load Files</button>
         </div>
         <div id="res-fileList" style="display:none;margin-bottom:14px;"></div>
+        <div class="res-section-label">Or Browse Calendar Events</div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+          <button class="btn btn-dark btn-sm" id="cal-loadBtn" onclick="loadCalendarEvents()">📅 Load Events</button>
+          <span style="font-size:0.72rem;color:var(--muted);">Fetches next 60 days from your Google Calendar · Meet links auto-detected</span>
+        </div>
+        <div id="cal-eventList" style="display:none;margin-bottom:14px;"></div>
+
         <div class="res-section-label">Or Add Individual Links</div>
         <p style="font-size:0.73rem;color:var(--muted);margin-bottom:8px;">Paste any Drive share link or URL — file IDs are extracted automatically.</p>
         <div style="margin-bottom:6px;">
@@ -793,6 +814,72 @@
       document.getElementById('res-linkRows').innerHTML = '';
       document.getElementById('res-status').textContent = '';
       document.getElementById('res-submit').disabled = false;
+      // Reset calendar section
+      document.getElementById('cal-eventList').style.display = 'none';
+      document.getElementById('cal-eventList').innerHTML = '';
+      var calBtn = document.getElementById('cal-loadBtn');
+      if (calBtn) { calBtn.disabled = false; calBtn.textContent = '📅 Load Events'; }
+    }
+
+    // ── Calendar event browser ─────────────────────────────────────────────────
+
+    function loadCalendarEvents() {
+      var btn = document.getElementById('cal-loadBtn');
+      btn.disabled = true; btn.textContent = 'Loading…';
+      google.script.run
+        .withSuccessHandler(function(events) {
+          btn.disabled = false; btn.textContent = '📅 Load Events';
+          renderCalendarEvents(events);
+        })
+        .withFailureHandler(function(err) {
+          btn.disabled = false; btn.textContent = '📅 Load Events';
+          showAlert('Calendar error: ' + err.message, 'error');
+        })
+        .webGetCalendarEvents(60);
+    }
+
+    function renderCalendarEvents(events) {
+      var el = document.getElementById('cal-eventList');
+      if (!events || !events.length) {
+        el.innerHTML = '<div class="res-empty">No upcoming events found in the next 60 days.</div>';
+        el.style.display = 'block';
+        return;
+      }
+      var withMeet    = events.filter(function(e) { return e.hasMeet; });
+      var withoutMeet = events.filter(function(e) { return !e.hasMeet; });
+
+      var html = '<div class="cal-event-rows">';
+
+      if (withMeet.length) {
+        html += '<div class="cal-group-label">📹 With Google Meet (' + withMeet.length + ')</div>';
+        html += withMeet.map(function(ev) {
+          return '<label class="cal-event-row meet">' +
+            '<input type="checkbox" data-ev-type="meet" ' +
+              'data-url="' + esc(ev.meetUrl) + '" ' +
+              'data-name="' + esc(ev.title + ' — ' + ev.dateLabel) + '">' +
+            '<span class="cal-meet-badge">Meet</span>' +
+            '<span class="cal-ev-title">' + esc(ev.title) + '</span>' +
+            '<span class="cal-ev-date">' + esc(ev.dateLabel) + ' · ' + esc(ev.timeLabel) + '</span>' +
+          '</label>';
+        }).join('');
+      }
+
+      if (withoutMeet.length) {
+        html += '<div class="cal-group-label">📆 Other Events (' + withoutMeet.length + ')</div>';
+        html += withoutMeet.map(function(ev) {
+          return '<label class="cal-event-row">' +
+            '<input type="checkbox" data-ev-type="event" ' +
+              'data-url="https://calendar.google.com/calendar/r" ' +
+              'data-name="' + esc(ev.title + ' — ' + ev.dateLabel) + '">' +
+            '<span class="cal-ev-title">' + esc(ev.title) + '</span>' +
+            '<span class="cal-ev-date">' + esc(ev.dateLabel) + ' · ' + esc(ev.timeLabel) + '</span>' +
+          '</label>';
+        }).join('');
+      }
+
+      html += '</div>';
+      el.innerHTML = html;
+      el.style.display = 'block';
     }
 
     function closeResourcesModal() {
@@ -876,6 +963,14 @@
           if (fileId) entry.fileId = fileId;
           resources.push(entry);
         }
+      });
+      // Calendar events selected from the browser
+      document.querySelectorAll('#cal-eventList input[type=checkbox]:checked').forEach(function(cb) {
+        resources.push({
+          name: cb.dataset.name,
+          url:  cb.dataset.url,
+          type: cb.dataset.evType === 'meet' ? 'Meeting Link' : 'Web Resource'
+        });
       });
       if (!resources.length) { closeResourcesModal(); return; }
       document.getElementById('res-spinner').style.display = 'block';

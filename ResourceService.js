@@ -45,6 +45,7 @@ const ResourceService = {
     let added = 0;
     let shortcuts = 0;
     const errors = [];
+    const newRows = [];
 
     resources.forEach(function(r) {
       try {
@@ -56,8 +57,8 @@ const ResourceService = {
         // Skip dupes
         if (existing.has(url)) return;
 
-        // Write to Resources sheet (columns match the existing 10-col schema)
-        sheet.appendRow([
+        // Build row data (columns match the existing 10-col schema)
+        newRows.push([
           url,
           r.name || 'Untitled',
           r.type || 'Resource',
@@ -81,6 +82,11 @@ const ResourceService = {
         errors.push((r.name || r.url || 'unknown') + ': ' + e.message);
       }
     }, this);
+
+    // Batch write to sheet
+    if (newRows.length > 0) {
+      sheet.getRange(sheet.getLastRow() + 1, 1, newRows.length, 10).setValues(newRows);
+    }
 
     return { added: added, shortcuts: shortcuts, errors: errors };
   },

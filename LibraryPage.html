@@ -82,6 +82,46 @@
     .progress-fill { height: 100%; background: var(--cyan); border-radius: 2px; transition: width 0.4s ease; }
     .progress-label { font-size: 0.72rem; color: rgba(255,255,255,0.55); font-weight: 600; }
 
+    /* ── Hero join button ─────────────────────────────────────────── */
+    .hero-join-btn {
+      display: inline-flex; align-items: center; gap: 10px;
+      background: #5DCDF5; color: #0B2B46;
+      font-family: 'Montserrat', sans-serif; font-weight: 800; font-size: 0.95rem; letter-spacing: 0.02em;
+      padding: 12px 28px; border-radius: 8px; text-decoration: none;
+      box-shadow: 0 4px 18px rgba(93,205,245,0.35);
+      transition: background 0.15s, box-shadow 0.15s, transform 0.1s;
+    }
+    .hero-join-btn:hover { background: #84dafc; box-shadow: 0 6px 24px rgba(93,205,245,0.5); transform: translateY(-1px); }
+    .hero-join-btn:active { transform: translateY(0); }
+    .hero-join-dot { width: 9px; height: 9px; border-radius: 50%; background: #0B2B46; animation: heroPulse 1.6s ease-in-out infinite; }
+    @keyframes heroPulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(1.4)} }
+
+    /* ── Onboarding banner ────────────────────────────────────────── */
+    #onboardingBanner {
+      background: linear-gradient(135deg, rgba(11,43,70,0.96) 0%, rgba(10,30,54,0.98) 100%);
+      border: 1px solid rgba(93,205,245,0.25); border-radius: 14px;
+      padding: 22px 24px; margin: 0 0 28px 0; position: relative;
+    }
+    #onboardingBanner h3 {
+      font-family: 'Montserrat', sans-serif; font-weight: 800; font-size: 0.9rem;
+      color: var(--cyan); text-transform: uppercase; letter-spacing: 0.08em; margin: 0 0 10px 0;
+    }
+    #onboardingBanner p { font-size: 0.82rem; color: rgba(255,255,255,0.75); margin: 0 0 14px 0; line-height: 1.55; }
+    #onboardingBanner ol { margin: 0 0 14px 0; padding-left: 18px; }
+    #onboardingBanner ol li { font-size: 0.82rem; color: rgba(255,255,255,0.75); margin-bottom: 5px; line-height: 1.5; }
+    #onboardingBanner ol li strong { color: rgba(255,255,255,0.95); }
+    .onboarding-dismiss {
+      display: inline-block; font-size: 0.75rem; font-weight: 700; font-family: 'Montserrat', sans-serif;
+      color: var(--cyan); background: none; border: 1px solid rgba(93,205,245,0.4);
+      border-radius: 6px; padding: 5px 14px; cursor: pointer; letter-spacing: 0.04em;
+    }
+    .onboarding-dismiss:hover { background: rgba(93,205,245,0.1); }
+    .onboarding-close-x {
+      position: absolute; top: 12px; right: 14px; background: none; border: none;
+      color: rgba(255,255,255,0.35); font-size: 1.1rem; cursor: pointer; padding: 2px 6px; line-height: 1;
+    }
+    .onboarding-close-x:hover { color: rgba(255,255,255,0.75); }
+
     /* ── Page body ────────────────────────────────────────────────── */
     #content { display: none; }
     .page-body { display: flex; max-width: 1180px; margin: 0 auto; padding: 0 20px; gap: 0; }
@@ -542,11 +582,31 @@
           <div class="progress-track"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
           <span class="progress-label" id="progressLabel"></span>
         </div>
+        <div id="heroActions" style="margin-top:20px;display:none;"></div>
       </div>
     </div>
 
     <!-- Mobile tab nav -->
     <nav class="mobile-nav" id="mobileNav"></nav>
+
+    <!-- Onboarding banner (shown to first-time visitors, per session) -->
+    <div id="onboardingBanner" style="display:none;max-width:1180px;margin:24px auto 0;padding-left:20px;padding-right:20px;box-sizing:border-box;">
+      <div style="position:relative;background:linear-gradient(135deg,rgba(11,43,70,0.96) 0%,rgba(10,30,54,0.98) 100%);border:1px solid rgba(93,205,245,0.25);border-radius:14px;padding:22px 24px;">
+        <button class="onboarding-close-x" onclick="dismissOnboarding()" title="Dismiss">&times;</button>
+        <h3>Welcome to the Learning Library</h3>
+        <p>This is your personal learning hub for this MNGAIA session. Everything you need — resources, questions, and tools — is organized below.</p>
+        <ol>
+          <li><strong>Overview &amp; Objectives</strong> — See the session summary and what you'll explore.</li>
+          <li><strong>Inquiry Questions</strong> — Provocative questions to guide your thinking.</li>
+          <li><strong>Resources</strong> — Articles, videos, slides, and meeting links curated for this session.</li>
+          <li><strong>Gems</strong> — AI-generated conversation starters and expert perspectives.</li>
+          <li><strong>NotebookLM</strong> — Deep-dive research prompts for independent exploration.</li>
+          <li><strong>Checklist</strong> — Track your progress as you move through the material.</li>
+        </ol>
+        <p style="margin-bottom:10px;">Drag the section headings to reorder them to your preference — the order is saved for your next visit.</p>
+        <button class="onboarding-dismiss" onclick="dismissOnboarding()">Got it &mdash; let me explore</button>
+      </div>
+    </div>
 
     <!-- Page body: sidebar + content -->
     <div class="page-body">
@@ -728,6 +788,24 @@
       document.getElementById('heroOverview').textContent =
         overviewFull.length > 240 ? overviewFull.substring(0, 240) + '…' : overviewFull;
 
+      // Hero join button — first meeting-type resource
+      var resources = data.resources || [];
+      var meetResource = null;
+      for (var ri = 0; ri < resources.length; ri++) {
+        if (_getResourceKind(resources[ri]) === 'meeting') { meetResource = resources[ri]; break; }
+      }
+      var heroActions = document.getElementById('heroActions');
+      if (meetResource && meetResource.url) {
+        heroActions.innerHTML =
+          '<a class="hero-join-btn" href="' + esc(meetResource.url) + '" target="_blank" rel="noopener">' +
+            '<span class="hero-join-dot"></span>' +
+            'Join Main Room' +
+          '</a>';
+        heroActions.style.display = 'block';
+      } else {
+        heroActions.style.display = 'none';
+      }
+
       // Build sections
       renderOverview(brief);
       renderQuestions(brief.inquiryQuestions || []);
@@ -741,6 +819,21 @@
       buildMobileNav();
       // Collapse NotebookLM by default (it's detailed setup content, not primary reading)
       initSections();
+      // Show onboarding banner for first-time visitors
+      showOnboardingIfNew();
+    }
+
+    var _ONBOARDING_KEY = 'mngaia-library-visited-' + SESSION_ID;
+    function showOnboardingIfNew() {
+      try {
+        if (!localStorage.getItem(_ONBOARDING_KEY)) {
+          document.getElementById('onboardingBanner').style.display = 'block';
+        }
+      } catch (e) {}
+    }
+    function dismissOnboarding() {
+      document.getElementById('onboardingBanner').style.display = 'none';
+      try { localStorage.setItem(_ONBOARDING_KEY, '1'); } catch (e) {}
     }
 
     // ── Overview ──────────────────────────────────────────────────────────────
@@ -1265,25 +1358,26 @@
     function initSectionDrag() {
       var main = document.querySelector('.main-content');
       document.querySelectorAll('.main-content > .section[id]').forEach(function(section) {
-        section.setAttribute('draggable', 'true');
+        // Attach drag listeners to the heading so the draggable element IS the target
+        var heading = section.querySelector('.section-heading');
+        if (heading) {
+          heading.setAttribute('draggable', 'true');
 
-        section.addEventListener('dragstart', function(e) {
-          // Only allow drag when initiated from the heading area
-          if (!e.target.closest('.section-heading')) { e.preventDefault(); return; }
-          _libDragSection = section;
-          e.dataTransfer.effectAllowed = 'move';
-          // Defer adding class so the ghost image captures the un-dimmed state
-          requestAnimationFrame(function() { section.classList.add('lib-dragging'); });
-        });
-
-        section.addEventListener('dragend', function() {
-          section.classList.remove('lib-dragging');
-          document.querySelectorAll('.section.lib-drag-over-before, .section.lib-drag-over-after').forEach(function(s) {
-            s.classList.remove('lib-drag-over-before', 'lib-drag-over-after');
+          heading.addEventListener('dragstart', function(e) {
+            _libDragSection = section;
+            e.dataTransfer.effectAllowed = 'move';
+            requestAnimationFrame(function() { section.classList.add('lib-dragging'); });
           });
-          if (_libDragSection) saveSectionOrder();
-          _libDragSection = null;
-        });
+
+          heading.addEventListener('dragend', function() {
+            section.classList.remove('lib-dragging');
+            document.querySelectorAll('.section.lib-drag-over-before, .section.lib-drag-over-after').forEach(function(s) {
+              s.classList.remove('lib-drag-over-before', 'lib-drag-over-after');
+            });
+            if (_libDragSection) saveSectionOrder();
+            _libDragSection = null;
+          });
+        }
 
         section.addEventListener('dragover', function(e) {
           e.preventDefault();

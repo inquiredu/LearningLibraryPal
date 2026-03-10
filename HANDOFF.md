@@ -1,9 +1,9 @@
-# MNGAIA Content Engine — Handoff (March 9, 2026)
+# MNGAIA Content Engine — Handoff (March 10, 2026)
 
 ## Current Status: All features implemented and pushed — deployment version update required
 
-All code is committed to `main` and pushed to GitHub. Five feature groups were added in this session.
-One manual action is required before the live web app reflects these changes.
+All code is committed to `main` and pushed to GitHub. Several feature groups were added across two sessions.
+One manual action is required before the live web app reflects the latest changes.
 
 ---
 
@@ -18,57 +18,80 @@ One manual action is required before the live web app reflects these changes.
 6. Click Deploy
 
 > `clasp push` only updates HEAD. The live web app won't reflect code changes until a new version is published.
-
-**Also: fix the corrupt session row in the Master Sheet**
-One existing session has an error message in the THEME column (col C). Manually edit that cell to contain the real theme text, then click "✨ Generate Brief" on that session card to regenerate the AI brief. Without a real theme, Gemini cannot produce useful content.
+> Also set "Who has access" to **"Anyone"** (not "Anyone with Google account") so the public Library page works without sign-in.
 
 ---
 
-## What Was Built This Session
+## What Was Built (cumulative across both sessions)
 
 ### 1. Email Template Fix
-- `EmailService.sendApprovedDraft()` was sending raw Gemini HTML without the MNGAIA branded wrapper
-- Fixed: `_wrapInEmailTemplate()` now applied before sending in both the web app and menu flows
+- `EmailService.sendApprovedDraft()` now wraps Gemini HTML in the MNGAIA branded email template before sending
 
-### 2. Sites Code Generator (`SitesService.js` — new file)
+### 2. Sites Code Generator (`SitesService.js`)
 - Generates 5 embed-ready HTML sections for Google Sites: Hero Banner, Session Overview, Inquiry Questions, Resources, AI Gems
-- Iframes for Drive Slides, Drive files, YouTube; styled link cards for web resources
-- Saves a formatted Google Doc to `04_Final` with copy-paste instructions per section
-- Dashboard: `🌐 Site Code` button; menu: `Generate Site Code` item
+- Iframes for Drive Slides/Docs/files, YouTube; styled link cards for external resources
+- Saves a formatted Google Doc to `04_Final` with per-section copy-paste instructions
+- Dashboard: `🌐 Site Code` button; menu: `Generate Site Code`
 
 ### 3. Brief Regeneration
-- Added `✨ Generate Brief` button to session cards (shown when `Brief ○`)
-- `webRegenerateBrief(sessionId)` calls Gemini with session theme/format/audience, writes result to `BRIEF_JSON` column, invalidates library cache
-- Handles sessions created before brief generation was working or sessions with corrupted data
+- `✨ Generate Brief` button on session cards (shown when brief is missing/corrupted)
+- `webRegenerateBrief(sessionId)` calls Gemini and writes result to `BRIEF_JSON` column
 
-### 4. Collaborator Management (`CollaboratorService.js` — new file)
-- `addEditors(sessionId, emails)` — shares session Drive folder (recursive: covers all subfolders + Project DB)
-- `getEditors(sessionId)` — reads live sharing state from Drive (Drive is source of truth, no extra column)
-- `removeEditor(sessionId, email)` — removes access
-- Dashboard: `👥 Collaborators` modal with live list, add/remove UI
-- Wizard Step 1: optional Collaborators field; access added in background after session creation
+### 4. Collaborator Management (`CollaboratorService.js`)
+- `addEditors` / `getEditors` / `removeEditor` — Drive is source of truth, no extra column needed
+- Dashboard: `👥 Collaborators` modal; Wizard Step 1: optional Collaborators field
 
-### 5. Permission Checker (`PermissionService.js` — new file)
-- Checks Drive sharing access for every resource before publishing to Sites
-- Access states: `public` (ANYONE/ANYONE_WITH_LINK), `restricted` (PRIVATE/DOMAIN), `external` (non-Drive), `youtube`
-- `fixPermissions(fileIds)` — sets ANYONE_WITH_LINK + VIEW on all blocked files
-- Dashboard: `🔍 Check Access` button opens results table; `Fix All Restricted` button + re-check
+### 5. Permission Checker (`PermissionService.js`)
+- Checks Drive sharing for all session resources; states: `public`, `restricted`, `external`, `youtube`, `error`
+- `fixPermissions(fileIds)` — sets ANYONE_WITH_LINK + VIEW on blocked files
+- Dashboard: `🔍 Check Access` button + `Fix All Restricted` action
 
 ### 6. Type-Aware Resource Synthesis
-- `GeminiService.analyzeResourceByType()` — same output schema as before, but type-specific prompt instructions tell Gemini what to extract from each resource type
+- `GeminiService.analyzeResourceByType()` — type-specific Gemini prompts per resource type (Planning Doc, Facilitator Guide, Video, Audio, Meeting Link, Slide Deck, Web Resource)
+- Meeting Links: skip Gemini entirely — written instantly, no API cost
+- Planning Doc → Auto-Brief Enrichment: `GeminiService.enrichBriefFromPlanningDoc()` grounds the brief in the actual facilitator planning doc
 
-  | Type | Gemini behavior |
-  |------|----------------|
-  | Planning Doc | Extract facilitator intent, goals, constraints; `relevanceScore=5`; enrich session brief if none exists |
-  | Facilitator Guide | Extract discussion prompts verbatim, activities, timing |
-  | Video | `notebookLMReady=false`; surfaces Drive file size (MB); recommends watch timing |
-  | Audio / Podcast | `notebookLMReady=false`; fetch show notes; note independent listening |
-  | Meeting Link | **Skip Gemini entirely** — write placeholder instantly, no API cost |
-  | Slide Deck | Assess standalone-readability; `notebookLMReady` by content richness |
-  | Web Resource / Reading | Participant-facing relevance analysis |
+### 7. Public Library + Domain-Restricted Dashboard (`Config.js` — new file)
+- `Config.js` holds all deployment settings: `ALLOWED_DOMAIN`, `PUBLIC_PAGES`, `DISPLAY_TIMEZONE`, `TIMEZONE_LABEL`, `APP_NAME`
+- Dashboard and Wizard require `@ai4mn.org` Google account; Library page is fully public (no sign-in)
+- Unauthorized users see a branded "Access Restricted" page with a "Switch Account" link
+- **Adopters:** change `ALLOWED_DOMAIN` in `Config.js` to match their own Google Workspace domain
 
-- **Planning Doc → Auto-Brief Enrichment**: `GeminiService.enrichBriefFromPlanningDoc()` generates a brief grounded in the facilitator's actual planning document (not just the theme field). Session context refreshes mid-loop so subsequent resources use the enriched brief.
-- **Bug fix**: synthesis no longer overwrites the user-set resource type with a URL-inferred type
+### 8. Timezone Fix
+- `appsscript.json` timezone changed to `America/Chicago`
+- All time displays use `Intl.DateTimeFormat` with the `DISPLAY_TIMEZONE` IANA name — consistent Central time regardless of viewer's browser timezone
+- Sheets Date object bug fixed: `instanceof Date ? .toISOString() : String(value)` in SynthesisService
+
+### 9. New Session Button Fix
+- `openNewSessionWizard()` in `Index.html` now uses `_appBaseUrl` (fetched from server) instead of `window.location.href`, which returned the internal GAS sandbox URL
+
+### 10. Meeting Links — Live Sessions (separate section)
+- Meeting-type resources (type = "Meeting Link", or URL matches Google Meet / Zoom / Teams) are separated from content resources
+- One meeting can be marked **Main Room** (shown first, with star badge)
+- Start/end times stored per meeting — availability gating: **LIVE** / **STARTING SOON** / **UPCOMING** / **ENDED**
+- Resources schema extended to 13 columns (cols K–M: isMain, startTime, endTime)
+- Dashboard `Add Resources` modal: 2×2 grid for URL, name, start/end times, Main Room checkbox
+- Calendar event import: star toggle per event to designate Main Room; start/end auto-populated from calendar
+
+### 11. Library Page — Live Sessions Section + Hero Join Button
+- New "Live Sessions" section with status-aware cards (pulse dot for LIVE, muted for ENDED)
+- Hero join button: prominent "Join Main Room" CTA in the library hero — status-aware styling
+- Dismissible first-time visitor onboarding banner (dismissed state persisted in localStorage)
+- Sidebar nav includes "Live Sessions" item (hidden until meetings exist)
+
+### 12. Dashboard Redesign — Event Database Style
+- Each session card now shows: prominent date block, pipeline progress bar (Brief → Resources → Synthesis → Gems → Email), clean info layout
+- Pipeline steps shown as colored pills with ✓/○ state indicators
+
+### 13. Newsletter — Meeting Link + Edit Before Send
+- Newsletter wizard includes editable "Main Room URL" field pre-seeded from the session's main meeting
+- Preview updates live; "Join Session →" green button appears in preview when URL is set
+- Email renders meeting + library buttons side by side
+
+### 14. Meet Link URL Fix
+- URLs stored without `https://` prefix were resolved as relative paths against the GAS sandbox URL
+- Added `_safeUrl(url)` helper in `LibraryPage.html` and `Index.html`
+- Applied to: hero join button, Live Sessions card buttons, resource-section meeting cards, newsletter CTA button
 
 ---
 
@@ -77,20 +100,43 @@ One existing session has an error message in the THEME column (col C). Manually 
 | File | Role |
 |------|------|
 | `Code.js` | GAS entry points, menu, `onOpen`, helpers |
-| `WebApp.js` | `doGet()` router + all `google.script.run` server handlers |
+| `Config.js` | Central deployment config — domain, timezone, app name |
+| `WebApp.js` | `doGet()` router + auth gate + all `google.script.run` handlers |
 | `SessionService.js` | Session CRUD, Drive folder scaffolding, Master Sheet r/w |
 | `GeminiService.js` | All Gemini API calls — brief, resource analysis (generic + type-aware), planning doc enrichment, gems, email |
-| `SynthesisService.js` | Type-aware resource processing; dispatches to GeminiService by type |
-| `ResourceService.js` | Adds resources to Project DB + creates Drive shortcuts in `01_Research` |
+| `SynthesisService.js` | Type-aware resource processing; dispatches to GeminiService by type; reads 13-col schema |
+| `ResourceService.js` | Adds resources to Project DB (13-col) + creates Drive shortcuts in `01_Research` |
 | `GemsService.js` | Generates + stores Gem instruction sets; manages Gem links |
-| `EmailService.js` | Drafts and sends pre-session emails with MNGAIA branded template |
-| `LibraryService.js` | Builds public Library page data from session brief + synthesized resources + gems |
-| `SitesService.js` | Generates 5 HTML sections for Google Sites embedding; saves to `04_Final` |
+| `EmailService.js` | Drafts and sends pre-session emails; extracts main meeting URL for newsletter |
+| `LibraryService.js` | Builds public Library page data — separates meetings from resources, computes isMain |
+| `SitesService.js` | Generates 5 HTML sections for Google Sites; saves to `04_Final` |
 | `CollaboratorService.js` | Manages Drive Editor access for co-facilitators |
 | `PermissionService.js` | Checks and fixes Drive file sharing access for public embedding |
-| `Index.html` | Dashboard UI — session cards, all modals |
-| `Wizard.html` | New session wizard (2-step: details + resources) |
-| `LibraryPage.html` | Public-facing Learning Library per session |
+| `Index.html` | Dashboard UI — session cards (event DB style), all modals, newsletter wizard |
+| `Wizard.html` | New session wizard (2-step: details + resources, with meeting fields) |
+| `LibraryPage.html` | Public-facing Learning Library — Live Sessions, hero join button, onboarding banner, drag reorder |
+
+---
+
+## Resources Sheet Schema (Project DB per session)
+
+Columns A–M:
+
+| Col | Field | Notes |
+|-----|-------|-------|
+| A | URL | Resource URL |
+| B | Title | Display name |
+| C | Type | e.g. "Web Resource", "Meeting Link", "Slide Deck" |
+| D | Relevance Score | 1–5 (blank = not yet synthesized) |
+| E | Relevance Statement | Short participant-facing description |
+| F | Engagement Level | "Low" / "Medium" / "High" |
+| G | Pre-Reading | "Yes" or blank |
+| H | NotebookLM Ready | "Yes" or blank |
+| I | Gem Prompt | AI gem research prompt |
+| J | Summary | Full synthesis summary |
+| K | isMain | "Yes" or blank (meeting main room flag) |
+| L | startTime | ISO 8601 datetime string |
+| M | endTime | ISO 8601 datetime string |
 
 ---
 
@@ -111,89 +157,94 @@ One existing session has an error message in the THEME column (col C). Manually 
 ## Web App Route Map
 
 ```
-/exec (no params)              → Dashboard (Index.html)
-/exec?page=wizard              → New Session Wizard (Wizard.html)
-/exec?page=library&session=ID  → Public Learning Library (LibraryPage.html)
-/exec?page=diag                → Debug JSON — confirms spreadsheet binding + row count
+/exec (no params)              → Dashboard (Index.html)       — requires @ai4mn.org account
+/exec?page=wizard              → New Session Wizard           — requires @ai4mn.org account
+/exec?page=library&session=ID  → Public Learning Library      — no sign-in required
+/exec?page=diag                → Debug JSON (binding + row count)
 ```
 
 ## Server API (WebApp.js)
 
 ```
-getDashboardData()                   → session cards array
-processWizardSubmit(params)          → { sessionId, folderUrl, dbUrl, brief }
-webAddResources(id, resources[])     → { added, shortcuts, errors }
-webRunSynthesis(id)                  → { count }
-webGenerateGems(id)                  → { count }
-webUpdateGemLinks(id, gemLinks)      → { ok }
-webGetEmailDraft(id)                 → { subject, body, previewText }
+getDashboardData()                    → session cards array
+processWizardSubmit(params)           → { sessionId, folderUrl, dbUrl, brief }
+webAddResources(id, resources[])      → { added, shortcuts, errors }
+webRunSynthesis(id)                   → { count }
+webGenerateGems(id)                   → { count }
+webUpdateGemLinks(id, gemLinks)       → { ok }
+webGetEmailDraft(id)                  → { subject, body, previewText, mainMeetingUrl, mainMeetingName }
 webSendEmail(id, recipients, subj, body) → { recipientCount }
-webGenerateSiteCode(id)              → { docUrl }
-webRegenerateBrief(id)               → { ok }
-webGetCollaborators(id)              → [{ email, name }]
-webAddCollaborators(id, emails[])    → { added, errors }
-webRemoveCollaborator(id, email)     → { ok }
-webCheckPermissions(id)              → [{ name, url, embedType, access, fileId?, ok }]
-webFixPermissions(fileIds[])         → { fixed, errors }
-getDriveFilesInFolder(folderUrl)     → { folderName, files[] } | { error }
-getLibraryData(id)                   → full library data object
-getOAuthToken()                      → string (for Drive Picker if re-added)
+webGenerateSiteCode(id)               → { docUrl }
+webRegenerateBrief(id)                → { ok }
+webGetCollaborators(id)               → [{ email, name }]
+webAddCollaborators(id, emails[])     → { added, errors }
+webRemoveCollaborator(id, email)      → { ok }
+webCheckPermissions(id)               → [{ name, url, embedType, access, fileId?, ok }]
+webFixPermissions(fileIds[])          → { fixed, errors }
+webGetAppConfig()                     → { timezone, timezoneLabel }
+webGetAppBaseUrl()                    → string (exec base URL, for client navigation)
+getDriveFilesInFolder(folderUrl)      → { folderName, files[] } | { error }
+getLibraryData(id)                    → full library data object (meetings + resources + brief + gems)
+getCalendarList()                     → [{ id, name, color }]
+getCalendarEvents(calendarId, days)   → { events[], total }
 ```
 
 ---
 
 ## Known Issues / Watchouts
 
-- **Library URL not auto-populated**: After creating a session, the `Library URL` column in the Sessions sheet stays blank until manually set. The "Open Library →" button won't appear on the card until this column has the web app URL with `?page=library&session=ID`. A future feature should auto-write this on session creation.
+- **Library URL not auto-populated**: After session creation, `LIBRARY_URL` column stays blank until manually set. The "Open Library →" button on the card won't appear until this column has the exec URL with `?page=library&session=ID`. Future: auto-write on session creation via `ScriptApp.getService().getUrl()`.
 
-- **Synthesis skips already-scored rows**: If you re-run synthesis, rows where `Relevance Score` is already filled are skipped. To re-synthesize a resource (e.g., after a Planning Doc enriches the brief), manually clear the Relevance Score cell in the Project DB for that row and run synthesis again.
+- **Synthesis skips already-scored rows**: Re-running synthesis skips rows where `Relevance Score` is filled. To force re-synthesis (e.g., after Planning Doc enriches the brief), manually clear the Relevance Score cell in the Project DB for that row.
 
-- **Drive video synthesis**: `_readDriveContent()` returns `null` for video file MIME types — Drive videos can't have their frames read server-side. The synthesis falls back to URL fetch (often unhelpful for Drive). The Gemini prompt accounts for this but analysis quality will be lower for Drive-hosted video. YouTube videos get better results via URL fetch (page title + description available).
+- **Drive video synthesis**: `_readDriveContent()` returns `null` for Drive-hosted video MIME types — frames can't be read server-side. Falls back to URL fetch (lower quality). YouTube videos get better results via URL fetch.
 
-- **Private Drive resources**: Synthesis uses `UrlFetchApp` as fallback. Private files (not shared) return 403. Run `🔍 Check Access` before synthesis — if a file needs synthesis AND public access, fix permissions first.
+- **GAS execution time limit**: Synthesis on large resource sets (10+ resources needing URL fetch) can approach the 6-minute GAS limit. If it times out, re-run — already-synthesized rows are skipped.
 
-- **`executeAs: USER_DEPLOYING`**: All Drive operations run as the script owner. Resources or folders in other accounts' Drive won't be accessible unless shared with the deploying account.
+- **Meet link time-gating**: If a meeting has no startTime/endTime set, the join button is always active ("live"). Set times in the Add Resources modal for proper availability gating.
 
-- **GAS execution time limit**: Synthesis on large resource sets (10+ resources each needing URL fetch) can approach the 6-minute GAS execution limit. If it times out, re-run — already-synthesized rows are skipped.
+- **`executeAs: USER_DEPLOYING`**: All Drive/Calendar operations run as the script owner. Resources or calendars owned by other accounts won't be accessible unless shared with the deploying account.
+
+---
+
+## Planned Next Feature: Drive Navigator + Calendar Selector
+
+A plan file exists at `/home/codespace/.claude/plans/virtual-snacking-castle.md` with a full implementation spec. Summary:
+
+- **Drive Navigator**: Replace "paste folder URL" with a server-side folder browser (breadcrumb + folders + checkable files) using `getDriveNavigate(folderId)` via `google.script.run`. Picker API is not used — it fails on `*.googleusercontent.com`.
+- **Calendar Selector**: Replace hardcoded "Load Events" with a calendar dropdown populated from `getCalendarList()`, plus a "days ahead" number input, then "Load Events".
+- Files to change: `WebApp.js` (3 new functions), `Index.html` (modal revamp), `Wizard.html` (same), `appsscript.json` (calendar.readonly scope — already present).
 
 ---
 
 ## Suggested Next Steps
 
 ### High priority
-- **Auto-populate Library URL** on session creation: in `SessionService.setupSession()`, call `ScriptApp.getService().getUrl()` and write `?page=library&session={id}` to `LIBRARY_URL` column immediately so the Library button appears on first dashboard load.
-
-- **Re-synthesis mode**: Add a "♻️ Re-Synthesize" option (or a checkbox in the modal) that clears relevance scores for selected resources and re-runs — useful after a Planning Doc enriches the brief and you want all resources re-scored with the new context.
-
-- **Participants sheet UI**: `ProjectDatabase` has a `Participants` sheet (Name, Email, Registered At) but nothing writes to it. Add a Participants modal on the dashboard to bulk-import attendee emails; use it to power personalized pre-session emails and library access control.
+- **Auto-populate Library URL** on session creation in `SessionService.setupSession()` using `ScriptApp.getService().getUrl()` + `?page=library&session={id}`.
+- **Drive Navigator + Calendar Selector** (see plan file above) — removes the need to paste Drive folder URLs.
 
 ### Medium priority
-- **Library page access control**: Currently the Library page is public (`ANYONE` access). Add a simple passphrase or Drive-based auth check for sessions intended for registered participants only.
-
-- **YouTube transcript integration**: YouTube's `watch?v=` page HTML often contains auto-caption text in the page source. `_fetchContent()` could be enhanced to extract the `ytInitialPlayerResponse` JSON and pull transcript segments for richer Gemini analysis.
-
-- **Synthesis status in the dashboard**: After synthesis runs, the card currently just shows "Synthesis complete! N resources analyzed." A `Synthesis ✓` indicator (like Brief/Gems/Email) would make session state clearer at a glance.
-
-- **Gem link deep-link**: When a Gem's `link` field is set, the Library page shows "Open Gem →". That Gem link currently must be set manually. An automation or clipboard helper to build the correct Gemini Gem URL format would speed this up.
+- **Re-synthesis mode**: "♻️ Re-Synthesize" option that clears relevance scores for selected resources and re-runs — useful after a Planning Doc enriches the brief.
+- **Participants sheet UI**: `ProjectDatabase` has a Participants sheet but nothing writes to it. Bulk-import attendee emails; use for personalized pre-session emails.
+- **Synthesis status pill**: After synthesis, show a `Synthesis ✓` indicator on the card alongside Brief/Gems/Email.
 
 ### Lower priority / future
-- **Google Sites API integration**: Sites Code currently generates an HTML doc for copy-pasting. The [Google Sites API](https://developers.google.com/sites/api/reference) could allow direct injection of embed sections — no copy-paste required.
-
-- **Session archiving**: Add a status field toggle (Active → Archived) that hides old sessions from the main dashboard view while keeping Library pages live.
-
-- **Dashboard search/filter**: Once there are 10+ sessions, filtering by date, status, or theme becomes useful.
-
-- **Audio transcript via third-party**: For podcast/audio resources, a Whisper API or AssemblyAI integration could produce a transcript for synthesis — would require an additional API key in Script Properties.
+- **Session archiving**: Active → Archived status toggle; hides old sessions from dashboard while keeping Library pages live.
+- **Dashboard search/filter**: Filter by date, status, or theme once 10+ sessions exist.
+- **Google Sites API**: Direct section injection instead of copy-paste HTML doc.
+- **YouTube transcript**: Extract `ytInitialPlayerResponse` from page source for richer synthesis.
+- **Audio transcript**: Whisper API or AssemblyAI for podcast/audio resources.
 
 ---
 
 ## Repo / Deployment
 
-- **GitHub:** `https://github.com/inquiredu/LearningLibrary` — `main` branch, up to date
-- **GAS Project:** container-bound to Master Sheet (see `.clasp.json` for `scriptId` + `parentId`)
-- **Deploy:** GAS Editor → Deploy → Manage deployments → New version
-- **Diagnostic URL:** `[exec-url]?page=diag` — confirms spreadsheet binding and session row count
+- **GitHub:** `https://github.com/inquiredu/LearningLibrary` — `main` branch
+- **GAS Script ID:** `1iIHgvEr_xe2RT_zgUYduI-NhYuYrZAQCbD4hHKpJiJPISMIueFxYKOdy`
+- **Bound Spreadsheet:** `1KHW7tFNmqFyf9Oi-8SfRO0eZOG_VTX9hH-T8Ub5CTbw`
+- **Deploy:** GAS Editor → Deploy → Manage deployments → New version → "Anyone" access
+- **Diagnostic URL:** `[exec-url]?page=diag`
 
 ---
 
-*Handoff updated: 2026-03-09*
+*Handoff updated: 2026-03-10*

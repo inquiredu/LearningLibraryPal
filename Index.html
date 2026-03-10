@@ -1519,7 +1519,7 @@
           ((d.meetingUrl || d.libraryUrl) ?
             '<div style="padding:4px 28px 24px;text-align:center;">' +
               (d.meetingUrl ?
-                '<a href="' + esc(d.meetingUrl) + '" style="display:inline-block;background:#28a745;color:#fff;padding:12px 24px;border-radius:6px;font-weight:700;text-decoration:none;font-size:14px;margin:4px 6px;">Join Session →</a>'
+                '<a href="' + esc(_safeUrl(d.meetingUrl)) + '" style="display:inline-block;background:#28a745;color:#fff;padding:12px 24px;border-radius:6px;font-weight:700;text-decoration:none;font-size:14px;margin:4px 6px;">Join Session →</a>'
               : '') +
               (d.libraryUrl ?
                 '<a href="' + esc(d.libraryUrl) + '" style="display:inline-block;background:' + cyan + ';color:' + navy + ';padding:12px 24px;border-radius:6px;font-weight:700;text-decoration:none;font-size:14px;margin:4px 6px;">Open Learning Library →</a>'
@@ -1634,6 +1634,7 @@
     function setBtnLoading(btn, label) { btn.disabled = true; btn._orig = btn.textContent; btn.textContent = label; }
     function resetBtn(btn, label) { btn.disabled = false; btn.textContent = label || btn._orig || label; }
     function esc(str) { return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+    function _safeUrl(url) { if (!url) return '#'; return /^https?:\/\//i.test(url) ? url : 'https://' + url; }
 
     window.onload = loadDashboard;
   </script>

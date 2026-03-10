@@ -865,7 +865,7 @@
           mainMeet.startTime ? 'Starts ' + _fmtTime(mainMeet.startTime) : '';
         heroActions.innerHTML =
           '<a class="hero-join-btn' + (heroStatus === 'ended' ? ' btn-ended' : heroStatus === 'upcoming' ? ' btn-upcoming' : '') + '"' +
-          ' href="' + esc(mainMeet.url) + '" target="_blank" rel="noopener">' +
+          ' href="' + esc(_safeUrl(mainMeet.url)) + '" target="_blank" rel="noopener">' +
             '<span class="hero-join-dot"></span>' +
             'Join Main Room' +
           '</a>' +
@@ -1026,7 +1026,7 @@
             '<div class="rc-meeting-stmt">' + esc(r.relevanceStatement || 'Click to join the live session.') + '</div>' +
             (tagsHtml ? '<div class="resource-tags" style="margin-top:10px;">' + tagsHtml + '</div>' : '') +
           '</div>' +
-          '<a href="' + esc(r.url) + '" target="_blank" class="rc-join-btn">🟢 Join Session →</a>' +
+          '<a href="' + esc(_safeUrl(r.url)) + '" target="_blank" class="rc-join-btn">🟢 Join Session →</a>' +
         '</div>' +
       '</div>';
     }
@@ -1171,7 +1171,7 @@
           '</div>' +
           '<div class="meet-card-body">' +
             windowHtml +
-            '<a class="' + btnClass + '" href="' + esc(m.url) + '" target="_blank" rel="noopener">' + btnLabel + '</a>' +
+            '<a class="' + btnClass + '" href="' + esc(_safeUrl(m.url)) + '" target="_blank" rel="noopener">' + btnLabel + '</a>' +
           '</div>' +
         '</div>';
       }).join('');
@@ -1631,6 +1631,12 @@
     // ── Utils ─────────────────────────────────────────────────────────────────
     function esc(str) {
       return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    function _safeUrl(url) {
+      if (!url) return '#';
+      if (/^https?:\/\//i.test(url)) return url;
+      return 'https://' + url;
     }
   </script>
 </body>

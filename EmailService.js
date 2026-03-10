@@ -102,6 +102,15 @@ const EmailService = {
       relevanceStatement: r.relevanceStatement || ''
     }));
 
+    // Find the main meeting link (isMain first, then first meeting-type resource)
+    const meetings = allResources.filter(r => {
+      if ((r.type || '').toLowerCase() === 'meeting link') return true;
+      const u = (r.url || '').toLowerCase();
+      return u.includes('meet.google.com') || u.includes('zoom.us') || u.includes('teams.microsoft.com');
+    });
+    meetings.sort((a, b) => (b.isMain ? 1 : 0) - (a.isMain ? 1 : 0));
+    const mainMeeting = meetings[0] || null;
+
     const sections = GeminiService.draftNewsletterSections(
       session.brief,
       resourcesForGemini,
@@ -116,7 +125,9 @@ const EmailService = {
       sessionAudience: session.audience,
       libraryUrl:      libraryUrl,
       hasGems:         !!(session.gems && session.gems.length),
-      resources:       resourcesForGemini
+      resources:       resourcesForGemini,
+      mainMeetingUrl:  mainMeeting ? (mainMeeting.url  || '') : '',
+      mainMeetingName: mainMeeting ? (mainMeeting.title || 'Join the Session') : ''
     });
   },
 

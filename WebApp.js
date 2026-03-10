@@ -473,7 +473,8 @@ function getCalendarEvents(calendarId, daysAhead) {
           url: url,
           type: 'Meeting Link',
           eventTitle: ev.getTitle(),
-          startDate: ev.getStartTime().toISOString()
+          startDate: ev.getStartTime().toISOString(),
+          endDate:   ev.getEndTime().toISOString()
         });
       }
     });

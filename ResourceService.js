@@ -57,7 +57,7 @@ const ResourceService = {
         // Skip dupes
         if (existing.has(url)) return;
 
-        // Build row data (columns match the existing 10-col schema)
+        // Build row data (13-col schema: cols A-J = original, K-M = meeting metadata)
         newRows.push([
           url,
           r.name || 'Untitled',
@@ -68,7 +68,10 @@ const ResourceService = {
           '', // preReading
           '', // notebookLMReady
           '', // relevanceStatement
-          ''  // summary
+          '', // summary
+          r.isMain     ? 'Yes' : '', // K: isMain
+          r.startTime  || '',        // L: startTime (ISO string)
+          r.endTime    || ''         // M: endTime   (ISO string)
         ]);
         existing.add(url);
         added++;
@@ -85,7 +88,7 @@ const ResourceService = {
 
     // Batch write to sheet
     if (newRows.length > 0) {
-      sheet.getRange(sheet.getLastRow() + 1, 1, newRows.length, 10).setValues(newRows);
+      sheet.getRange(sheet.getLastRow() + 1, 1, newRows.length, 13).setValues(newRows);
     }
 
     return { added: added, shortcuts: shortcuts, errors: errors };

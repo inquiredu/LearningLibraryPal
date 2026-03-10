@@ -306,11 +306,17 @@
         </div>
         <div id="res-calResults" style="display:none;margin-bottom:10px;"></div>
         <!-- Meet URL paste fallback -->
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
-          <span style="font-size:0.75rem;color:var(--muted);">Or paste a Meet link:</span>
-          <input type="url" id="res-meetUrl" placeholder="https://meet.google.com/..." style="flex:1;padding:5px 8px;border:1.5px solid var(--border);border-radius:5px;font-family:'Open Sans',sans-serif;font-size:0.8rem;">
-          <input type="text" id="res-meetName" placeholder="Event name (optional)" style="width:34%;padding:5px 8px;border:1.5px solid var(--border);border-radius:5px;font-family:'Open Sans',sans-serif;font-size:0.8rem;">
-          <button class="btn btn-dark btn-sm" onclick="addMeetUrl()">Add</button>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px;">
+          <input type="url" id="res-meetUrl" placeholder="Meet / Zoom / Teams link" style="padding:5px 8px;border:1.5px solid var(--border);border-radius:5px;font-family:'Open Sans',sans-serif;font-size:0.8rem;">
+          <input type="text" id="res-meetName" placeholder="Event name (optional)" style="padding:5px 8px;border:1.5px solid var(--border);border-radius:5px;font-family:'Open Sans',sans-serif;font-size:0.8rem;">
+          <input type="datetime-local" id="res-meetStart" title="Session start time" style="padding:5px 8px;border:1.5px solid var(--border);border-radius:5px;font-family:'Open Sans',sans-serif;font-size:0.8rem;">
+          <input type="datetime-local" id="res-meetEnd" title="Session end time" style="padding:5px 8px;border:1.5px solid var(--border);border-radius:5px;font-family:'Open Sans',sans-serif;font-size:0.8rem;">
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+          <label style="display:flex;align-items:center;gap:5px;font-size:0.78rem;cursor:pointer;">
+            <input type="checkbox" id="res-meetIsMain"> <span>Mark as Main Room</span>
+          </label>
+          <button class="btn btn-dark btn-sm" onclick="addMeetUrl()">+ Add Meeting</button>
         </div>
         <div id="res-meetList" style="display:none;margin-bottom:8px;"></div>
         <div class="res-section-label">Or Add Individual Links</div>
@@ -1027,19 +1033,37 @@
     function addMeetUrl() {
       var url = document.getElementById('res-meetUrl').value.trim();
       if (!url) return;
-      var name = document.getElementById('res-meetName').value.trim() || 'Meeting Link';
+      var name      = document.getElementById('res-meetName').value.trim() || 'Meeting Link';
+      var startTime = document.getElementById('res-meetStart').value;
+      var endTime   = document.getElementById('res-meetEnd').value;
+      var isMain    = document.getElementById('res-meetIsMain').checked;
+      // If marking this as main, uncheck all existing main flags
+      if (isMain) _resMeetClearMain();
+      var timeStr = startTime ? new Date(startTime).toLocaleString([], {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
       var list = document.getElementById('res-meetList');
-      var item = document.createElement('label');
-      item.style.cssText = 'display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--bg);border:1px solid var(--border);border-radius:5px;cursor:pointer;font-size:0.82rem;margin-bottom:2px;';
-      item.innerHTML = '<input type="checkbox" class="meet-url-cb" checked data-url="' + esc(url) + '" data-name="' + esc(name) + '" data-type="Meeting Link">' +
-        '<span>📅</span>' +
+      var item = document.createElement('div');
+      item.style.cssText = 'display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--bg);border:1px solid var(--border);border-radius:5px;font-size:0.82rem;margin-bottom:2px;';
+      item.innerHTML =
+        '<input type="checkbox" class="meet-url-cb" checked' +
+          ' data-url="' + esc(url) + '" data-name="' + esc(name) + '" data-type="Meeting Link"' +
+          ' data-start-time="' + esc(startTime) + '" data-end-time="' + esc(endTime) + '"' +
+          ' data-is-main="' + (isMain ? 'true' : 'false') + '">' +
+        (isMain ? '<span title="Main Room" style="color:#f5a623;font-size:0.9rem;">&#9733;</span>' : '<span style="color:transparent;font-size:0.9rem;">&#9733;</span>') +
         '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(name) + '</span>' +
-        '<span style="font-size:0.73rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px;">' + esc(url) + '</span>' +
-        '<button style="background:none;border:none;cursor:pointer;color:var(--muted);padding:0 2px;" onclick="this.closest(\'label\').remove();updateMeetList()">×</button>';
+        (timeStr ? '<span style="font-size:0.73rem;color:var(--muted);white-space:nowrap;">' + esc(timeStr) + '</span>' : '') +
+        '<button style="background:none;border:none;cursor:pointer;color:var(--muted);padding:0 2px;" onclick="this.parentElement.remove();updateMeetList()">×</button>';
       list.appendChild(item);
       list.style.display = 'block';
-      document.getElementById('res-meetUrl').value = '';
-      document.getElementById('res-meetName').value = '';
+      document.getElementById('res-meetUrl').value   = '';
+      document.getElementById('res-meetName').value  = '';
+      document.getElementById('res-meetStart').value = '';
+      document.getElementById('res-meetEnd').value   = '';
+      document.getElementById('res-meetIsMain').checked = false;
+    }
+
+    function _resMeetClearMain() {
+      document.querySelectorAll('#res-meetList .meet-url-cb').forEach(function(cb) { cb.dataset.isMain = 'false'; });
+      document.querySelectorAll('#res-calResults .cal-event-cb').forEach(function(cb) { cb.dataset.isMain = 'false'; });
     }
 
     function updateMeetList() {
@@ -1074,21 +1098,36 @@
         el.style.display = 'block';
         return;
       }
-      var html = '<div style="font-size:0.75rem;font-weight:700;color:var(--muted);margin-bottom:6px;">' +
-        result.events.length + ' event(s) with Meet links — check to add</div>';
-      html += '<div style="max-height:180px;overflow-y:auto;display:flex;flex-direction:column;gap:2px;">';
-      result.events.forEach(function(ev) {
-        var dateStr = ev.startDate ? new Date(ev.startDate).toLocaleDateString() : '';
-        html += '<label style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--bg);border:1px solid var(--border);border-radius:5px;cursor:pointer;font-size:0.82rem;">' +
-          '<input type="checkbox" class="cal-event-cb" data-url="' + esc(ev.url) + '" data-name="' + esc(ev.name) + '" data-type="Meeting Link">' +
-          '<span>📅</span>' +
+      var html = '<div style="font-size:0.75rem;font-weight:700;color:var(--muted);margin-bottom:4px;">' +
+        result.events.length + ' event(s) with Meet links — check to add; ★ = Main Room</div>';
+      html += '<div style="max-height:200px;overflow-y:auto;display:flex;flex-direction:column;gap:2px;">';
+      result.events.forEach(function(ev, idx) {
+        var timeStr = ev.startDate
+          ? new Date(ev.startDate).toLocaleString([], {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
+        var isFirst = idx === 0;
+        html += '<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--bg);border:1px solid var(--border);border-radius:5px;font-size:0.82rem;">' +
+          '<input type="checkbox" class="cal-event-cb" checked' +
+            ' data-url="' + esc(ev.url) + '" data-name="' + esc(ev.name) + '" data-type="Meeting Link"' +
+            ' data-start-time="' + esc(ev.startDate || '') + '" data-end-time="' + esc(ev.endDate || '') + '"' +
+            ' data-is-main="' + (isFirst ? 'true' : 'false') + '">' +
+          '<span title="Main Room" style="cursor:pointer;color:' + (isFirst ? '#f5a623' : '#ccc') + ';font-size:0.9rem;" ' +
+            'onclick="resCalSetMain(this)">&#9733;</span>' +
           '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(ev.eventTitle) + '</span>' +
-          '<span style="font-size:0.73rem;color:var(--muted);white-space:nowrap;">' + esc(dateStr) + '</span>' +
-          '</label>';
+          '<span style="font-size:0.73rem;color:var(--muted);white-space:nowrap;">' + esc(timeStr) + '</span>' +
+          '</div>';
       });
       html += '</div>';
       el.innerHTML = html;
       el.style.display = 'block';
+    }
+
+    function resCalSetMain(starEl) {
+      // Toggle all stars off, set clicked one on
+      document.querySelectorAll('#res-calResults .cal-event-cb').forEach(function(cb) { cb.dataset.isMain = 'false'; });
+      document.querySelectorAll('#res-calResults span[onclick]').forEach(function(s) { s.style.color = '#ccc'; });
+      starEl.style.color = '#f5a623';
+      starEl.parentElement.querySelector('.cal-event-cb').dataset.isMain = 'true';
+      _resMeetClearMain(); // also clear manual meet items
     }
 
     // Extract Google Drive file ID from a share/view URL
@@ -1125,14 +1164,16 @@
         resources.push({ fileId: cb.dataset.fileId, url: cb.dataset.url, name: cb.dataset.name, type: cb.dataset.type });
       });
 
-      // Calendar event checked items
+      // Calendar event checked items (include timing + main flag)
       document.querySelectorAll('#res-calResults .cal-event-cb:checked').forEach(function(cb) {
-        resources.push({ url: cb.dataset.url, name: cb.dataset.name, type: cb.dataset.type });
+        resources.push({ url: cb.dataset.url, name: cb.dataset.name, type: cb.dataset.type,
+          isMain: cb.dataset.isMain === 'true', startTime: cb.dataset.startTime || '', endTime: cb.dataset.endTime || '' });
       });
 
-      // Manually pasted Meet URLs
+      // Manually pasted Meet URLs (include timing + main flag)
       document.querySelectorAll('#res-meetList .meet-url-cb:checked').forEach(function(cb) {
-        resources.push({ url: cb.dataset.url, name: cb.dataset.name, type: cb.dataset.type });
+        resources.push({ url: cb.dataset.url, name: cb.dataset.name, type: cb.dataset.type,
+          isMain: cb.dataset.isMain === 'true', startTime: cb.dataset.startTime || '', endTime: cb.dataset.endTime || '' });
       });
 
       // URL link rows

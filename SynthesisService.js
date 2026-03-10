@@ -184,7 +184,10 @@ const SynthesisService = {
           preReading:        row[6] === 'Yes',
           notebookLMReady:   row[7] === 'Yes',
           relevanceStatement: row[8] || '',
-          summary:           row[9] || ''
+          summary:           row[9] || '',
+          isMain:            row[10] === 'Yes',
+          startTime:         row[11] ? String(row[11]) : '',
+          endTime:           row[12] ? String(row[12]) : ''
         }))
         .sort((a, b) => b.relevanceScore - a.relevanceScore);
     } catch (e) {

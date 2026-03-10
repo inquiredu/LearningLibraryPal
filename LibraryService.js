@@ -16,9 +16,17 @@ const LibraryService = {
     const session = SessionService.getSession(sessionId);
     if (!session) throw new Error('Session not found: ' + sessionId);
 
-    const resources = SynthesisService.getResources(sessionId);
+    const allResources = SynthesisService.getResources(sessionId);
     const gems = GemsService.getGems(sessionId);
     const brief = session.brief || {};
+
+    // Separate meeting links from content resources
+    const meetings  = allResources.filter(r => this._isMeeting(r));
+    const resources = allResources.filter(r => !this._isMeeting(r));
+
+    // Ensure the isMain meeting sorts first; fall back to first entry
+    meetings.sort((a, b) => (b.isMain ? 1 : 0) - (a.isMain ? 1 : 0));
+    if (meetings.length && !meetings.some(m => m.isMain)) meetings[0].isMain = true;
 
     // Top 3 pre-reading picks
     const preReading = resources
@@ -51,6 +59,7 @@ const LibraryService = {
         inquiryQuestions: brief.inquiryQuestions || [],
         notebookLMStarterPrompt: brief.notebookLMStarterPrompt || ''
       },
+      meetings: meetings,
       resources: resources,
       preReading: preReading,
       gems: gems,
@@ -64,6 +73,12 @@ const LibraryService = {
   },
 
   // ─── Private ────────────────────────────────────────────────────────────────
+
+  _isMeeting: function(r) {
+    if ((r.type || '').toLowerCase() === 'meeting link') return true;
+    var url = (r.url || '').toLowerCase();
+    return url.includes('meet.google.com') || url.includes('zoom.us') || url.includes('teams.microsoft.com');
+  },
 
   _buildChecklist: function(brief, preReading, gems, sessionDate) {
     const items = [

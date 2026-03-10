@@ -383,6 +383,91 @@ function getDriveFilesInFolder(folderUrl) {
   }
 }
 
+/**
+ * Navigates a Drive folder by ID (or My Drive root if folderId is null).
+ * Returns path breadcrumb, subfolders, and files.
+ * Called from the Drive navigator panel in Index.html and Wizard.html.
+ */
+function getDriveNavigate(folderId) {
+  try {
+    var folder = folderId ? DriveApp.getFolderById(folderId) : DriveApp.getRootFolder();
+    // Build breadcrumb path by walking up to root
+    var path = [];
+    var cur = folder;
+    var safety = 0;
+    while (cur && safety < 15) {
+      path.unshift({ id: cur.getId(), name: cur.getName() });
+      var parents = cur.getParents();
+      cur = parents.hasNext() ? parents.next() : null;
+      safety++;
+    }
+    var folders = [];
+    var fi = folder.getFolders();
+    while (fi.hasNext()) {
+      var sf = fi.next();
+      folders.push({ id: sf.getId(), name: sf.getName() });
+    }
+    var files = [];
+    var fileIter = folder.getFiles();
+    while (fileIter.hasNext() && files.length < 100) {
+      var f = fileIter.next();
+      files.push({ fileId: f.getId(), name: f.getName(), url: f.getUrl(), mimeType: f.getMimeType() });
+    }
+    return { path: path, folders: folders, files: files };
+  } catch (e) {
+    return { error: e.message };
+  }
+}
+
+/**
+ * Returns all calendars the current user owns or is subscribed to.
+ * Called from the calendar selector in Index.html and Wizard.html.
+ * @returns {Array<{id, name, color}>}
+ */
+function getCalendarList() {
+  try {
+    return CalendarApp.getAllCalendars().map(function(cal) {
+      return { id: cal.getId(), name: cal.getName(), color: cal.getColor() };
+    });
+  } catch (e) {
+    return { error: e.message };
+  }
+}
+
+/**
+ * Fetches upcoming events from a specific calendar and extracts Meet links.
+ * @param {string} calendarId - Calendar ID from getCalendarList()
+ * @param {number} daysAhead - How many days forward to look (default 60)
+ * @returns {{ events: Array<{name, url, type, eventTitle, startDate}>, total: number } | { error }}
+ */
+function getCalendarEvents(calendarId, daysAhead) {
+  try {
+    var cal = CalendarApp.getCalendarById(calendarId);
+    if (!cal) return { error: 'Calendar not found.' };
+    var start = new Date();
+    var end = new Date(start.getTime() + (daysAhead || 60) * 24 * 60 * 60 * 1000);
+    var events = cal.getEvents(start, end);
+    var results = [];
+    events.forEach(function(ev) {
+      var desc = ev.getDescription() || '';
+      var meetMatch = desc.match(/https:\/\/meet\.google\.com\/[a-z0-9-]+/);
+      var url = meetMatch ? meetMatch[0] : null;
+      if (url) {
+        results.push({
+          name: ev.getTitle() + ' (Meet)',
+          url: url,
+          type: 'Meeting Link',
+          eventTitle: ev.getTitle(),
+          startDate: ev.getStartTime().toISOString()
+        });
+      }
+    });
+    return { events: results, total: events.length };
+  } catch (e) {
+    return { error: e.message };
+  }
+}
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function _getWebAppUrl() {

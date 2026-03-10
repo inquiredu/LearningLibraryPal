@@ -123,7 +123,26 @@ function openDashboard() {
     );
     return;
   }
-  SpreadsheetApp.getUi().alert('📊  Facilitator Dashboard\n\nCopy and open in browser:\n\n' + url);
+  const safeUrl = url.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+  const html = HtmlService.createHtmlOutput(
+    `<!DOCTYPE html><html><body style="font-family:'Google Sans',Arial,sans-serif;margin:0;padding:20px 24px;background:#fff;">
+    <div style="border:1px solid #DDE4ED;border-radius:8px;overflow:hidden;">
+      <div style="background:#0B2B46;padding:10px 16px;">
+        <span style="color:#5DCDF5;font-size:10px;letter-spacing:2px;text-transform:uppercase;font-weight:700;">MNGAIA</span>
+        <span style="color:rgba(255,255,255,0.6);font-size:10px;margin-left:8px;">Content Engine</span>
+      </div>
+      <div style="padding:16px;text-align:center;">
+        <p style="margin:0 0 16px;color:#444;font-size:13px;">Dashboard is opening in a new tab.</p>
+        <a href="${safeUrl}" target="_blank"
+           style="display:inline-block;background:#0B2B46;color:#fff;padding:10px 28px;border-radius:6px;text-decoration:none;font-size:13px;font-weight:700;letter-spacing:.3px;">
+          Open Dashboard &rarr;
+        </a>
+      </div>
+    </div>
+    <script>window.open('${safeUrl}', '_blank');<\/script>
+    </body></html>`
+  ).setWidth(340).setHeight(170);
+  SpreadsheetApp.getUi().showModalDialog(html, 'Open Dashboard');
 }
 
 function showSettings() {

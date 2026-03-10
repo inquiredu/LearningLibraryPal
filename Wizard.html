@@ -146,11 +146,44 @@
 
       <!-- Drive folder browser -->
       <div class="section-label">Browse a Drive Folder</div>
-      <div style="display:flex;gap:6px;margin-bottom:8px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+        <button class="btn btn-dark btn-sm" id="w-browseBtn" onclick="wStartDriveNav()">Browse My Drive</button>
+        <span style="font-size:0.75rem;color:var(--muted);">or</span>
+        <span onclick="wToggleFolderUrl()" style="font-size:0.75rem;color:var(--cyan);cursor:pointer;text-decoration:underline;text-underline-offset:2px;">paste a folder URL</span>
+      </div>
+      <div id="w-urlFallback" style="display:none;margin-bottom:8px;display:flex;gap:6px;">
         <input type="url" id="w-folderUrl" placeholder="Paste Drive folder URL..." style="flex:1;padding:7px 10px;border:1.5px solid var(--border);border-radius:6px;font-family:'Open Sans',sans-serif;font-size:0.82rem;background:#fff;">
         <button class="btn btn-dark btn-sm" id="w-loadBtn" onclick="loadDriveFolder()">Load Files</button>
       </div>
+      <!-- Drive navigator panel -->
+      <div id="w-navPanel" style="display:none;margin-bottom:10px;border:1.5px solid var(--border);border-radius:6px;overflow:hidden;">
+        <div id="w-breadcrumb" style="padding:5px 10px;background:var(--bg-alt,#f4f6f9);font-size:0.73rem;border-bottom:1px solid var(--border);min-height:28px;display:flex;align-items:center;gap:4px;flex-wrap:wrap;"></div>
+        <div id="w-navList" style="max-height:200px;overflow-y:auto;padding:4px 6px;display:flex;flex-direction:column;gap:2px;"></div>
+      </div>
       <div id="w-fileList" style="display:none;margin-bottom:14px;"></div>
+
+      <!-- Calendar events -->
+      <div class="section-label">Or Browse Calendar Events</div>
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:6px;">
+        <select id="w-calSelect" style="flex:1;min-width:150px;padding:6px 8px;border:1.5px solid var(--border);border-radius:6px;font-family:'Open Sans',sans-serif;font-size:0.82rem;background:#fff;">
+          <option value="">Loading calendars...</option>
+        </select>
+        <input type="number" id="w-calDays" value="60" min="1" max="365" style="width:58px;padding:6px 8px;border:1.5px solid var(--border);border-radius:6px;font-family:'Open Sans',sans-serif;font-size:0.82rem;" title="Days ahead to look">
+        <span style="font-size:0.73rem;color:var(--muted);">days</span>
+        <button class="btn btn-dark btn-sm" id="w-calBtn" onclick="wLoadCalendarEvents()">Load Events</button>
+      </div>
+      <div id="w-calAuthMsg" style="display:none;font-size:0.75rem;color:#b45309;background:#fefce8;border:1px solid #fde68a;border-radius:5px;padding:7px 10px;margin-bottom:8px;">
+        Calendar access not authorized. After <code>clasp push</code>, create a new deployment version to grant calendar access.
+      </div>
+      <div id="w-calResults" style="display:none;margin-bottom:10px;"></div>
+      <!-- Meet URL paste fallback -->
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+        <span style="font-size:0.75rem;color:var(--muted);">Or paste a Meet link:</span>
+        <input type="url" id="w-meetUrl" placeholder="https://meet.google.com/..." style="flex:1;padding:5px 8px;border:1.5px solid var(--border);border-radius:5px;font-family:'Open Sans',sans-serif;font-size:0.8rem;background:#fff;">
+        <input type="text" id="w-meetName" placeholder="Event name (optional)" style="width:30%;padding:5px 8px;border:1.5px solid var(--border);border-radius:5px;font-family:'Open Sans',sans-serif;font-size:0.8rem;background:#fff;">
+        <button class="btn btn-dark btn-sm" onclick="wAddMeetUrl()">Add</button>
+      </div>
+      <div id="w-meetList" style="display:none;margin-bottom:10px;"></div>
 
       <!-- Individual URL paste -->
       <div class="section-label">Or Add Individual Links</div>
@@ -247,6 +280,9 @@
       document.getElementById('step2-tab').classList.add('active');
       document.getElementById('panel2').classList.add('active');
 
+      // Load calendar list in background
+      wLoadCalendarList();
+
       // Show brief preview
       var brief = result.brief;
       if (brief && brief.overview) {
@@ -259,7 +295,12 @@
       }
     }
 
-    // ── Step 2: Drive folder browser ──────────────────────────────────────────
+    // ── Step 2: Drive folder browser (URL paste fallback) ─────────────────────
+    function wToggleFolderUrl() {
+      var el = document.getElementById('w-urlFallback');
+      el.style.display = el.style.display === 'none' ? 'flex' : 'none';
+    }
+
     function loadDriveFolder() {
       var url = document.getElementById('w-folderUrl').value.trim();
       if (!url) return;
@@ -293,6 +334,153 @@
           '<input type="checkbox" data-file-id="' + esc(f.fileId) + '" data-url="' + esc(f.url) + '" data-name="' + esc(f.name) + '" data-type="' + esc(type) + '">' +
           '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + esc(f.name) + '">' + esc(f.name) + '</span>' +
           '<span style="font-size:0.72rem;color:var(--muted);">' + esc(type) + '</span>' +
+          '</label>';
+      });
+      html += '</div>';
+      el.innerHTML = html;
+      el.style.display = 'block';
+    }
+
+    // ── Step 2: Drive Navigator ────────────────────────────────────────────────
+    function wStartDriveNav() {
+      var btn = document.getElementById('w-browseBtn');
+      btn.disabled = true; btn.textContent = 'Loading...';
+      google.script.run
+        .withSuccessHandler(function(result) {
+          btn.disabled = false; btn.textContent = 'Browse My Drive';
+          if (result.error) { alert(result.error); return; }
+          document.getElementById('w-navPanel').style.display = 'block';
+          wRenderNavPanel(result);
+        })
+        .withFailureHandler(function(err) {
+          btn.disabled = false; btn.textContent = 'Browse My Drive';
+          alert('Error: ' + err.message);
+        })
+        .getDriveNavigate(null);
+    }
+
+    function wNavToFolder(folderId) {
+      var list = document.getElementById('w-navList');
+      list.innerHTML = '<div style="padding:10px;font-size:0.8rem;color:var(--muted);">Loading...</div>';
+      google.script.run
+        .withSuccessHandler(function(result) {
+          if (result.error) { alert(result.error); return; }
+          wRenderNavPanel(result);
+        })
+        .withFailureHandler(function(err) { alert('Error: ' + err.message); })
+        .getDriveNavigate(folderId);
+    }
+
+    function wRenderNavPanel(result) {
+      var bc = document.getElementById('w-breadcrumb');
+      var bcHtml = result.path.map(function(seg, i) {
+        var isLast = i === result.path.length - 1;
+        if (isLast) return '<span style="font-weight:700;color:var(--navy);">' + esc(seg.name) + '</span>';
+        return '<span onclick="wNavToFolder(\'' + esc(seg.id) + '\')" style="cursor:pointer;color:var(--cyan);text-decoration:underline;text-underline-offset:2px;">' + esc(seg.name) + '</span>';
+      }).join('<span style="margin:0 3px;color:var(--muted);">›</span>');
+      bc.innerHTML = bcHtml;
+
+      var list = document.getElementById('w-navList');
+      var html = '';
+      result.folders.forEach(function(f) {
+        html += '<div onclick="wNavToFolder(\'' + esc(f.id) + '\')" style="display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:5px;cursor:pointer;font-size:0.82rem;color:var(--navy);" ' +
+          'onmouseover="this.style.background=\'var(--bg-alt,#f4f6f9)\'" onmouseout="this.style.background=\'\'">' +
+          '<span>📁</span><span>' + esc(f.name) + '</span>' +
+          '</div>';
+      });
+      result.files.forEach(function(f) {
+        var type = MIME_TO_TYPE[f.mimeType] || 'Reading';
+        html += '<label style="display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:5px;cursor:pointer;font-size:0.82rem;">' +
+          '<input type="checkbox" class="w-nav-file-cb" data-file-id="' + esc(f.fileId) + '" data-url="' + esc(f.url) + '" data-name="' + esc(f.name) + '" data-type="' + esc(type) + '">' +
+          '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + esc(f.name) + '">' + esc(f.name) + '</span>' +
+          '<span style="font-size:0.72rem;color:var(--muted);">' + esc(type) + '</span>' +
+          '</label>';
+      });
+      if (!result.folders.length && !result.files.length) {
+        html = '<div style="padding:10px;font-size:0.8rem;color:var(--muted);">This folder is empty.</div>';
+      }
+      list.innerHTML = html;
+    }
+
+    // ── Step 2: Calendar ──────────────────────────────────────────────────────
+    function wLoadCalendarList() {
+      var sel = document.getElementById('w-calSelect');
+      sel.innerHTML = '<option value="">Loading calendars...</option>';
+      google.script.run
+        .withSuccessHandler(function(result) {
+          if (!result || result.error) {
+            sel.innerHTML = '<option value="">Calendar access not authorized</option>';
+            document.getElementById('w-calAuthMsg').style.display = 'block';
+            return;
+          }
+          var html = '<option value="">Select a calendar...</option>';
+          result.forEach(function(cal) {
+            html += '<option value="' + esc(cal.id) + '">' + esc(cal.name) + '</option>';
+          });
+          sel.innerHTML = html;
+        })
+        .withFailureHandler(function() {
+          sel.innerHTML = '<option value="">Calendar access not authorized</option>';
+          document.getElementById('w-calAuthMsg').style.display = 'block';
+        })
+        .getCalendarList();
+    }
+
+    function wAddMeetUrl() {
+      var url = document.getElementById('w-meetUrl').value.trim();
+      if (!url) return;
+      var name = document.getElementById('w-meetName').value.trim() || 'Meeting Link';
+      var list = document.getElementById('w-meetList');
+      var item = document.createElement('label');
+      item.style.cssText = 'display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--bg);border:1px solid var(--border);border-radius:5px;cursor:pointer;font-size:0.82rem;margin-bottom:2px;';
+      item.innerHTML = '<input type="checkbox" class="w-meet-url-cb" checked data-url="' + esc(url) + '" data-name="' + esc(name) + '" data-type="Meeting Link">' +
+        '<span>📅</span>' +
+        '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(name) + '</span>' +
+        '<span style="font-size:0.73rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px;">' + esc(url) + '</span>' +
+        '<button style="background:none;border:none;cursor:pointer;color:var(--muted);padding:0 2px;" onclick="this.closest(\'label\').remove();if(!document.getElementById(\'w-meetList\').children.length)document.getElementById(\'w-meetList\').style.display=\'none\'">×</button>';
+      list.appendChild(item);
+      list.style.display = 'block';
+      document.getElementById('w-meetUrl').value = '';
+      document.getElementById('w-meetName').value = '';
+    }
+
+    function wLoadCalendarEvents() {
+      var calId = document.getElementById('w-calSelect').value;
+      if (!calId) { alert('Select a calendar first.'); return; }
+      var days = parseInt(document.getElementById('w-calDays').value, 10) || 60;
+      var btn = document.getElementById('w-calBtn');
+      btn.disabled = true; btn.textContent = 'Loading...';
+      google.script.run
+        .withSuccessHandler(function(result) {
+          btn.disabled = false; btn.textContent = 'Load Events';
+          if (result.error) { alert(result.error); return; }
+          wRenderCalendarEvents(result);
+        })
+        .withFailureHandler(function(err) {
+          btn.disabled = false; btn.textContent = 'Load Events';
+          alert('Error: ' + err.message);
+        })
+        .getCalendarEvents(calId, days);
+    }
+
+    function wRenderCalendarEvents(result) {
+      var el = document.getElementById('w-calResults');
+      if (!result.events || !result.events.length) {
+        el.innerHTML = '<div class="empty-resources">No upcoming events with Meet links found in the next ' +
+          document.getElementById('w-calDays').value + ' days (scanned ' + result.total + ' events).</div>';
+        el.style.display = 'block';
+        return;
+      }
+      var html = '<div style="font-size:0.75rem;font-weight:700;color:var(--muted);margin-bottom:6px;">' +
+        result.events.length + ' event(s) with Meet links — check to add</div>';
+      html += '<div style="max-height:160px;overflow-y:auto;display:flex;flex-direction:column;gap:2px;">';
+      result.events.forEach(function(ev) {
+        var dateStr = ev.startDate ? new Date(ev.startDate).toLocaleDateString() : '';
+        html += '<label style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--bg);border:1px solid var(--border);border-radius:5px;cursor:pointer;font-size:0.82rem;">' +
+          '<input type="checkbox" class="w-cal-event-cb" data-url="' + esc(ev.url) + '" data-name="' + esc(ev.name) + '" data-type="Meeting Link">' +
+          '<span>📅</span>' +
+          '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(ev.eventTitle) + '</span>' +
+          '<span style="font-size:0.73rem;color:var(--muted);white-space:nowrap;">' + esc(dateStr) + '</span>' +
           '</label>';
       });
       html += '</div>';
@@ -337,9 +525,24 @@
     function submitStep2() {
       var resources = [];
 
-      // Checked Drive folder files
+      // Drive navigator checked files
+      document.querySelectorAll('#w-navList .w-nav-file-cb:checked').forEach(function(cb) {
+        resources.push({ fileId: cb.dataset.fileId, url: cb.dataset.url, name: cb.dataset.name, type: cb.dataset.type });
+      });
+
+      // Drive folder URL checked files
       document.querySelectorAll('#w-fileList input[type=checkbox]:checked').forEach(function(cb) {
         resources.push({ fileId: cb.dataset.fileId, url: cb.dataset.url, name: cb.dataset.name, type: cb.dataset.type });
+      });
+
+      // Calendar event checked items
+      document.querySelectorAll('#w-calResults .w-cal-event-cb:checked').forEach(function(cb) {
+        resources.push({ url: cb.dataset.url, name: cb.dataset.name, type: cb.dataset.type });
+      });
+
+      // Manually pasted Meet URLs
+      document.querySelectorAll('#w-meetList .w-meet-url-cb:checked').forEach(function(cb) {
+        resources.push({ url: cb.dataset.url, name: cb.dataset.name, type: cb.dataset.type });
       });
 
       // URL link rows

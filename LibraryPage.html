@@ -472,6 +472,34 @@
     ::-webkit-scrollbar { width: 5px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    /* ── Collapsible sections ─────────────────────────────────────── */
+    .section-heading { cursor: pointer; user-select: none; }
+    .section-heading-end {
+      display: flex; align-items: center; gap: 6px; margin-left: auto; flex-shrink: 0;
+    }
+    /* Override old margin-left:auto now that .section-heading-end carries it */
+    .section-heading .count { margin-left: 0; }
+    .section-toggle {
+      width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;
+      border-radius: 6px; color: var(--muted); font-size: 1rem; pointer-events: none;
+      transition: transform 0.22s ease, background 0.15s, color 0.15s;
+    }
+    .section-heading:hover .section-toggle { background: var(--bg); color: var(--navy); }
+    .section-collapsed .section-toggle { transform: rotate(-90deg); }
+    .section-content { overflow: hidden; transition: height 0.28s ease; }
+
+    /* ── Expandable reading card detail ──────────────────────────── */
+    .rc-read-stmt-wrap { overflow: hidden; height: 0; transition: height 0.22s ease; }
+    .rc-read-footer-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+    .rc-read-expand-btn {
+      font-size: 0.65rem; font-weight: 700; color: var(--muted); cursor: pointer;
+      border: 1px solid var(--border); background: var(--bg);
+      padding: 2px 8px; border-radius: 10px; white-space: nowrap;
+      transition: color 0.13s, border-color 0.13s, background 0.13s;
+    }
+    .rc-read-expand-btn:hover { color: var(--navy); border-color: var(--navy); background: var(--white); }
+    .resource-card.rc-expanded .rc-read-expand-btn { color: var(--cyan); border-color: var(--cyan); background: var(--white); }
   </style>
 </head>
 <body>
@@ -540,64 +568,88 @@
 
         <!-- Overview -->
         <section class="section" id="overview">
-          <div class="section-heading">
+          <div class="section-heading" onclick="toggleSection(this.closest('.section'))">
             <div class="section-heading-icon">🌐</div>
             <h2>Session Overview</h2>
+            <div class="section-heading-end"><span class="section-toggle">›</span></div>
           </div>
-          <div class="overview-grid" id="overviewGrid"></div>
+          <div class="section-content">
+            <div class="overview-grid" id="overviewGrid"></div>
+          </div>
         </section>
 
         <!-- Questions -->
         <section class="section" id="questions">
-          <div class="section-heading">
+          <div class="section-heading" onclick="toggleSection(this.closest('.section'))">
             <div class="section-heading-icon">❓</div>
             <h2>Inquiry Questions</h2>
-            <span class="count" id="qCount"></span>
+            <div class="section-heading-end">
+              <span class="count" id="qCount"></span>
+              <span class="section-toggle">›</span>
+            </div>
           </div>
-          <div class="questions-list" id="questionsList"></div>
+          <div class="section-content">
+            <div class="questions-list" id="questionsList"></div>
+          </div>
         </section>
 
         <!-- Resources -->
         <section class="section" id="resources">
-          <div class="section-heading">
+          <div class="section-heading" onclick="toggleSection(this.closest('.section'))">
             <div class="section-heading-icon">📚</div>
             <h2>Resource Library</h2>
-            <span class="count" id="resCount"></span>
+            <div class="section-heading-end">
+              <span class="count" id="resCount"></span>
+              <span class="section-toggle">›</span>
+            </div>
           </div>
-          <div class="res-filter-bar" id="resFilters"></div>
-          <div class="resources-list" id="resourcesList"></div>
+          <div class="section-content">
+            <div class="res-filter-bar" id="resFilters"></div>
+            <div class="resources-list" id="resourcesList"></div>
+          </div>
         </section>
 
         <!-- Gems -->
         <section class="section" id="gems">
-          <div class="section-heading">
+          <div class="section-heading" onclick="toggleSection(this.closest('.section'))">
             <div class="section-heading-icon">💎</div>
             <h2>AI Learning Gems</h2>
-            <span class="count" id="gemsCount"></span>
+            <div class="section-heading-end">
+              <span class="count" id="gemsCount"></span>
+              <span class="section-toggle">›</span>
+            </div>
           </div>
-          <div class="gems-grid" id="gemsGrid"></div>
+          <div class="section-content">
+            <div class="gems-grid" id="gemsGrid"></div>
+          </div>
         </section>
 
-        <!-- NotebookLM -->
+        <!-- NotebookLM — starts collapsed by default -->
         <section class="section" id="notebooklm">
-          <div class="section-heading">
+          <div class="section-heading" onclick="toggleSection(this.closest('.section'))">
             <div class="section-heading-icon">🔬</div>
             <h2>NotebookLM Setup</h2>
+            <div class="section-heading-end"><span class="section-toggle">›</span></div>
           </div>
-          <div id="nlmContent"></div>
+          <div class="section-content">
+            <div id="nlmContent"></div>
+          </div>
         </section>
 
         <!-- Checklist -->
         <section class="section" id="checklist">
-          <div class="section-heading">
+          <div class="section-heading" onclick="toggleSection(this.closest('.section'))">
             <div class="section-heading-icon">✅</div>
             <h2>Pre-Session Checklist</h2>
+            <div class="section-heading-end"><span class="section-toggle">›</span></div>
           </div>
-          <div class="checklist-progress" id="clProgress" style="display:none;">
-            <div class="cl-progress-track"><div class="cl-progress-fill" id="clFill" style="width:0%"></div></div>
-            <span class="cl-progress-label" id="clLabel"></span>
+          <div class="section-content">
+            <div class="checklist-progress" id="clProgress" style="display:none;">
+              <div class="cl-progress-track"><div class="cl-progress-fill" id="clFill" style="width:0%"></div></div>
+              <span class="cl-progress-label" id="clLabel"></span>
+            </div>
+            <div class="checklist-list" id="checklistEl"></div>
           </div>
-          <div class="checklist-list" id="checklistEl"></div>
         </section>
 
       </main>
@@ -666,6 +718,8 @@
       // Sidebar nav observer
       initNavObserver();
       buildMobileNav();
+      // Collapse NotebookLM by default (it's detailed setup content, not primary reading)
+      initSections();
     }
 
     // ── Overview ──────────────────────────────────────────────────────────────
@@ -848,7 +902,8 @@
     }
 
     function _buildReadingCard(r, tagsHtml) {
-      var score = Math.max(1, Math.min(5, r.relevanceScore || 3));
+      var score   = Math.max(1, Math.min(5, r.relevanceScore || 3));
+      var hasStmt = !!r.relevanceStatement;
       return '<div class="resource-card" ' + _cardDataAttrs(r) + '>' +
         '<div class="rc-read-score s' + score + '"></div>' +
         '<div class="rc-read-body">' +
@@ -856,10 +911,15 @@
             '<div class="rc-read-title"><a href="' + esc(r.url) + '" target="_blank">' + esc(r.title || r.url) + ' ↗</a></div>' +
             '<span class="rc-chip rc-chip-read">📄 Read</span>' +
           '</div>' +
-          (r.relevanceStatement ? '<div class="rc-read-stmt">' + esc(r.relevanceStatement) + '</div>' : '') +
+          (hasStmt
+            ? '<div class="rc-read-stmt-wrap"><div class="rc-read-stmt">' + esc(r.relevanceStatement) + '</div></div>'
+            : '') +
           '<div class="rc-read-footer">' +
             '<div class="resource-tags">' + tagsHtml + '</div>' +
-            '<span class="rc-score-badge">' + score + '/5 relevance</span>' +
+            '<div class="rc-read-footer-right">' +
+              '<span class="rc-score-badge">' + score + '/5 relevance</span>' +
+              (hasStmt ? '<button class="rc-read-expand-btn" onclick="toggleReadCard(this.closest(\'.resource-card\'), this)">↓ Why?</button>' : '') +
+            '</div>' +
           '</div>' +
         '</div>' +
       '</div>';
@@ -1097,6 +1157,65 @@
       document.getElementById('heroProgress').style.display = total > 0 ? 'flex' : 'none';
     }
 
+    // ── Section collapse / expand ─────────────────────────────────────────────
+    function toggleSection(section) {
+      var content = section.querySelector('.section-content');
+      if (!content) return;
+      var isCollapsed = section.classList.contains('section-collapsed');
+      if (isCollapsed) {
+        // Expand: animate from 0 → scrollHeight, then clear for natural reflow
+        content.style.height = content.scrollHeight + 'px';
+        section.classList.remove('section-collapsed');
+        content.addEventListener('transitionend', function onDone() {
+          content.style.height = '';
+          content.removeEventListener('transitionend', onDone);
+        });
+      } else {
+        // Collapse: pin current height, then animate to 0
+        content.style.height = content.scrollHeight + 'px';
+        requestAnimationFrame(function() {
+          requestAnimationFrame(function() {
+            content.style.height = '0';
+            section.classList.add('section-collapsed');
+          });
+        });
+      }
+    }
+
+    // Initialise default-collapsed sections after all content has rendered
+    function initSections() {
+      var nlm = document.getElementById('notebooklm');
+      if (nlm) {
+        var c = nlm.querySelector('.section-content');
+        if (c) { c.style.height = '0'; nlm.classList.add('section-collapsed'); }
+      }
+    }
+
+    // ── Reading card expand (relevance statement) ─────────────────────────────
+    function toggleReadCard(card, btn) {
+      var wrap = card.querySelector('.rc-read-stmt-wrap');
+      if (!wrap) return;
+      var isOpen = card.classList.contains('rc-expanded');
+      if (isOpen) {
+        // Collapse: pin height then animate to 0
+        wrap.style.height = wrap.scrollHeight + 'px';
+        requestAnimationFrame(function() {
+          requestAnimationFrame(function() { wrap.style.height = '0'; });
+        });
+        card.classList.remove('rc-expanded');
+        btn.textContent = '↓ Why?';
+      } else {
+        // Expand: animate to scrollHeight then clear for natural reflow
+        wrap.style.height = wrap.scrollHeight + 'px';
+        card.classList.add('rc-expanded');
+        btn.textContent = '↑ Hide';
+        wrap.addEventListener('transitionend', function onDone() {
+          wrap.style.height = 'auto';
+          wrap.removeEventListener('transitionend', onDone);
+        });
+      }
+    }
+
     // ── Sidebar nav scroll ────────────────────────────────────────────────────
     function scrollToSection(id) {
       // Use JS smooth scroll instead of href anchors — anchor navigation inside a
@@ -1144,12 +1263,12 @@
         nav.appendChild(a);
       });
 
-      // Sync active state
+      // Sync active state (use data-section, not href which is javascript:void(0))
       var obs = new IntersectionObserver(function(entries) {
         entries.forEach(function(e) {
           if (e.isIntersecting) {
             nav.querySelectorAll('.mobile-nav-item').forEach(function(n) {
-              n.classList.toggle('active', n.getAttribute('href') === '#' + e.target.id);
+              n.classList.toggle('active', n.getAttribute('data-section') === e.target.id);
             });
           }
         });

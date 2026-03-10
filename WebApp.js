@@ -19,6 +19,11 @@ function doGet(e) {
 
   const page = e && e.parameter && e.parameter.page ? e.parameter.page : 'dashboard';
 
+  // Public pages (e.g. library) skip auth entirely so anyone with the link can access them.
+  if (CONFIG.PUBLIC_PAGES.indexOf(page) === -1 && !_isAuthorizedUser()) {
+    return _unauthorizedPage();
+  }
+
   if (page === 'diag') {
     try {
       const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -479,6 +484,58 @@ function getCalendarEvents(calendarId, daysAhead) {
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
+
+/**
+ * Returns true if the current user is allowed to access protected routes.
+ * - If CONFIG.ALLOWED_DOMAIN is set, the user's email must end with @domain.
+ * - If CONFIG.ALLOWED_DOMAIN is '', any authenticated Google account is allowed.
+ * - Unauthenticated (anonymous) users are always rejected.
+ */
+function _isAuthorizedUser() {
+  try {
+    var email = Session.getActiveUser().getEmail();
+    if (!email) return false;                                // anonymous / not signed in
+    if (!CONFIG.ALLOWED_DOMAIN) return true;                 // any Google account allowed
+    return email.toLowerCase().endsWith('@' + CONFIG.ALLOWED_DOMAIN.toLowerCase());
+  } catch (e) {
+    return false;
+  }
+}
+
+/**
+ * Returns a styled "access restricted" HTML page for unauthorized requests.
+ */
+function _unauthorizedPage() {
+  var html =
+    '<!DOCTYPE html><html><head><meta charset="utf-8">' +
+    '<meta name="viewport" content="width=device-width,initial-scale=1">' +
+    '<title>Access Restricted — ' + CONFIG.APP_NAME + '</title>' +
+    '<style>' +
+      'body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;' +
+        'background:#0B2B46;font-family:"Google Sans",Arial,sans-serif;}' +
+      '.card{background:rgba(255,255,255,0.05);border:1px solid rgba(93,205,245,0.2);' +
+        'border-radius:16px;padding:40px 44px;max-width:420px;text-align:center;}' +
+      '.eyebrow{font-size:0.7rem;font-weight:800;letter-spacing:0.14em;color:#5DCDF5;' +
+        'text-transform:uppercase;margin-bottom:16px;}' +
+      'h1{font-size:1.4rem;font-weight:800;color:#fff;margin:0 0 12px;}' +
+      'p{font-size:0.87rem;color:rgba(255,255,255,0.6);line-height:1.6;margin:0 0 24px;}' +
+      'a{display:inline-block;background:#5DCDF5;color:#0B2B46;font-weight:800;' +
+        'font-size:0.85rem;padding:10px 24px;border-radius:8px;text-decoration:none;}' +
+      'a:hover{background:#84dafc;}' +
+    '</style></head><body>' +
+    '<div class="card">' +
+      '<div class="eyebrow">' + CONFIG.APP_NAME + '</div>' +
+      '<h1>Access Restricted</h1>' +
+      '<p>This dashboard is available to <strong>' +
+        (CONFIG.ALLOWED_DOMAIN ? '@' + CONFIG.ALLOWED_DOMAIN : 'authorized Google accounts') +
+      '</strong> only.<br>Sign in with an authorized account and try again.</p>' +
+      '<a href="https://accounts.google.com/AccountChooser" target="_top">Switch Account &rarr;</a>' +
+    '</div>' +
+    '</body></html>';
+  return HtmlService.createHtmlOutput(html)
+    .setTitle('Access Restricted — ' + CONFIG.APP_NAME)
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
 
 function _getWebAppUrl() {
   try {

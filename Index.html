@@ -342,6 +342,13 @@
     var _newsletterDraft = null;
     var _gemLinksSessionId = null;
     var _sessionsData = [];
+    var _appBaseUrl = ''; // populated from server on load — window.location.href is wrong inside GAS sandbox iframe
+
+    // ── Init ───────────────────────────────────────────────────────────────────
+    // Fetch the real exec URL early — window.location.href returns the internal GAS sandbox URL
+    google.script.run
+      .withSuccessHandler(function(url) { if (url) _appBaseUrl = url; })
+      .webGetAppBaseUrl();
 
     // ── Dashboard ──────────────────────────────────────────────────────────────
 
@@ -359,6 +366,12 @@
 
     function renderSessions(sessions) {
       _sessionsData = sessions || [];
+      // Extract the exec base URL from a session's libraryUrl (more reliable than window.location.href in GAS sandbox)
+      if (!_appBaseUrl) {
+        for (var _i = 0; _i < _sessionsData.length; _i++) {
+          if (_sessionsData[_i].libraryUrl) { _appBaseUrl = _sessionsData[_i].libraryUrl.split('?')[0]; break; }
+        }
+      }
       document.getElementById('loader').style.display = 'none';
       var grid = document.getElementById('sessions-grid');
       grid.style.display = 'flex';
@@ -1186,7 +1199,10 @@
     // ── Page Builder ───────────────────────────────────────────────────────────
 
     function openPageBuilder(sessionId) {
-      var base = window.location.href.split('?')[0];
+      // _appBaseUrl is pre-fetched from the server on load; it's the real exec URL.
+      // window.location.href returns the internal GAS sandbox URL which can't be used directly.
+      var base = _appBaseUrl || window.location.href.split('?')[0];
+      if (!base) { showAlert('Could not determine app URL — try again in a moment.', 'error'); return; }
       window.open(base + '?page=design&session=' + sessionId, '_blank');
     }
 

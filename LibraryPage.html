@@ -480,26 +480,26 @@
       <aside class="sidebar">
         <div class="sidebar-inner">
           <div class="nav-label">In this session</div>
-          <a class="nav-item active" href="#overview" data-section="overview">
+          <a class="nav-item active" href="javascript:void(0)" onclick="scrollToSection('overview')" data-section="overview">
             <span class="nav-icon">🌐</span> Overview
           </a>
-          <a class="nav-item" href="#questions" data-section="questions">
+          <a class="nav-item" href="javascript:void(0)" onclick="scrollToSection('questions')" data-section="questions">
             <span class="nav-icon">❓</span> Questions
             <span class="nav-badge" id="nav-badge-questions">–</span>
           </a>
-          <a class="nav-item" href="#resources" data-section="resources">
+          <a class="nav-item" href="javascript:void(0)" onclick="scrollToSection('resources')" data-section="resources">
             <span class="nav-icon">📚</span> Resources
             <span class="nav-badge" id="nav-badge-resources">–</span>
           </a>
-          <a class="nav-item" href="#gems" data-section="gems">
+          <a class="nav-item" href="javascript:void(0)" onclick="scrollToSection('gems')" data-section="gems">
             <span class="nav-icon">💎</span> AI Gems
             <span class="nav-badge" id="nav-badge-gems">–</span>
           </a>
           <div class="nav-spacer"></div>
-          <a class="nav-item" href="#notebooklm" data-section="notebooklm">
+          <a class="nav-item" href="javascript:void(0)" onclick="scrollToSection('notebooklm')" data-section="notebooklm">
             <span class="nav-icon">🔬</span> NotebookLM
           </a>
-          <a class="nav-item" href="#checklist" data-section="checklist">
+          <a class="nav-item" href="javascript:void(0)" onclick="scrollToSection('checklist')" data-section="checklist">
             <span class="nav-icon">✅</span> Checklist
             <span class="nav-badge" id="nav-badge-checklist">–</span>
           </a>
@@ -696,11 +696,14 @@
     function _getResourceKind(r) {
       var url  = (r.url  || '').toLowerCase();
       var type = (r.type || '').toLowerCase();
-      if (type === 'meeting link' || url.includes('meet.google.com') ||
-          url.includes('zoom.us') || url.includes('teams.microsoft.com')) return 'meeting';
-      if (type === 'video' || url.includes('youtube.com/watch') ||
-          url.includes('youtu.be/') || url.includes('vimeo.com')) return 'video';
-      if (type === 'slide deck' || url.includes('docs.google.com/presentation')) return 'slides';
+      // URL-pattern checks take priority — a Slides URL is always 'slides' even if type says 'video'
+      if (url.includes('meet.google.com') || url.includes('zoom.us') || url.includes('teams.microsoft.com')) return 'meeting';
+      if (url.includes('docs.google.com/presentation')) return 'slides';
+      if (url.includes('youtube.com/watch') || url.includes('youtu.be/') || url.includes('vimeo.com')) return 'video';
+      // Type-based fallback
+      if (type === 'meeting link') return 'meeting';
+      if (type === 'video') return 'video';
+      if (type === 'slide deck') return 'slides';
       if (type === 'audio / podcast' || type === 'podcast' || type === 'audio') return 'audio';
       return 'reading';
     }
@@ -766,7 +769,7 @@
           '<span class="rc-embed-icon">🎥</span>' +
           '<span class="rc-embed-title-text"><a href="' + esc(r.url) + '" target="_blank">' + esc(r.title || r.url) + ' ↗</a></span>' +
         '</div>' +
-        '<div class="rc-embed-wrapper"><iframe src="' + esc(embedUrl) + '" allowfullscreen loading="lazy"></iframe></div>' +
+        '<div class="rc-embed-wrapper"><iframe src="' + esc(embedUrl) + '" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen" allowfullscreen loading="lazy"></iframe></div>' +
         '<div class="rc-embed-footer">' +
           (r.relevanceStatement ? '<div class="rc-embed-stmt">' + esc(r.relevanceStatement) + '</div>' : '') +
           (tagsHtml ? '<div class="resource-tags">' + tagsHtml + '</div>' : '') +
@@ -782,7 +785,7 @@
           '<span class="rc-embed-icon">📊</span>' +
           '<span class="rc-embed-title-text"><a href="' + esc(r.url) + '" target="_blank">' + esc(r.title || r.url) + ' ↗</a></span>' +
         '</div>' +
-        '<div class="rc-embed-wrapper slides-aspect"><iframe src="' + esc(embedUrl) + '" allowfullscreen loading="lazy"></iframe></div>' +
+        '<div class="rc-embed-wrapper slides-aspect"><iframe src="' + esc(embedUrl) + '" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen" allowfullscreen loading="lazy"></iframe></div>' +
         '<div class="rc-embed-footer">' +
           (r.relevanceStatement ? '<div class="rc-embed-stmt">' + esc(r.relevanceStatement) + '</div>' : '') +
           (tagsHtml ? '<div class="resource-tags">' + tagsHtml + '</div>' : '') +
@@ -1053,6 +1056,14 @@
       document.getElementById('heroProgress').style.display = total > 0 ? 'flex' : 'none';
     }
 
+    // ── Sidebar nav scroll ────────────────────────────────────────────────────
+    function scrollToSection(id) {
+      // Use JS smooth scroll instead of href anchors — anchor navigation inside a
+      // GAS sandbox iframe escapes the frame and opens a new tab in some browsers.
+      var el = document.getElementById(id);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
     // ── Sidebar nav — IntersectionObserver ────────────────────────────────────
     function initNavObserver() {
       var sections = document.querySelectorAll('.section[id]');
@@ -1085,7 +1096,9 @@
       items.forEach(function(item, i) {
         var a = document.createElement('a');
         a.className = 'mobile-nav-item' + (i === 0 ? ' active' : '');
-        a.href = '#' + item.id;
+        a.href = 'javascript:void(0)';
+        a.setAttribute('data-section', item.id);
+        a.onclick = (function(id) { return function() { scrollToSection(id); }; })(item.id);
         a.textContent = item.label;
         nav.appendChild(a);
       });

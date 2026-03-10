@@ -393,6 +393,16 @@ function _getWebAppUrl() {
   }
 }
 
+/**
+ * Returns the deployed web-app exec URL.
+ * Used by the dashboard client to construct page=design links, since
+ * window.location.href inside a GAS sandbox iframe returns an internal
+ * googleusercontent.com URL rather than the real exec URL.
+ */
+function webGetAppBaseUrl() {
+  return _getWebAppUrl();
+}
+
 // ─── Page Builder API ─────────────────────────────────────────────────────────
 
 /**

@@ -43,12 +43,14 @@ const LibraryService = {
 
     return {
       meta: {
-        sessionId: session.id,
-        name: session.name,
-        theme: session.theme,
-        date: session.date,
-        format: session.format,
-        audience: session.audience,
+        sessionId:     session.id,
+        name:          session.name,
+        theme:         session.theme,
+        date:          session.date,
+        format:        session.format,
+        audience:      session.audience,
+        timezone:      CONFIG.DISPLAY_TIMEZONE,
+        timezoneLabel: CONFIG.TIMEZONE_LABEL,
         folderUrl: session.folderUrl,
         dbUrl: session.dbUrl,
         generatedAt: new Date().toISOString()

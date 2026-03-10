@@ -36,6 +36,21 @@ const CONFIG = {
    */
   PUBLIC_PAGES: ['library'],
 
+  // ── Display timezone ──────────────────────────────────────────────────────
+
+  /**
+   * IANA timezone name used to display all session times consistently.
+   * Times in the Learning Library and input modals are always shown in this
+   * timezone, regardless of the viewer's local timezone — important for
+   * public Library links shared with attendees in different locations.
+   * Example: 'America/Chicago' (Central), 'America/New_York' (Eastern),
+   *          'America/Los_Angeles' (Pacific), 'America/Denver' (Mountain)
+   */
+  DISPLAY_TIMEZONE: 'America/Chicago',
+
+  /** Short label shown after formatted times, e.g. "9:00 AM CT" */
+  TIMEZONE_LABEL: 'CT',
+
   // ── App identity ──────────────────────────────────────────────────────────
 
   APP_NAME: 'MNGAIA Content Engine',

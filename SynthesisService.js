@@ -185,9 +185,9 @@ const SynthesisService = {
           notebookLMReady:   row[7] === 'Yes',
           relevanceStatement: row[8] || '',
           summary:           row[9] || '',
-          isMain:            row[10] === 'Yes',
-          startTime:         row[11] ? String(row[11]) : '',
-          endTime:           row[12] ? String(row[12]) : ''
+          isMain:    row[10] === 'Yes',
+          startTime: row[11] ? (row[11] instanceof Date ? row[11].toISOString() : String(row[11])) : '',
+          endTime:   row[12] ? (row[12] instanceof Date ? row[12].toISOString() : String(row[12])) : ''
         }))
         .sort((a, b) => b.relevanceScore - a.relevanceScore);
     } catch (e) {

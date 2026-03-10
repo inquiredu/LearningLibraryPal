@@ -806,6 +806,8 @@
     var SESSION_ID = '__SESSION_ID__';
     var _checklistSaved = {};
     var _checklistTotal = 0;
+    var _displayTz      = 'America/Chicago'; // overwritten from data.meta on load
+    var _displayTzLabel = 'CT';
 
     // ── Bootstrap ─────────────────────────────────────────────────────────────
     window.onload = function() {
@@ -830,6 +832,10 @@
 
       var m     = data.meta  || {};
       var brief = data.brief || {};
+
+      // Store display timezone for use by _fmtTime throughout this page load
+      _displayTz      = m.timezone      || 'America/Chicago';
+      _displayTzLabel = m.timezoneLabel || 'CT';
 
       // Hero
       document.getElementById('heroTitle').textContent = m.name || 'Session';
@@ -1119,7 +1125,15 @@
 
     function _fmtTime(iso) {
       if (!iso) return '';
-      return new Date(iso).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+      try {
+        return new Intl.DateTimeFormat('en-US', {
+          timeZone: _displayTz,
+          month: 'short', day: 'numeric',
+          hour: '2-digit', minute: '2-digit'
+        }).format(new Date(iso)) + ' ' + _displayTzLabel;
+      } catch (e) {
+        return new Date(iso).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+      }
     }
 
     function renderMeetings(meetings) {

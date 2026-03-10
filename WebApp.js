@@ -556,6 +556,17 @@ function webGetAppBaseUrl() {
   return _getWebAppUrl();
 }
 
+/**
+ * Returns client-safe config values (no secrets).
+ * Called from dashboard and wizard to get display timezone etc.
+ */
+function webGetAppConfig() {
+  return {
+    timezone:      CONFIG.DISPLAY_TIMEZONE,
+    timezoneLabel: CONFIG.TIMEZONE_LABEL
+  };
+}
+
 // ─── Page Builder API ─────────────────────────────────────────────────────────
 
 /**

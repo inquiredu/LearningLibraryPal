@@ -385,12 +385,16 @@
     var _gemLinksSessionId = null;
     var _sessionsData = [];
     var _appBaseUrl = ''; // populated from server on load — window.location.href is wrong inside GAS sandbox iframe
+    var _appTz      = 'America/Chicago';
+    var _appTzLabel = 'CT';
 
     // ── Init ───────────────────────────────────────────────────────────────────
-    // Fetch the real exec URL early — window.location.href returns the internal GAS sandbox URL
     google.script.run
       .withSuccessHandler(function(url) { if (url) _appBaseUrl = url; })
       .webGetAppBaseUrl();
+    google.script.run
+      .withSuccessHandler(function(cfg) { if (cfg) { _appTz = cfg.timezone || _appTz; _appTzLabel = cfg.timezoneLabel || _appTzLabel; } })
+      .webGetAppConfig();
 
     // ── Dashboard ──────────────────────────────────────────────────────────────
 
@@ -1030,6 +1034,13 @@
         .getCalendarList();
     }
 
+    function _fmtEventTime(iso) {
+      if (!iso) return '';
+      try {
+        return new Intl.DateTimeFormat('en-US', { timeZone: _appTz, month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(iso)) + ' ' + _appTzLabel;
+      } catch (e) { return new Date(iso).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }); }
+    }
+
     function addMeetUrl() {
       var url = document.getElementById('res-meetUrl').value.trim();
       if (!url) return;
@@ -1039,7 +1050,7 @@
       var isMain    = document.getElementById('res-meetIsMain').checked;
       // If marking this as main, uncheck all existing main flags
       if (isMain) _resMeetClearMain();
-      var timeStr = startTime ? new Date(startTime).toLocaleString([], {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
+      var timeStr = startTime ? _fmtEventTime(startTime) : '';
       var list = document.getElementById('res-meetList');
       var item = document.createElement('div');
       item.style.cssText = 'display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--bg);border:1px solid var(--border);border-radius:5px;font-size:0.82rem;margin-bottom:2px;';
@@ -1102,8 +1113,7 @@
         result.events.length + ' event(s) with Meet links — check to add; ★ = Main Room</div>';
       html += '<div style="max-height:200px;overflow-y:auto;display:flex;flex-direction:column;gap:2px;">';
       result.events.forEach(function(ev, idx) {
-        var timeStr = ev.startDate
-          ? new Date(ev.startDate).toLocaleString([], {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
+        var timeStr = ev.startDate ? _fmtEventTime(ev.startDate) : '';
         var isFirst = idx === 0;
         html += '<div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--bg);border:1px solid var(--border);border-radius:5px;font-size:0.82rem;">' +
           '<input type="checkbox" class="cal-event-cb" checked' +

@@ -1521,7 +1521,9 @@
     }
 
     function openNewSessionWizard() {
-      window.location.href = window.location.href.split('?')[0] + '?page=wizard';
+      var base = _appBaseUrl || window.location.href.split('?')[0];
+      if (!base) { showAlert('Could not determine app URL — try again in a moment.', 'error'); return; }
+      window.open(base + '?page=wizard', '_blank');
     }
 
     // ── Utilities ──────────────────────────────────────────────────────────────

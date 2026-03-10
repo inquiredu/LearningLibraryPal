@@ -224,6 +224,61 @@
     .rtag.nlm  { background: var(--nlm-bg);  color: var(--nlm);  border-color: #E1BEE7; }
     .resource-card[data-hidden="true"] { display: none; }
 
+    /* ── Meeting link card ───────────────────────────────────────── */
+    .resource-card.rc-meeting {
+      padding: 0; border-color: #28a745;
+      background: linear-gradient(135deg, #f0fff4 0%, #e9f7ef 100%);
+    }
+    .resource-card.rc-meeting:hover { border-color: #1e7e34; box-shadow: 0 2px 14px rgba(40,167,69,0.18); }
+    .rc-meeting-header {
+      background: linear-gradient(90deg, #1e7e34 0%, #2daa4a 100%);
+      padding: 12px 18px; display: flex; align-items: center; gap: 10px;
+    }
+    .rc-meeting-label {
+      font-size: 0.62rem; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase;
+      color: rgba(255,255,255,0.8); background: rgba(0,0,0,0.18); padding: 2px 9px; border-radius: 10px; flex-shrink: 0;
+    }
+    .rc-meeting-header-title { flex: 1; font-size: 0.88rem; font-weight: 700; color: #fff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .rc-meeting-body { padding: 14px 18px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+    .rc-meeting-stmt { font-size: 0.83rem; color: #1e6038; line-height: 1.55; flex: 1; min-width: 200px; }
+    .rc-join-btn {
+      display: inline-flex; align-items: center; gap: 8px; flex-shrink: 0;
+      padding: 12px 24px; border-radius: 8px; font-weight: 700; font-size: 0.92rem;
+      background: #28a745; color: #fff !important; text-decoration: none;
+      box-shadow: 0 3px 10px rgba(40,167,69,0.4); transition: all 0.15s;
+    }
+    .rc-join-btn:hover { background: #1e7e34; transform: translateY(-1px); box-shadow: 0 5px 16px rgba(40,167,69,0.5); }
+
+    /* ── Video / Slides embed card ───────────────────────────────── */
+    .resource-card.rc-embed { padding: 0; }
+    .rc-embed-header {
+      padding: 10px 16px; display: flex; align-items: center; gap: 10px;
+      border-bottom: 1px solid var(--border); background: var(--bg);
+    }
+    .rc-embed-icon { font-size: 1.05rem; flex-shrink: 0; }
+    .rc-embed-title-text { flex: 1; font-size: 0.88rem; font-weight: 700; color: var(--navy); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .rc-embed-title-text a { color: inherit; }
+    .rc-embed-title-text a:hover { color: var(--cyan); }
+    .rc-embed-wrapper { position: relative; width: 100%; padding-bottom: 56.25%; background: #000; }
+    .rc-embed-wrapper.slides-aspect { padding-bottom: 58%; }
+    .rc-embed-wrapper iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: none; }
+    .rc-embed-footer { padding: 12px 16px; }
+    .rc-embed-stmt { font-size: 0.83rem; color: var(--text); line-height: 1.55; margin-bottom: 8px; }
+
+    /* ── Audio / Podcast card ────────────────────────────────────── */
+    .resource-card.rc-audio {
+      background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%);
+      border-color: #d1b3e8; align-items: center;
+    }
+    .resource-card.rc-audio:hover { border-color: #9C27B0; box-shadow: 0 2px 12px rgba(156,39,176,0.12); }
+    .rc-audio-glyph { font-size: 2.2rem; flex-shrink: 0; }
+    .rc-listen-btn {
+      display: inline-flex; align-items: center; gap: 6px; margin-top: 10px;
+      padding: 7px 14px; border-radius: 6px; font-size: 0.8rem; font-weight: 700;
+      background: #9C27B0; color: #fff !important; text-decoration: none; transition: opacity 0.15s;
+    }
+    .rc-listen-btn:hover { opacity: 0.85; }
+
     /* ── Gems ────────────────────────────────────────────────────── */
     .gems-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
     .gem-card {
@@ -637,6 +692,135 @@
     function toggleQ(el) { el.classList.toggle('open'); }
 
     // ── Resources ─────────────────────────────────────────────────────────────
+
+    function _getResourceKind(r) {
+      var url  = (r.url  || '').toLowerCase();
+      var type = (r.type || '').toLowerCase();
+      if (type === 'meeting link' || url.includes('meet.google.com') ||
+          url.includes('zoom.us') || url.includes('teams.microsoft.com')) return 'meeting';
+      if (type === 'video' || url.includes('youtube.com/watch') ||
+          url.includes('youtu.be/') || url.includes('vimeo.com')) return 'video';
+      if (type === 'slide deck' || url.includes('docs.google.com/presentation')) return 'slides';
+      if (type === 'audio / podcast' || type === 'podcast' || type === 'audio') return 'audio';
+      return 'reading';
+    }
+
+    function _ytEmbedUrl(url) {
+      var m = url.match(/[?&]v=([a-zA-Z0-9_-]{11})/);
+      if (m) return 'https://www.youtube.com/embed/' + m[1] + '?rel=0';
+      m = url.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/);
+      if (m) return 'https://www.youtube.com/embed/' + m[1] + '?rel=0';
+      if (url.includes('/embed/')) return url;
+      return null;
+    }
+
+    function _slidesEmbedUrl(url) {
+      var m = url.match(/\/presentation\/d\/([a-zA-Z0-9_-]+)/);
+      return m ? 'https://docs.google.com/presentation/d/' + m[1] + '/embed?start=false&loop=false&delayms=3000' : null;
+    }
+
+    function _driveVideoEmbedUrl(r) {
+      var m = (r.url || '').match(/\/d\/([a-zA-Z0-9_-]+)/);
+      var fid = (m ? m[1] : null) || r.fileId;
+      return fid ? 'https://drive.google.com/file/d/' + fid + '/preview' : null;
+    }
+
+    function _buildTagsHtml(r) {
+      var t = '';
+      if (r.preReading) t += '<span class="rtag pre">Pre-Reading</span>';
+      var eng = (r.engagementLevel || '').toLowerCase();
+      if (eng.includes('deep')) t += '<span class="rtag deep">Deep Dive</span>';
+      else if (eng.includes('inter') || eng.includes('mid')) t += '<span class="rtag mid">Intermediate</span>';
+      else if (r.engagementLevel) t += '<span class="rtag">' + esc(r.engagementLevel) + '</span>';
+      if (r.notebookLMReady) t += '<span class="rtag nlm">NotebookLM</span>';
+      (r.keyTags || []).forEach(function(k) { t += '<span class="rtag">' + esc(k) + '</span>'; });
+      return t;
+    }
+
+    function _cardDataAttrs(r) {
+      return 'data-pre-reading="' + (r.preReading ? 'true' : '') + '" ' +
+             'data-engagement="' + esc(r.engagementLevel || '') + '" ' +
+             'data-nlm="' + (r.notebookLMReady ? 'true' : '') + '"';
+    }
+
+    function _buildMeetingCard(r, tagsHtml) {
+      return '<div class="resource-card rc-meeting" ' + _cardDataAttrs(r) + '>' +
+        '<div class="rc-meeting-header">' +
+          '<span style="font-size:1.15rem;">📅</span>' +
+          '<span class="rc-meeting-header-title">' + esc(r.title || 'Virtual Session') + '</span>' +
+          '<span class="rc-meeting-label">Live Session</span>' +
+        '</div>' +
+        '<div class="rc-meeting-body">' +
+          '<div class="rc-meeting-stmt">' + esc(r.relevanceStatement || 'Click to join the live session.') + '</div>' +
+          '<a href="' + esc(r.url) + '" target="_blank" class="rc-join-btn">🟢 Join Session →</a>' +
+        '</div>' +
+        (tagsHtml ? '<div style="padding:0 18px 14px;"><div class="resource-tags">' + tagsHtml + '</div></div>' : '') +
+      '</div>';
+    }
+
+    function _buildVideoCard(r, tagsHtml) {
+      var embedUrl = _ytEmbedUrl(r.url) || _driveVideoEmbedUrl(r);
+      if (!embedUrl) return _buildReadingCard(r, tagsHtml);
+      return '<div class="resource-card rc-embed" ' + _cardDataAttrs(r) + '>' +
+        '<div class="rc-embed-header">' +
+          '<span class="rc-embed-icon">🎥</span>' +
+          '<span class="rc-embed-title-text"><a href="' + esc(r.url) + '" target="_blank">' + esc(r.title || r.url) + ' ↗</a></span>' +
+        '</div>' +
+        '<div class="rc-embed-wrapper"><iframe src="' + esc(embedUrl) + '" allowfullscreen loading="lazy"></iframe></div>' +
+        '<div class="rc-embed-footer">' +
+          (r.relevanceStatement ? '<div class="rc-embed-stmt">' + esc(r.relevanceStatement) + '</div>' : '') +
+          (tagsHtml ? '<div class="resource-tags">' + tagsHtml + '</div>' : '') +
+        '</div>' +
+      '</div>';
+    }
+
+    function _buildSlidesCard(r, tagsHtml) {
+      var embedUrl = _slidesEmbedUrl(r.url);
+      if (!embedUrl) return _buildReadingCard(r, tagsHtml);
+      return '<div class="resource-card rc-embed" ' + _cardDataAttrs(r) + '>' +
+        '<div class="rc-embed-header">' +
+          '<span class="rc-embed-icon">📊</span>' +
+          '<span class="rc-embed-title-text"><a href="' + esc(r.url) + '" target="_blank">' + esc(r.title || r.url) + ' ↗</a></span>' +
+        '</div>' +
+        '<div class="rc-embed-wrapper slides-aspect"><iframe src="' + esc(embedUrl) + '" allowfullscreen loading="lazy"></iframe></div>' +
+        '<div class="rc-embed-footer">' +
+          (r.relevanceStatement ? '<div class="rc-embed-stmt">' + esc(r.relevanceStatement) + '</div>' : '') +
+          (tagsHtml ? '<div class="resource-tags">' + tagsHtml + '</div>' : '') +
+        '</div>' +
+      '</div>';
+    }
+
+    function _buildAudioCard(r, tagsHtml) {
+      return '<div class="resource-card rc-audio" ' + _cardDataAttrs(r) + '>' +
+        '<div class="rc-audio-glyph">🎧</div>' +
+        '<div class="resource-body">' +
+          '<div class="resource-name"><a href="' + esc(r.url) + '" target="_blank">' + esc(r.title || r.url) + ' ↗</a></div>' +
+          (r.relevanceStatement ? '<div class="resource-stmt">' + esc(r.relevanceStatement) + '</div>' : '') +
+          (tagsHtml ? '<div class="resource-tags" style="margin-bottom:8px;">' + tagsHtml + '</div>' : '') +
+          '<a href="' + esc(r.url) + '" target="_blank" class="rc-listen-btn">▶ Listen →</a>' +
+        '</div>' +
+      '</div>';
+    }
+
+    function _buildReadingCard(r, tagsHtml) {
+      var score = Math.max(1, Math.min(5, r.relevanceScore || 0));
+      var pips = '';
+      for (var p = 5; p >= 1; p--) {
+        pips += '<div class="score-pip' + (p <= score ? ' lit s' + score : '') + '"></div>';
+      }
+      return '<div class="resource-card" ' + _cardDataAttrs(r) + '>' +
+        '<div class="resource-score-bar">' +
+          '<div class="score-pips">' + pips + '</div>' +
+          '<div class="score-digit">' + score + '/5</div>' +
+        '</div>' +
+        '<div class="resource-body">' +
+          '<div class="resource-name"><a href="' + esc(r.url) + '" target="_blank">' + esc(r.title || r.url) + ' ↗</a></div>' +
+          (r.relevanceStatement ? '<div class="resource-stmt">' + esc(r.relevanceStatement) + '</div>' : '') +
+          '<div class="resource-tags">' + tagsHtml + '</div>' +
+        '</div>' +
+      '</div>';
+    }
+
     function renderResources(resources) {
       var list = document.getElementById('resourcesList');
       document.getElementById('resCount').textContent = resources.length;
@@ -647,15 +831,15 @@
         return;
       }
 
-      // Build filter tags
-      var tags = new Set(['All']);
+      // Build filter buttons
+      var filterKeys = new Set(['All']);
       resources.forEach(function(r) {
-        if (r.preReading) tags.add('Pre-Reading');
-        if (r.engagementLevel) tags.add(r.engagementLevel);
-        if (r.notebookLMReady) tags.add('NotebookLM');
+        if (r.preReading) filterKeys.add('Pre-Reading');
+        if (r.engagementLevel) filterKeys.add(r.engagementLevel);
+        if (r.notebookLMReady) filterKeys.add('NotebookLM');
       });
       var filterBar = document.getElementById('resFilters');
-      tags.forEach(function(t) {
+      filterKeys.forEach(function(t) {
         var btn = document.createElement('button');
         btn.className = 'res-filter' + (t === 'All' ? ' active' : '');
         btn.textContent = t;
@@ -667,45 +851,27 @@
         filterBar.appendChild(btn);
       });
 
-      // Render cards
+      // Render type-specific cards
       resources.forEach(function(r) {
-        var score = Math.max(1, Math.min(5, r.relevanceScore || 0));
-        var pips = '';
-        for (var p = 5; p >= 1; p--) {
-          pips += '<div class="score-pip' + (p <= score ? ' lit s' + score : '') + '"></div>';
-        }
-        var tags = '';
-        if (r.preReading)       tags += '<span class="rtag pre">Pre-Reading</span>';
-        if (r.engagementLevel === 'Deep Dive' || r.engagementLevel === 'Deep') tags += '<span class="rtag deep">Deep Dive</span>';
-        else if (r.engagementLevel === 'Intermediate' || r.engagementLevel === 'Mid-Level') tags += '<span class="rtag mid">Intermediate</span>';
-        else if (r.engagementLevel) tags += '<span class="rtag">' + esc(r.engagementLevel) + '</span>';
-        if (r.notebookLMReady)  tags += '<span class="rtag nlm">NotebookLM</span>';
-        (r.keyTags || []).forEach(function(t) { tags += '<span class="rtag">' + esc(t) + '</span>'; });
-
-        var card = document.createElement('div');
-        card.className = 'resource-card';
-        card.dataset.preReading = r.preReading ? 'true' : '';
-        card.dataset.engagement = r.engagementLevel || '';
-        card.dataset.nlm = r.notebookLMReady ? 'true' : '';
-        card.innerHTML =
-          '<div class="resource-score-bar">' +
-            '<div class="score-pips">' + pips + '</div>' +
-            '<div class="score-digit">' + score + '/5</div>' +
-          '</div>' +
-          '<div class="resource-body">' +
-            '<div class="resource-name"><a href="' + esc(r.url) + '" target="_blank">' + esc(r.title || r.url) + ' ↗</a></div>' +
-            (r.relevanceStatement ? '<div class="resource-stmt">' + esc(r.relevanceStatement) + '</div>' : '') +
-            '<div class="resource-tags">' + tags + '</div>' +
-          '</div>';
-        list.appendChild(card);
+        var tagsHtml = _buildTagsHtml(r);
+        var kind = _getResourceKind(r);
+        var html;
+        if      (kind === 'meeting') html = _buildMeetingCard(r, tagsHtml);
+        else if (kind === 'video')   html = _buildVideoCard(r, tagsHtml);
+        else if (kind === 'slides')  html = _buildSlidesCard(r, tagsHtml);
+        else if (kind === 'audio')   html = _buildAudioCard(r, tagsHtml);
+        else                          html = _buildReadingCard(r, tagsHtml);
+        var wrapper = document.createElement('div');
+        wrapper.innerHTML = html;
+        list.appendChild(wrapper.firstChild);
       });
     }
 
     function filterResources(filter) {
       document.querySelectorAll('.resource-card').forEach(function(card) {
         var show = filter === 'All' ||
-          (filter === 'Pre-Reading'  && card.dataset.preReading === 'true') ||
-          (filter === 'NotebookLM'   && card.dataset.nlm === 'true') ||
+          (filter === 'Pre-Reading' && card.dataset.preReading === 'true') ||
+          (filter === 'NotebookLM'  && card.dataset.nlm === 'true') ||
           card.dataset.engagement === filter ||
           card.dataset.engagement === (filter === 'Deep Dive' ? 'Deep' : filter) ||
           card.dataset.engagement === (filter === 'Intermediate' ? 'Mid-Level' : filter);

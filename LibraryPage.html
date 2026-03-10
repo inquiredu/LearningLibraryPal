@@ -473,8 +473,26 @@
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 
-    /* ── Collapsible sections ─────────────────────────────────────── */
+    /* ── Collapsible + reorderable sections ──────────────────────── */
     .section-heading { cursor: pointer; user-select: none; }
+    .section-drag-handle {
+      cursor: grab; font-size: 1rem; color: transparent; padding: 0 6px 0 0;
+      user-select: none; flex-shrink: 0; transition: color 0.15s; line-height: 1;
+      font-family: monospace;
+    }
+    .section-heading:hover .section-drag-handle { color: var(--muted, #9aa4b2); }
+    .section-drag-handle:active { cursor: grabbing; }
+    .section.lib-dragging { opacity: 0.35; box-shadow: 0 0 0 2px var(--cyan, #5DCDF5); border-radius: 12px; }
+    .section.lib-drag-over-before { border-top: 2.5px solid var(--cyan, #5DCDF5); margin-top: -2.5px; }
+    .section.lib-drag-over-after  { border-bottom: 2.5px solid var(--cyan, #5DCDF5); }
+    #sectionResetBar {
+      display: none; font-size: 0.73rem; color: var(--muted); margin-top: 10px; padding: 6px 10px;
+      background: var(--bg-alt, #f4f7fb); border-radius: 6px; border: 1px solid var(--border);
+    }
+    #sectionResetBar button {
+      background: none; border: none; color: var(--cyan); cursor: pointer; font-size: 0.73rem;
+      padding: 0; text-decoration: underline; text-underline-offset: 2px;
+    }
     .section-heading-end {
       display: flex; align-items: center; gap: 6px; margin-left: auto; flex-shrink: 0;
     }
@@ -560,6 +578,9 @@
             <span class="nav-icon">✅</span> Checklist
             <span class="nav-badge" id="nav-badge-checklist">–</span>
           </a>
+          <div id="sectionResetBar">
+            Sections reordered &nbsp;<button onclick="resetSectionOrder()">Reset</button>
+          </div>
         </div>
       </aside>
 
@@ -1184,11 +1205,103 @@
 
     // Initialise default-collapsed sections after all content has rendered
     function initSections() {
+      // Apply saved section order before collapsing so heights compute correctly
+      loadSectionOrder();
       var nlm = document.getElementById('notebooklm');
       if (nlm) {
         var c = nlm.querySelector('.section-content');
         if (c) { c.style.height = '0'; nlm.classList.add('section-collapsed'); }
       }
+      addSectionDragHandles();
+      initSectionDrag();
+    }
+
+    // ── Section drag-to-reorder ───────────────────────────────────────────────
+
+    var _libDragSection = null;
+    var _SECTION_ORDER_KEY = 'mngaia-lib-order-' + SESSION_ID;
+
+    function loadSectionOrder() {
+      try {
+        var saved = localStorage.getItem(_SECTION_ORDER_KEY);
+        if (!saved) return;
+        var order = JSON.parse(saved);
+        var main = document.querySelector('.main-content');
+        if (!main) return;
+        order.forEach(function(id) {
+          var s = document.getElementById(id);
+          if (s) main.appendChild(s);
+        });
+        document.getElementById('sectionResetBar').style.display = 'block';
+      } catch (e) {}
+    }
+
+    function saveSectionOrder() {
+      try {
+        var sections = document.querySelectorAll('.main-content > .section[id]');
+        var order = Array.from(sections).map(function(s) { return s.id; });
+        localStorage.setItem(_SECTION_ORDER_KEY, JSON.stringify(order));
+        document.getElementById('sectionResetBar').style.display = 'block';
+      } catch (e) {}
+    }
+
+    function resetSectionOrder() {
+      try { localStorage.removeItem(_SECTION_ORDER_KEY); } catch (e) {}
+      location.reload();
+    }
+
+    function addSectionDragHandles() {
+      document.querySelectorAll('.main-content > .section[id] .section-heading').forEach(function(heading) {
+        var handle = document.createElement('span');
+        handle.className = 'section-drag-handle';
+        handle.innerHTML = '&#x2807;';
+        handle.title = 'Drag to reorder';
+        // Prevent click on handle from toggling collapse
+        handle.addEventListener('click', function(e) { e.stopPropagation(); });
+        heading.insertBefore(handle, heading.firstChild);
+      });
+    }
+
+    function initSectionDrag() {
+      var main = document.querySelector('.main-content');
+      document.querySelectorAll('.main-content > .section[id]').forEach(function(section) {
+        section.setAttribute('draggable', 'true');
+
+        section.addEventListener('dragstart', function(e) {
+          // Only allow drag when initiated from the heading area
+          if (!e.target.closest('.section-heading')) { e.preventDefault(); return; }
+          _libDragSection = section;
+          e.dataTransfer.effectAllowed = 'move';
+          // Defer adding class so the ghost image captures the un-dimmed state
+          requestAnimationFrame(function() { section.classList.add('lib-dragging'); });
+        });
+
+        section.addEventListener('dragend', function() {
+          section.classList.remove('lib-dragging');
+          document.querySelectorAll('.section.lib-drag-over-before, .section.lib-drag-over-after').forEach(function(s) {
+            s.classList.remove('lib-drag-over-before', 'lib-drag-over-after');
+          });
+          if (_libDragSection) saveSectionOrder();
+          _libDragSection = null;
+        });
+
+        section.addEventListener('dragover', function(e) {
+          e.preventDefault();
+          if (!_libDragSection || _libDragSection === section) return;
+          // Clear previous indicators
+          document.querySelectorAll('.section.lib-drag-over-before, .section.lib-drag-over-after').forEach(function(s) {
+            s.classList.remove('lib-drag-over-before', 'lib-drag-over-after');
+          });
+          var rect = section.getBoundingClientRect();
+          if (e.clientY < rect.top + rect.height / 2) {
+            section.classList.add('lib-drag-over-before');
+            main.insertBefore(_libDragSection, section);
+          } else {
+            section.classList.add('lib-drag-over-after');
+            main.insertBefore(_libDragSection, section.nextSibling);
+          }
+        });
+      });
     }
 
     // ── Reading card expand (relevance statement) ─────────────────────────────

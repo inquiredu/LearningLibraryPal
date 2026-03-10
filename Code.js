@@ -16,6 +16,7 @@ function onOpen() {
     .addItem('📧  Draft & Send Pre-Session Email', 'menuTriggerEmail')
     .addItem('🌐  Generate Site Code', 'menuTriggerSiteCode')
     .addSeparator()
+    .addItem('📅  Authorize Calendar Access', 'triggerCalendarAuth')
     .addItem('🌐  Open Dashboard', 'openDashboard')
     .addItem('⚙️   Settings', 'showSettings')
     .addToUi();
@@ -36,7 +37,9 @@ function showWizard() {
  * @returns {Object} - { sessionId, folderUrl, dbUrl, brief }
  */
 function processWizardSubmit(params) {
-  return SessionService.setupSession(params);
+  const result = SessionService.setupSession(params);
+  CacheService.getScriptCache().remove('dashboard_v2');
+  return result;
 }
 
 // ─── Menu Triggers (row-selected operations) ─────────────────────────────────
@@ -102,6 +105,15 @@ function menuTriggerSiteCode() {
     ui.alert(`✅ Site code created!\n\nOpen the doc to copy each section:\n${result.docUrl}`);
   } catch (e) {
     ui.alert('❌ Site code failed: ' + e.message);
+  }
+}
+
+function triggerCalendarAuth() {
+  try {
+    CalendarApp.getDefaultCalendar();
+    SpreadsheetApp.getUi().alert('✅ Calendar access authorized.\n\nThe Dashboard will now load without delays. Reload the web app to confirm.');
+  } catch (e) {
+    SpreadsheetApp.getUi().alert('❌ Calendar authorization failed: ' + e.message + '\n\nIf this persists, create a new deployment version: GAS Editor → Deploy → Manage → New version.');
   }
 }
 

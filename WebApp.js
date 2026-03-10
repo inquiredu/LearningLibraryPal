@@ -76,10 +76,16 @@ function doGet(e) {
  * Returns all sessions for the dashboard.
  */
 function getDashboardData() {
-  SessionService.ensureMasterSheet(); // create Sessions tab if it doesn't exist yet
+  const cache = CacheService.getScriptCache();
+  const CACHE_KEY = 'dashboard_v2';
+  const hit = cache.get(CACHE_KEY);
+  if (hit) {
+    try { return JSON.parse(hit); } catch (e) {}
+  }
+  SessionService.ensureMasterSheet();
   const sessions = SessionService.getAllSessions();
   const baseUrl = _getWebAppUrl();
-  return sessions.reverse().map(s => ({
+  const data = sessions.reverse().map(s => ({
     id:         s.id,
     name:       s.name,
     theme:      s.theme,
@@ -95,6 +101,8 @@ function getDashboardData() {
     hasBrief:   !!(s.brief && s.brief.overview),
     libraryUrl: baseUrl ? baseUrl + '?page=library&session=' + s.id : ''
   }));
+  try { cache.put(CACHE_KEY, JSON.stringify(data), 60); } catch (e) {}
+  return data;
 }
 
 // ─── Session API ──────────────────────────────────────────────────────────────
@@ -195,7 +203,9 @@ function getLibraryData(sessionId) {
  * Invalidates the library cache for a session (call after synthesis or gems update).
  */
 function invalidateLibraryCache(sessionId) {
-  CacheService.getScriptCache().remove('library_' + sessionId);
+  const c = CacheService.getScriptCache();
+  c.remove('library_' + sessionId);
+  c.remove('dashboard_v2'); // invalidate dashboard cache when any session data changes
   return true;
 }
 

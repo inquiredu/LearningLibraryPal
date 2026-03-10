@@ -19,56 +19,80 @@
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Open Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
 
+    /* ── Header ── */
     .header { background: var(--navy); padding: 16px 28px; display: flex; align-items: center; justify-content: space-between; }
     .header-brand { display: flex; align-items: baseline; gap: 10px; }
     .header-brand h1 { font-family: 'Montserrat', sans-serif; font-size: 1.3rem; color: var(--white); letter-spacing: 1px; }
     .header-brand span { color: var(--cyan); font-size: 0.75rem; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; }
 
-    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 9px 18px; border: none; border-radius: 6px; font-family: 'Open Sans', sans-serif; font-size: 0.85rem; font-weight: 700; cursor: pointer; transition: opacity 0.15s, transform 0.1s; text-decoration: none; }
+    /* ── Buttons ── */
+    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 9px 18px; border: none; border-radius: 6px; font-family: 'Open Sans', sans-serif; font-size: 0.85rem; font-weight: 700; cursor: pointer; transition: opacity 0.15s, transform 0.1s; text-decoration: none; white-space: nowrap; }
     .btn:hover { opacity: 0.88; transform: translateY(-1px); }
     .btn:active { transform: translateY(0); }
     .btn-primary { background: var(--cyan); color: var(--navy); }
     .btn-dark    { background: var(--navy); color: var(--white); }
     .btn-outline { background: transparent; color: var(--cyan); border: 1.5px solid var(--cyan); }
+    .btn-ghost   { background: transparent; color: var(--muted); border: 1px solid var(--border); font-weight: 600; }
+    .btn-ghost:hover { color: var(--navy); border-color: var(--navy); opacity: 1; }
     .btn-sm { padding: 6px 12px; font-size: 0.78rem; }
+    .btn-xs { padding: 5px 9px; font-size: 0.73rem; }
     .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 
-    .main { padding: 28px; max-width: 960px; margin: 0 auto; }
+    /* ── Main ── */
+    .main { padding: 28px; max-width: 980px; margin: 0 auto; }
     .page-title { font-family: 'Montserrat', sans-serif; font-size: 1rem; color: var(--muted); margin-bottom: 20px; text-transform: uppercase; letter-spacing: 1px; }
-
     .alert { padding: 12px 16px; border-radius: 6px; margin-bottom: 20px; font-size: 0.9rem; font-weight: 600; display: none; }
     .alert-success { background: #D4EDDA; color: #155724; }
     .alert-error   { background: #F8D7DA; color: #721C24; }
 
-    .sessions-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; align-items: start; }
-    .session-card { background: var(--white); border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.07); overflow: hidden; border: 1px solid var(--border); display: flex; flex-direction: column; height: 100%; }
-    .session-card-header { padding: 18px 22px 14px; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+    /* ── Sessions grid: single-column stack ── */
+    .sessions-grid { display: flex; flex-direction: column; gap: 16px; }
+
+    /* ── Session card ── */
+    .session-card { background: var(--white); border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.07); border: 1px solid var(--border); overflow: hidden; }
+    .session-card-header { padding: 18px 22px 12px; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
     .session-meta h3 { font-family: 'Montserrat', sans-serif; font-size: 1.05rem; color: var(--navy); margin-bottom: 4px; }
     .session-meta .sub { color: var(--muted); font-size: 0.82rem; }
     .status-badge { padding: 3px 10px; border-radius: 20px; font-size: 0.72rem; font-weight: 700; white-space: nowrap; background: var(--navy); color: var(--cyan); }
     .status-badge.ready { background: #D4EDDA; color: #155724; }
     .status-badge.gems  { background: #CCE5FF; color: #004085; }
 
-    .session-card-body { padding: 0 22px 18px; flex-grow: 1; display: flex; flex-direction: column; }
-    .session-card-body .action-spacer { flex-grow: 1; }
-    .session-links { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 14px; }
+    /* Card meta: links + indicators */
+    .session-card-meta { padding: 0 22px 14px; display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+    .session-links { display: flex; flex-wrap: wrap; gap: 14px; }
     .session-links a { color: var(--navy); font-size: 0.82rem; font-weight: 600; text-decoration: none; display: flex; align-items: center; gap: 4px; }
     .session-links a:hover { color: var(--cyan); }
-
-    .session-indicators { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+    .session-indicators { display: flex; gap: 6px; flex-wrap: wrap; margin-left: auto; }
     .indicator { padding: 3px 9px; border-radius: 4px; font-size: 0.72rem; font-weight: 700; background: var(--bg); color: var(--muted); border: 1px solid var(--border); }
     .indicator.done { background: #D4EDDA; color: #155724; border-color: #C3E6CB; }
 
-    .session-card-actions { padding: 14px 22px; background: var(--bg); border-top: 1px solid var(--border); display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-    .action-spacer { flex: 1; }
+    /* ── Three-phase action bar ── */
+    .session-card-actions { padding: 14px 22px; background: var(--bg); border-top: 1px solid var(--border); display: flex; gap: 0; align-items: flex-start; }
+    .action-phase { flex: 1; display: flex; flex-direction: column; gap: 6px; padding: 0 18px; }
+    .action-phase:first-child { padding-left: 0; }
+    .action-phase:last-child  { padding-right: 0; }
+    .action-phase-label { font-size: 0.62rem; font-weight: 700; letter-spacing: 1.3px; text-transform: uppercase; color: var(--muted); margin-bottom: 3px; }
+    .action-divider { width: 1px; background: var(--border); align-self: stretch; flex-shrink: 0; margin: 2px 0; }
 
+    /* Split button: Synthesize + ↩ re-run icon */
+    .split-btn { display: flex; gap: 3px; }
+    .split-btn .btn-main { flex: 1; }
+    .split-btn .btn-icon { padding: 6px 9px; font-size: 0.82rem; line-height: 1; }
+
+    /* Publish phase: full-width buttons */
+    .action-phase.publish { flex: 0 0 180px; }
+    .action-phase.publish .btn { width: 100%; justify-content: center; }
+
+    /* ── Card footer (Open Library CTA) ── */
+    .session-card-footer { padding: 10px 22px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; align-items: center; }
+
+    /* ── Empty / spinner ── */
     .empty-state { text-align: center; padding: 60px 20px; color: var(--muted); }
     .empty-state .icon { font-size: 2.5rem; margin-bottom: 12px; }
-
     .spinner { width: 32px; height: 32px; margin: 40px auto; border: 3px solid var(--border); border-top-color: var(--cyan); border-radius: 50%; animation: spin 0.8s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* Email Modal */
+    /* ── Modals ── */
     .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(11,43,70,0.75); z-index: 1000; align-items: center; justify-content: center; }
     .modal-overlay.open { display: flex; }
     .modal { background: var(--white); border-radius: 12px; width: 90%; max-width: 600px; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
@@ -76,7 +100,7 @@
     .modal-header h2 { font-family: 'Montserrat', sans-serif; font-size: 1.1rem; color: var(--navy); }
     .modal-close { background: none; border: none; font-size: 1.4rem; cursor: pointer; color: var(--muted); line-height: 1; padding: 0; }
     .modal-body { padding: 20px 24px; }
-    .modal-footer { padding: 16px 24px; border-top: 1px solid var(--border); display: flex; gap: 8px; justify-content: flex-end; }
+    .modal-footer { padding: 16px 24px; border-top: 1px solid var(--border); display: flex; gap: 8px; justify-content: flex-end; align-items: center; }
     .form-group { margin-bottom: 16px; }
     .form-group label { display: block; font-size: 0.82rem; font-weight: 700; color: var(--navy); margin-bottom: 6px; }
     .form-group input, .form-group textarea { width: 100%; padding: 9px 12px; border: 1.5px solid var(--border); border-radius: 6px; font-family: 'Open Sans', sans-serif; font-size: 0.88rem; color: var(--text); transition: border-color 0.15s; }
@@ -84,7 +108,22 @@
     .form-group textarea { min-height: 200px; resize: vertical; }
     .draft-loading { text-align: center; padding: 30px; color: var(--muted); font-size: 0.9rem; }
 
-    /* Resources modal specifics */
+    /* ── People modal tabs ── */
+    .people-tabs { display: flex; border-bottom: 2px solid var(--border); padding: 0 24px; }
+    .people-tab { padding: 10px 18px; border: none; background: transparent; color: var(--muted); font-family: 'Open Sans', sans-serif; font-size: 0.85rem; font-weight: 600; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: color 0.15s, border-color 0.15s; }
+    .people-tab.active { color: var(--navy); border-bottom-color: var(--cyan); }
+    .people-tab:hover { color: var(--navy); }
+
+    /* ── Newsletter wizard modal ── */
+    .newsletter-modal { max-width: 900px !important; }
+    .newsletter-grid { display: grid; grid-template-columns: 320px 1fr; gap: 24px; align-items: start; }
+    .newsletter-editor { display: flex; flex-direction: column; gap: 12px; }
+    .newsletter-editor .form-group { margin-bottom: 0; }
+    .newsletter-editor .form-group textarea { min-height: unset; }
+    .nl-preview-label { font-size: 0.68rem; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+    .nl-preview-wrap { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; max-height: 540px; overflow-y: auto; background: #F5F7FA; }
+
+    /* ── Resources modal ── */
     .res-section-label { font-size:0.72rem; font-weight:700; text-transform:uppercase; letter-spacing:0.8px; color:var(--muted); margin:16px 0 8px; padding-bottom:6px; border-bottom:1px solid var(--border); }
     .res-section-label:first-of-type { margin-top:0; }
     .resource-list { display:flex; flex-direction:column; gap:7px; }
@@ -120,7 +159,7 @@
     <div id="sessions-grid" class="sessions-grid" style="display:none;"></div>
   </div>
 
-  <!-- Settings Modal -->
+  <!-- ══ Settings Modal ══ -->
   <div id="settingsModal" class="modal-overlay">
     <div class="modal">
       <div class="modal-header">
@@ -129,14 +168,13 @@
       </div>
       <div class="modal-body">
         <p style="font-size:0.82rem;color:var(--muted);margin-bottom:16px;">Configuration stored as Script Properties — shared across all users of this deployment.</p>
-
         <div class="form-group">
           <label>🖼️ Design Assets Folder (Google Drive)</label>
           <div style="display:flex;gap:6px;">
             <input type="url" id="settings-assetsFolder" placeholder="Paste Google Drive folder URL…" style="flex:1;">
             <button class="btn btn-dark btn-sm" onclick="saveDesignAssetsFolder()">Save</button>
           </div>
-          <div style="font-size:0.73rem;color:var(--muted);margin-top:4px;">Images in this folder appear in the Page Builder's image picker. Paste the full folder share URL.</div>
+          <div style="font-size:0.73rem;color:var(--muted);margin-top:4px;">Images in this folder appear in the Page Builder's image picker.</div>
           <div id="settings-assetsStatus" style="font-size:0.78rem;margin-top:6px;"></div>
         </div>
       </div>
@@ -146,15 +184,30 @@
     </div>
   </div>
 
-  <!-- Participants Modal -->
-  <div id="participantsModal" class="modal-overlay">
+  <!-- ══ People Modal (Collaborators + Participants tabs) ══ -->
+  <div id="peopleModal" class="modal-overlay">
     <div class="modal">
       <div class="modal-header">
-        <h2>👤 Participants</h2>
-        <button class="modal-close" onclick="closeParticipantsModal()">×</button>
+        <h2>👥 People</h2>
+        <button class="modal-close" onclick="closePeopleModal()">×</button>
       </div>
-      <div class="modal-body">
-        <p style="font-size:0.82rem;color:var(--muted);margin-bottom:14px;">Manage the attendee list for this session. Participants are stored in the Project Database's Participants sheet.</p>
+      <div class="people-tabs">
+        <button id="people-tab-collab" class="people-tab active" onclick="switchPeopleTab('collab')">Collaborators</button>
+        <button id="people-tab-participants" class="people-tab" onclick="switchPeopleTab('participants')">Participants</button>
+      </div>
+      <!-- Collaborators panel -->
+      <div id="people-panel-collab" class="modal-body">
+        <p style="font-size:0.82rem;color:var(--muted);margin-bottom:14px;">Collaborators get <strong>Editor access</strong> to the session Drive folder — research files, drafts, Gems, and the Project Database.</p>
+        <div id="collab-current" style="margin-bottom:16px;"></div>
+        <div class="form-group" style="margin-bottom:0;">
+          <label>Add Collaborators</label>
+          <input type="text" id="collab-emails" placeholder="alice@example.com, bob@example.com">
+          <div style="font-size:0.73rem;color:var(--muted);margin-top:4px;">Comma-separated email addresses.</div>
+        </div>
+      </div>
+      <!-- Participants panel -->
+      <div id="people-panel-participants" class="modal-body" style="display:none;">
+        <p style="font-size:0.82rem;color:var(--muted);margin-bottom:14px;">Manage the attendee list. Participants are stored in the Project Database's Participants sheet.</p>
         <div id="participants-current" style="margin-bottom:16px;"></div>
         <div class="form-group" style="margin-bottom:0;">
           <label>Add Participants</label>
@@ -163,40 +216,15 @@
         </div>
       </div>
       <div class="modal-footer">
-        <div class="spinner" id="participants-spinner" style="display:none;width:20px;height:20px;"></div>
-        <span style="flex:1;font-size:0.78rem;color:var(--muted);" id="participants-status"></span>
-        <button class="btn btn-outline btn-sm" onclick="closeParticipantsModal()">Close</button>
-        <button class="btn btn-primary btn-sm" onclick="addParticipants()">Add Participants</button>
+        <div class="spinner" id="people-spinner" style="display:none;width:20px;height:20px;margin:0;"></div>
+        <span style="flex:1;font-size:0.78rem;color:var(--muted);" id="people-status"></span>
+        <button class="btn btn-outline btn-sm" onclick="closePeopleModal()">Close</button>
+        <button class="btn btn-primary btn-sm" id="people-add-btn" onclick="addPeopleAction()">Add Collaborators</button>
       </div>
     </div>
   </div>
 
-  <!-- Collaborators Modal -->
-  <div id="collabModal" class="modal-overlay">
-    <div class="modal">
-      <div class="modal-header">
-        <h2>👥 Collaborators</h2>
-        <button class="modal-close" onclick="closeCollabModal()">×</button>
-      </div>
-      <div class="modal-body">
-        <p style="font-size:0.82rem;color:var(--muted);margin-bottom:14px;">Collaborators get <strong>Editor access</strong> to the session Drive folder and everything inside it — research files, drafts, Gems, and the Project Database.</p>
-        <div id="collab-current" style="margin-bottom:16px;"></div>
-        <div class="form-group" style="margin-bottom:0;">
-          <label>Add Collaborators</label>
-          <input type="text" id="collab-emails" placeholder="alice@example.com, bob@example.com">
-          <div style="font-size:0.73rem;color:var(--muted);margin-top:4px;">Comma-separated email addresses.</div>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <div class="spinner" id="collab-spinner" style="display:none;width:20px;height:20px;"></div>
-        <span style="flex:1;font-size:0.78rem;color:var(--muted);" id="collab-status"></span>
-        <button class="btn btn-outline btn-sm" onclick="closeCollabModal()">Close</button>
-        <button class="btn btn-primary btn-sm" onclick="addCollaborators()">Add Access</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Permission Checker Modal -->
+  <!-- ══ Permission Checker Modal ══ -->
   <div id="permModal" class="modal-overlay">
     <div class="modal" style="max-width:680px;">
       <div class="modal-header">
@@ -214,7 +242,7 @@
     </div>
   </div>
 
-  <!-- Resources Modal -->
+  <!-- ══ Resources Modal ══ -->
   <div id="resourcesModal" class="modal-overlay">
     <div class="modal">
       <div class="modal-header">
@@ -222,15 +250,12 @@
         <button class="modal-close" onclick="closeResourcesModal()">×</button>
       </div>
       <div class="modal-body">
-        <!-- Drive folder browser -->
         <div class="res-section-label">Browse a Drive Folder</div>
         <div style="display:flex;gap:6px;margin-bottom:8px;">
           <input type="url" id="res-folderUrl" placeholder="Paste Drive folder URL..." style="flex:1;padding:7px 10px;border:1.5px solid var(--border);border-radius:6px;font-family:'Open Sans',sans-serif;font-size:0.82rem;">
           <button class="btn btn-dark btn-sm" id="res-loadBtn" onclick="loadDriveFolder()">Load Files</button>
         </div>
         <div id="res-fileList" style="display:none;margin-bottom:14px;"></div>
-
-        <!-- Individual URL paste -->
         <div class="res-section-label">Or Add Individual Links</div>
         <p style="font-size:0.73rem;color:var(--muted);margin-bottom:8px;">Paste any Drive share link or URL — file IDs are extracted automatically.</p>
         <div style="margin-bottom:6px;">
@@ -239,7 +264,7 @@
         <div class="link-rows" id="res-linkRows"></div>
       </div>
       <div class="modal-footer">
-        <div class="spinner" id="res-spinner" style="display:none;"></div>
+        <div class="spinner" id="res-spinner" style="display:none;width:20px;height:20px;margin:0;"></div>
         <span style="flex:1;font-size:0.78rem;color:var(--muted);" id="res-status"></span>
         <button class="btn btn-outline btn-sm" onclick="closeResourcesModal()">Cancel</button>
         <button class="btn btn-primary btn-sm" id="res-submit" onclick="submitResources()">Add to Session</button>
@@ -247,7 +272,7 @@
     </div>
   </div>
 
-  <!-- Gem Links Modal -->
+  <!-- ══ Gem Links Modal ══ -->
   <div id="gemLinksModal" class="modal-overlay">
     <div class="modal">
       <div class="modal-header">
@@ -259,7 +284,7 @@
         <div id="gem-link-rows" style="display:flex;flex-direction:column;gap:10px;"></div>
       </div>
       <div class="modal-footer">
-        <div class="spinner" id="gemlinks-spinner" style="display:none;"></div>
+        <div class="spinner" id="gemlinks-spinner" style="display:none;width:20px;height:20px;margin:0;"></div>
         <span style="flex:1;font-size:0.78rem;color:var(--muted);" id="gemlinks-status"></span>
         <button class="btn btn-outline btn-sm" onclick="closeGemLinksModal()">Cancel</button>
         <button class="btn btn-primary btn-sm" onclick="saveGemLinks()">Save Links</button>
@@ -267,27 +292,37 @@
     </div>
   </div>
 
-  <!-- Email Draft Modal -->
-  <div id="emailModal" class="modal-overlay">
-    <div class="modal">
+  <!-- ══ Email Newsletter Wizard ══ -->
+  <div id="newsletterModal" class="modal-overlay">
+    <div class="modal newsletter-modal">
       <div class="modal-header">
-        <h2>📧 Pre-Session Email</h2>
-        <button class="modal-close" onclick="closeEmailModal()">×</button>
+        <div>
+          <h2>✉️ Email Newsletter</h2>
+          <p style="font-size:0.73rem;color:var(--muted);margin:3px 0 0;">AI-drafted · edit before sending · live preview</p>
+        </div>
+        <button class="modal-close" onclick="closeNewsletterModal()">×</button>
       </div>
-      <div class="modal-body" id="emailModalBody">
-        <div class="draft-loading">Generating email draft with AI...</div>
+      <div class="modal-body" id="newsletterModalBody">
+        <div class="draft-loading">✨ Building newsletter with AI (~15 sec)…</div>
       </div>
-      <div class="modal-footer" id="emailModalFooter" style="display:none;">
-        <button class="btn btn-outline btn-sm" onclick="closeEmailModal()">Cancel</button>
-        <button class="btn btn-primary btn-sm" id="sendEmailBtn" onclick="sendApprovedEmail()">Send Email</button>
+      <div class="modal-footer" id="newsletterModalFooter" style="display:none;">
+        <div class="spinner" id="newsletter-spinner" style="display:none;width:20px;height:20px;margin:0;"></div>
+        <span style="flex:1;font-size:0.78rem;color:var(--muted);" id="newsletter-status"></span>
+        <button class="btn btn-outline btn-sm" onclick="closeNewsletterModal()">Cancel</button>
+        <button class="btn btn-primary btn-sm" id="sendNewsletterBtn" onclick="sendNewsletter()">✉️ Send Email</button>
       </div>
     </div>
   </div>
 
   <script>
-    var _emailSessionId = null;
+    var _peopleSessionId = null;
+    var _peopleActiveTab = 'collab';
+    var _newsletterSessionId = null;
+    var _newsletterDraft = null;
     var _gemLinksSessionId = null;
-    var _sessionsData = [];   // cache of last renderSessions() call
+    var _sessionsData = [];
+
+    // ── Dashboard ──────────────────────────────────────────────────────────────
 
     function loadDashboard() {
       document.getElementById('loader').style.display = 'block';
@@ -314,53 +349,88 @@
       sessions.forEach(function(s) {
         var card = document.createElement('div');
         card.className = 'session-card';
+
         var badgeClass = s.hasGems ? 'gems' : (s.hasBrief ? 'ready' : '');
         var badgeLabel = s.hasGems ? 'Gems Ready' : (s.hasBrief ? 'Brief Ready' : (s.status || 'Active'));
-        var dateStr = s.date ? ' &middot; ' + esc(s.date) : '';
+        var dateStr = s.date ? ' · ' + esc(s.date) : '';
         var emailLabel = (s.emailSent && s.emailSent !== 'No') ? '✓ Sent' : '○';
-        var libraryLink = s.libraryUrl ? '<a href="' + s.libraryUrl + '" target="_blank">📚 Learning Library</a>' : '';
-        var libraryBtn  = s.libraryUrl ? '<div class="action-spacer"></div><a href="' + s.libraryUrl + '" target="_blank" class="btn btn-outline btn-sm">Open Library →</a>' : '';
+
+        // Links row
+        var links = '';
+        if (s.folderUrl) links += '<a href="' + s.folderUrl + '" target="_blank">📁 Drive Folder</a>';
+        if (s.dbUrl)     links += '<a href="' + s.dbUrl + '" target="_blank">🗄️ Project DB</a>';
+        if (s.libraryUrl) links += '<a href="' + s.libraryUrl + '" target="_blank">📚 Learning Library</a>';
+
+        // Pipeline: conditional buttons
+        var briefBtn = !s.hasBrief
+          ? '<button class="btn btn-dark btn-xs" onclick="regenerateBrief(\'' + s.id + '\', this)">✨ Brief</button>'
+          : '';
+        var gemLinksBtn = s.hasGems
+          ? '<button class="btn btn-ghost btn-xs" onclick="openGemLinksModal(\'' + s.id + '\')">🔗 Gem Links</button>'
+          : '';
+
+        // Footer: library CTA
+        var footer = s.libraryUrl
+          ? '<div class="session-card-footer"><a href="' + s.libraryUrl + '" target="_blank" class="btn btn-outline btn-sm">Open Library →</a></div>'
+          : '';
+
         card.innerHTML =
+          // Header
           '<div class="session-card-header">' +
             '<div class="session-meta">' +
               '<h3>' + esc(s.name) + '</h3>' +
-              '<div class="sub">' + esc(s.theme) + dateStr + ' &middot; ' + esc(s.format || '') + '</div>' +
+              '<div class="sub">' + esc(s.theme) + dateStr + ' · ' + esc(s.format || '') + '</div>' +
             '</div>' +
             '<span class="status-badge ' + badgeClass + '">' + esc(badgeLabel) + '</span>' +
           '</div>' +
-          '<div class="session-card-body">' +
-            '<div class="session-links">' +
-              (s.folderUrl ? '<a href="' + s.folderUrl + '" target="_blank">📁 Drive Folder</a>' : '') +
-              (s.dbUrl ? '<a href="' + s.dbUrl + '" target="_blank">🗄️ Project DB</a>' : '') +
-              libraryLink +
-            '</div>' +
+          // Meta
+          '<div class="session-card-meta">' +
+            '<div class="session-links">' + links + '</div>' +
             '<div class="session-indicators">' +
               '<span class="indicator ' + (s.hasBrief ? 'done' : '') + '">Brief ' + (s.hasBrief ? '✓' : '○') + '</span>' +
               '<span class="indicator ' + (s.hasGems ? 'done' : '') + '">Gems ' + (s.hasGems ? '✓' : '○') + '</span>' +
               '<span class="indicator ' + ((s.emailSent && s.emailSent !== 'No') ? 'done' : '') + '">Email ' + emailLabel + '</span>' +
             '</div>' +
           '</div>' +
+          // Three-phase action bar
           '<div class="session-card-actions">' +
-            '<button class="btn btn-dark btn-sm" onclick="openResourcesModal(\'' + s.id + '\')">📁 Add Resources</button>' +
-            '<button class="btn btn-dark btn-sm" onclick="openCollabModal(\'' + s.id + '\')">👥 Collaborators</button>' +
-            '<button class="btn btn-dark btn-sm" onclick="openParticipantsModal(\'' + s.id + '\')">👤 Participants</button>' +
-            (!s.hasBrief ? '<button class="btn btn-dark btn-sm" onclick="regenerateBrief(\'' + s.id + '\', this)">✨ Generate Brief</button>' : '') +
-            '<button class="btn btn-dark btn-sm" onclick="runSynthesis(\'' + s.id + '\', this)">🔬 Synthesize</button>' +
-            '<button class="btn btn-dark btn-sm" onclick="runSynthesisForce(\'' + s.id + '\', this)" title="Re-analyze all resources, even ones already scored">♻️ Re-Synthesize</button>' +
-            '<button class="btn btn-dark btn-sm" onclick="runGems(\'' + s.id + '\', this)">💎 Generate Gems</button>' +
-            (s.hasGems ? '<button class="btn btn-dark btn-sm" onclick="openGemLinksModal(\'' + s.id + '\')">🔗 Set Gem Links</button>' : '') +
-            '<button class="btn btn-dark btn-sm" onclick="openEmailModal(\'' + s.id + '\')">📧 Draft Email</button>' +
-            '<button class="btn btn-dark btn-sm" onclick="openPermModal(\'' + s.id + '\')">🔍 Check Access</button>' +
-            '<button class="btn btn-dark btn-sm" onclick="generateSiteCode(\'' + s.id + '\', this)">🌐 Site Code</button>' +
-            '<button class="btn btn-dark btn-sm" onclick="openPageBuilder(\'' + s.id + '\')">🎨 Design Page</button>' +
-            libraryBtn +
-          '</div>';
+            // MANAGE
+            '<div class="action-phase">' +
+              '<div class="action-phase-label">Manage</div>' +
+              '<button class="btn btn-dark btn-sm" onclick="openResourcesModal(\'' + s.id + '\')">📁 Resources</button>' +
+              '<button class="btn btn-dark btn-sm" onclick="openPeopleModal(\'' + s.id + '\', \'collab\')">👥 People</button>' +
+              '<button class="btn btn-ghost btn-sm" onclick="openPermModal(\'' + s.id + '\')" title="Check Drive file embed permissions">🔍 Access</button>' +
+            '</div>' +
+            '<div class="action-divider"></div>' +
+            // PIPELINE
+            '<div class="action-phase">' +
+              '<div class="action-phase-label">Pipeline</div>' +
+              briefBtn +
+              '<div class="split-btn">' +
+                '<button class="btn btn-dark btn-sm btn-main" onclick="runSynthesis(\'' + s.id + '\', this)">🔬 Synthesize</button>' +
+                '<button class="btn btn-dark btn-sm btn-icon" title="Re-analyze all resources (override existing scores)" onclick="runSynthesisForce(\'' + s.id + '\', this)">↩</button>' +
+              '</div>' +
+              '<button class="btn btn-dark btn-sm" onclick="runGems(\'' + s.id + '\', this)">💎 Gems</button>' +
+              gemLinksBtn +
+            '</div>' +
+            '<div class="action-divider"></div>' +
+            // PUBLISH
+            '<div class="action-phase publish">' +
+              '<div class="action-phase-label">Publish</div>' +
+              '<button class="btn btn-primary btn-sm" onclick="openPageBuilder(\'' + s.id + '\')">🎨 Design Page</button>' +
+              '<button class="btn btn-dark btn-sm" onclick="openNewsletterModal(\'' + s.id + '\')">✉️ Email Newsletter</button>' +
+            '</div>' +
+          '</div>' +
+          footer;
+
         grid.appendChild(card);
       });
     }
 
+    // ── Pipeline actions ───────────────────────────────────────────────────────
+
     function runSynthesis(sessionId, btn) {
-      setBtnLoading(btn, 'Synthesizing...');
+      setBtnLoading(btn, 'Synthesizing…');
       google.script.run
         .withSuccessHandler(function(res) { resetBtn(btn, '🔬 Synthesize'); showAlert('Synthesis complete! ' + (res.count || 0) + ' resources analyzed.', 'success'); loadDashboard(); })
         .withFailureHandler(function(err) { resetBtn(btn, '🔬 Synthesize'); showAlert(err.message, 'error'); })
@@ -368,20 +438,28 @@
     }
 
     function runSynthesisForce(sessionId, btn) {
-      if (!confirm('Re-analyze all resources?\n\nThis will re-run synthesis for every resource — including ones already scored. If a Planning Doc is present, the session brief will also be regenerated.\n\nThis cannot be undone. Continue?')) return;
-      setBtnLoading(btn, '♻️ Re-Synthesizing...');
+      if (!confirm('Re-analyze all resources?\n\nThis overrides existing scores and re-runs Gemini on every resource. Continue?')) return;
+      setBtnLoading(btn, '↩…');
       google.script.run
-        .withSuccessHandler(function(res) { resetBtn(btn, '♻️ Re-Synthesize'); showAlert('Re-synthesis complete! ' + (res.count || 0) + ' resources re-analyzed.', 'success'); loadDashboard(); })
-        .withFailureHandler(function(err) { resetBtn(btn, '♻️ Re-Synthesize'); showAlert(err.message, 'error'); })
+        .withSuccessHandler(function(res) { resetBtn(btn, '↩'); showAlert('Re-synthesis complete! ' + (res.count || 0) + ' resources re-analyzed.', 'success'); loadDashboard(); })
+        .withFailureHandler(function(err) { resetBtn(btn, '↩'); showAlert(err.message, 'error'); })
         .webRunSynthesis(sessionId, true);
     }
 
     function runGems(sessionId, btn) {
-      setBtnLoading(btn, 'Generating...');
+      setBtnLoading(btn, 'Generating…');
       google.script.run
-        .withSuccessHandler(function(res) { resetBtn(btn, '💎 Generate Gems'); showAlert('Gem instructions generated! Open 03_Gems in Drive to copy-paste into AI Studio, then use 🔗 Set Gem Links.', 'success'); loadDashboard(); })
-        .withFailureHandler(function(err) { resetBtn(btn, '💎 Generate Gems'); showAlert(err.message, 'error'); })
+        .withSuccessHandler(function() { resetBtn(btn, '💎 Gems'); showAlert('Gem instructions generated! Open 03_Gems in Drive, paste into AI Studio, then use 🔗 Gem Links.', 'success'); loadDashboard(); })
+        .withFailureHandler(function(err) { resetBtn(btn, '💎 Gems'); showAlert(err.message, 'error'); })
         .webGenerateGems(sessionId);
+    }
+
+    function regenerateBrief(sessionId, btn) {
+      setBtnLoading(btn, '…');
+      google.script.run
+        .withSuccessHandler(function() { resetBtn(btn, '✨ Brief'); showAlert('Session brief generated!', 'success'); loadDashboard(); })
+        .withFailureHandler(function(err) { resetBtn(btn, '✨ Brief'); showAlert(err.message, 'error'); })
+        .webRegenerateBrief(sessionId);
     }
 
     // ── Gem Links Modal ────────────────────────────────────────────────────────
@@ -391,7 +469,6 @@
       var session = _sessionsData.find(function(s) { return s.id === sessionId; });
       var gems = [];
       try { gems = JSON.parse((session && session.gemsJson) || '[]'); } catch(e) {}
-
       var container = document.getElementById('gem-link-rows');
       container.innerHTML = '';
       if (!gems.length) {
@@ -401,11 +478,8 @@
           var row = document.createElement('div');
           row.style.cssText = 'display:flex;flex-direction:column;gap:4px;';
           row.innerHTML =
-            '<label style="font-size:0.78rem;font-weight:700;color:var(--navy);">' +
-              (gem.emoji || '💎') + ' ' + esc(gem.name || gem.id) +
-            '</label>' +
-            '<input type="url" data-gem-id="' + esc(gem.id) + '" placeholder="Paste Gemini Gem link..." ' +
-              'value="' + esc(gem.link || '') + '" ' +
+            '<label style="font-size:0.78rem;font-weight:700;color:var(--navy);">' + (gem.emoji || '💎') + ' ' + esc(gem.name || gem.id) + '</label>' +
+            '<input type="url" data-gem-id="' + esc(gem.id) + '" placeholder="Paste Gemini Gem link…" value="' + esc(gem.link || '') + '" ' +
               'style="padding:7px 10px;border:1.5px solid var(--border);border-radius:6px;font-family:\'Open Sans\',sans-serif;font-size:0.82rem;">';
           container.appendChild(row);
         });
@@ -424,16 +498,15 @@
       var links = {};
       document.querySelectorAll('#gem-link-rows input[data-gem-id]').forEach(function(input) {
         var gemId = input.getAttribute('data-gem-id');
-        var val = input.value.trim();
-        if (gemId) links[gemId] = val;
+        if (gemId) links[gemId] = input.value.trim();
       });
       document.getElementById('gemlinks-spinner').style.display = 'block';
-      document.getElementById('gemlinks-status').textContent = 'Saving...';
+      document.getElementById('gemlinks-status').textContent = 'Saving…';
       google.script.run
         .withSuccessHandler(function() {
           document.getElementById('gemlinks-spinner').style.display = 'none';
           closeGemLinksModal();
-          showAlert('Gem links saved! They\'ll appear as buttons on the Library page.', 'success');
+          showAlert('Gem links saved!', 'success');
           loadDashboard();
         })
         .withFailureHandler(function(err) {
@@ -444,144 +517,178 @@
         .webUpdateGemLinks(_gemLinksSessionId, links);
     }
 
-    function openEmailModal(sessionId) {
-      _emailSessionId = sessionId;
-      document.getElementById('emailModal').classList.add('open');
-      document.getElementById('emailModalBody').innerHTML = '<div class="draft-loading">✨ Generating email draft with AI (~15 sec)...</div>';
-      document.getElementById('emailModalFooter').style.display = 'none';
-      google.script.run
-        .withSuccessHandler(function(draft) {
-          if (!draft) { showAlert('Could not generate draft. Check session brief.', 'error'); closeEmailModal(); return; }
-          document.getElementById('emailModalBody').innerHTML =
-            '<div class="form-group"><label>Recipients (comma-separated)</label><input type="text" id="emailRecipients" placeholder="alice@example.com, bob@example.com"></div>' +
-            '<div class="form-group"><label>Subject</label><input type="text" id="emailSubject" value="' + esc(draft.subject || '') + '"></div>' +
-            '<div class="form-group"><label>Email Body (HTML)</label><textarea id="emailBody">' + esc(draft.body || '') + '</textarea></div>';
-          document.getElementById('emailModalFooter').style.display = 'flex';
-        })
-        .withFailureHandler(function(err) { showAlert(err.message, 'error'); closeEmailModal(); })
-        .webGetEmailDraft(sessionId);
-    }
+    // ── People Modal (Collaborators + Participants) ─────────────────────────────
 
-    function closeEmailModal() {
-      document.getElementById('emailModal').classList.remove('open');
-      _emailSessionId = null;
-    }
-
-    function sendApprovedEmail() {
-      var recipientsRaw = document.getElementById('emailRecipients').value;
-      var recipients = recipientsRaw.split(',').map(function(e) { return e.trim(); }).filter(Boolean);
-      if (!recipients.length) { alert('Enter at least one recipient email.'); return; }
-      var subject = document.getElementById('emailSubject').value;
-      var body = document.getElementById('emailBody').value;
-      var btn = document.getElementById('sendEmailBtn');
-      setBtnLoading(btn, 'Sending...');
-      google.script.run
-        .withSuccessHandler(function(res) { resetBtn(btn, 'Send Email'); closeEmailModal(); showAlert('Email sent to ' + res.recipientCount + ' recipient(s)!', 'success'); loadDashboard(); })
-        .withFailureHandler(function(err) { resetBtn(btn, 'Send Email'); showAlert(err.message, 'error'); })
-        .webSendEmail(_emailSessionId, recipients, subject, body);
-    }
-
-    function generateSiteCode(sessionId, btn) {
-      setBtnLoading(btn, 'Building...');
-      google.script.run
-        .withSuccessHandler(function(res) {
-          resetBtn(btn, '🌐 Site Code');
-          showAlert('Site code generated! Opening doc...', 'success');
-          if (res && res.docUrl) window.open(res.docUrl, '_blank');
-        })
-        .withFailureHandler(function(err) { resetBtn(btn, '🌐 Site Code'); showAlert(err.message, 'error'); })
-        .webGenerateSiteCode(sessionId);
-    }
-
-    function regenerateBrief(sessionId, btn) {
-      setBtnLoading(btn, 'Generating...');
-      google.script.run
-        .withSuccessHandler(function() {
-          resetBtn(btn, '✨ Generate Brief');
-          showAlert('Session brief generated! Refreshing dashboard...', 'success');
-          loadDashboard();
-        })
-        .withFailureHandler(function(err) { resetBtn(btn, '✨ Generate Brief'); showAlert(err.message, 'error'); })
-        .webRegenerateBrief(sessionId);
-    }
-
-    // ── Collaborators Modal ────────────────────────────────────────────────────
-
-    var _collabSessionId = null;
-
-    function openCollabModal(sessionId) {
-      _collabSessionId = sessionId;
+    function openPeopleModal(sessionId, tab) {
+      _peopleSessionId = sessionId;
+      document.getElementById('people-status').textContent = '';
+      document.getElementById('people-spinner').style.display = 'none';
       document.getElementById('collab-emails').value = '';
-      document.getElementById('collab-status').textContent = '';
-      document.getElementById('collab-spinner').style.display = 'none';
-      document.getElementById('collab-current').innerHTML = '<div style="font-size:0.82rem;color:var(--muted);">Loading current collaborators...</div>';
-      document.getElementById('collabModal').classList.add('open');
+      document.getElementById('participants-input').value = '';
+      document.getElementById('peopleModal').classList.add('open');
+      switchPeopleTab(tab || _peopleActiveTab, true);
+    }
+
+    function closePeopleModal() {
+      document.getElementById('peopleModal').classList.remove('open');
+      _peopleSessionId = null;
+    }
+
+    function switchPeopleTab(tab, forceLoad) {
+      _peopleActiveTab = tab;
+      document.getElementById('people-tab-collab').className = 'people-tab' + (tab === 'collab' ? ' active' : '');
+      document.getElementById('people-tab-participants').className = 'people-tab' + (tab === 'participants' ? ' active' : '');
+      document.getElementById('people-panel-collab').style.display = tab === 'collab' ? 'block' : 'none';
+      document.getElementById('people-panel-participants').style.display = tab === 'participants' ? 'block' : 'none';
+      document.getElementById('people-status').textContent = '';
+      var btn = document.getElementById('people-add-btn');
+      if (tab === 'collab') {
+        btn.textContent = 'Add Collaborators';
+        if (forceLoad) _loadCollabList();
+      } else {
+        btn.textContent = 'Add Participants';
+        if (forceLoad) _loadParticipantsList();
+      }
+    }
+
+    function _loadCollabList() {
+      if (!_peopleSessionId) return;
+      document.getElementById('collab-current').innerHTML = '<div style="font-size:0.82rem;color:var(--muted);">Loading…</div>';
       google.script.run
         .withSuccessHandler(function(list) {
           var el = document.getElementById('collab-current');
           if (!list || !list.length) {
-            el.innerHTML = '<div style="font-size:0.82rem;color:var(--muted);font-style:italic;">No collaborators added yet.</div>';
+            el.innerHTML = '<div style="font-size:0.82rem;color:var(--muted);font-style:italic;">No collaborators yet.</div>';
           } else {
-            var rows = list.map(function(c) {
-              return '<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;margin-bottom:5px;">' +
-                '<span style="font-size:0.82rem;font-weight:600;color:var(--navy);">' + esc(c.name) + '</span>' +
-                '<span style="font-size:0.78rem;color:var(--muted);">' + esc(c.email) + '</span>' +
-                '<button onclick="removeCollaborator(\'' + esc(c.email) + '\')" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:0.85rem;padding:0 4px;" title="Remove access">×</button>' +
-              '</div>';
-            }).join('');
-            el.innerHTML = '<div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;color:var(--muted);margin-bottom:6px;">Current Collaborators</div>' + rows;
+            el.innerHTML =
+              '<div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;color:var(--muted);margin-bottom:6px;">Current Collaborators</div>' +
+              list.map(function(c) {
+                return '<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;margin-bottom:4px;">' +
+                  '<span style="font-size:0.82rem;font-weight:600;color:var(--navy);flex:1;">' + esc(c.name) + ' <span style="font-weight:400;color:var(--muted);">(' + esc(c.email) + ')</span></span>' +
+                  '<button onclick="removeCollaborator(\'' + esc(c.email) + '\')" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:0.9rem;" title="Remove">×</button>' +
+                '</div>';
+              }).join('');
           }
         })
         .withFailureHandler(function() {
           document.getElementById('collab-current').innerHTML = '';
         })
-        .webGetCollaborators(sessionId);
+        .webGetCollaborators(_peopleSessionId);
     }
 
-    function closeCollabModal() {
-      document.getElementById('collabModal').classList.remove('open');
-      _collabSessionId = null;
+    function _loadParticipantsList() {
+      if (!_peopleSessionId) return;
+      document.getElementById('participants-current').innerHTML = '<div style="font-size:0.82rem;color:var(--muted);">Loading…</div>';
+      google.script.run
+        .withSuccessHandler(function(list) {
+          var el = document.getElementById('participants-current');
+          if (!list || !list.length) {
+            el.innerHTML = '<div style="font-size:0.82rem;color:var(--muted);font-style:italic;">No participants yet.</div>';
+          } else {
+            el.innerHTML =
+              '<div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;color:var(--muted);margin-bottom:6px;">' + list.length + ' Participant(s)</div>' +
+              list.map(function(p) {
+                return '<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;margin-bottom:4px;">' +
+                  '<span style="font-size:0.82rem;font-weight:600;color:var(--navy);flex:1;">' + esc(p.name || p.email) + ' <span style="font-weight:400;color:var(--muted);">(' + esc(p.email) + ')</span></span>' +
+                  '<button onclick="removeParticipant(\'' + esc(p.email) + '\')" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:0.9rem;" title="Remove">×</button>' +
+                '</div>';
+              }).join('');
+          }
+        })
+        .withFailureHandler(function() {
+          document.getElementById('participants-current').innerHTML = '';
+        })
+        .webGetParticipants(_peopleSessionId);
+    }
+
+    function addPeopleAction() {
+      if (_peopleActiveTab === 'collab') {
+        addCollaborators();
+      } else {
+        addParticipants();
+      }
     }
 
     function addCollaborators() {
-      if (!_collabSessionId) return;
+      if (!_peopleSessionId) return;
       var raw = document.getElementById('collab-emails').value.trim();
       var emails = raw.split(',').map(function(e) { return e.trim(); }).filter(Boolean);
-      if (!emails.length) { document.getElementById('collab-status').textContent = 'Enter at least one email.'; return; }
-      document.getElementById('collab-spinner').style.display = 'block';
-      document.getElementById('collab-status').textContent = 'Adding access...';
+      if (!emails.length) { document.getElementById('people-status').textContent = 'Enter at least one email.'; return; }
+      document.getElementById('people-spinner').style.display = 'block';
+      document.getElementById('people-status').textContent = 'Adding access…';
       google.script.run
         .withSuccessHandler(function(res) {
-          document.getElementById('collab-spinner').style.display = 'none';
+          document.getElementById('people-spinner').style.display = 'none';
           document.getElementById('collab-emails').value = '';
-          if (res.errors && res.errors.length) {
-            document.getElementById('collab-status').textContent = res.added + ' added · ' + res.errors.length + ' failed: ' + res.errors.join('; ');
-          } else {
-            document.getElementById('collab-status').textContent = res.added + ' collaborator(s) added.';
-          }
-          openCollabModal(_collabSessionId); // refresh list
+          var msg = res.added + ' added';
+          if (res.errors && res.errors.length) msg += ' · ' + res.errors.length + ' failed: ' + res.errors.join('; ');
+          document.getElementById('people-status').textContent = msg;
+          _loadCollabList();
         })
         .withFailureHandler(function(err) {
-          document.getElementById('collab-spinner').style.display = 'none';
-          document.getElementById('collab-status').textContent = 'Error: ' + err.message;
+          document.getElementById('people-spinner').style.display = 'none';
+          document.getElementById('people-status').textContent = 'Error: ' + err.message;
         })
-        .webAddCollaborators(_collabSessionId, emails);
+        .webAddCollaborators(_peopleSessionId, emails);
     }
 
     function removeCollaborator(email) {
-      if (!_collabSessionId) return;
-      document.getElementById('collab-status').textContent = 'Removing ' + email + '...';
+      if (!_peopleSessionId) return;
+      document.getElementById('people-status').textContent = 'Removing ' + email + '…';
       google.script.run
-        .withSuccessHandler(function() {
-          openCollabModal(_collabSessionId); // refresh list
-        })
-        .withFailureHandler(function(err) {
-          document.getElementById('collab-status').textContent = 'Error: ' + err.message;
-        })
-        .webRemoveCollaborator(_collabSessionId, email);
+        .withSuccessHandler(function() { document.getElementById('people-status').textContent = ''; _loadCollabList(); })
+        .withFailureHandler(function(err) { document.getElementById('people-status').textContent = 'Error: ' + err.message; })
+        .webRemoveCollaborator(_peopleSessionId, email);
     }
 
-    // ── Permission Checker Modal ───────────────────────────────────────────────
+    function addParticipants() {
+      if (!_peopleSessionId) return;
+      var raw = document.getElementById('participants-input').value.trim();
+      if (!raw) { document.getElementById('people-status').textContent = 'Enter at least one participant.'; return; }
+      var participants = parseParticipantLines(raw);
+      if (!participants.length) { document.getElementById('people-status').textContent = 'No valid email addresses found.'; return; }
+      document.getElementById('people-spinner').style.display = 'block';
+      document.getElementById('people-status').textContent = 'Adding…';
+      google.script.run
+        .withSuccessHandler(function(res) {
+          document.getElementById('people-spinner').style.display = 'none';
+          document.getElementById('participants-input').value = '';
+          var msg = res.added + ' added';
+          if (res.skipped) msg += ' · ' + res.skipped + ' skipped';
+          document.getElementById('people-status').textContent = msg + '.';
+          _loadParticipantsList();
+        })
+        .withFailureHandler(function(err) {
+          document.getElementById('people-spinner').style.display = 'none';
+          document.getElementById('people-status').textContent = 'Error: ' + err.message;
+        })
+        .webAddParticipants(_peopleSessionId, participants);
+    }
+
+    function removeParticipant(email) {
+      if (!_peopleSessionId) return;
+      document.getElementById('people-status').textContent = 'Removing ' + email + '…';
+      google.script.run
+        .withSuccessHandler(function() { document.getElementById('people-status').textContent = ''; _loadParticipantsList(); })
+        .withFailureHandler(function(err) { document.getElementById('people-status').textContent = 'Error: ' + err.message; })
+        .webRemoveParticipant(_peopleSessionId, email);
+    }
+
+    function parseParticipantLines(raw) {
+      var result = [];
+      raw.split('\n').forEach(function(line) {
+        line = line.trim();
+        if (!line) return;
+        var angleMatch = line.match(/^(.+?)\s*<([^>]+@[^>]+)>$/);
+        if (angleMatch) { result.push({ name: angleMatch[1].trim(), email: angleMatch[2].trim() }); return; }
+        var commaMatch = line.match(/^([^,@]+),\s*(.+@.+)$/);
+        if (commaMatch) { result.push({ name: commaMatch[1].trim(), email: commaMatch[2].trim() }); return; }
+        if (line.includes('@')) result.push({ name: '', email: line });
+      });
+      return result;
+    }
+
+    // ── Permission Checker ─────────────────────────────────────────────────────
 
     var _permSessionId = null;
     var _permResults = [];
@@ -589,14 +696,11 @@
     function openPermModal(sessionId) {
       _permSessionId = sessionId;
       _permResults = [];
-      document.getElementById('permModalBody').innerHTML = '<div class="draft-loading">Checking file permissions... (~5 sec)</div>';
+      document.getElementById('permModalBody').innerHTML = '<div class="draft-loading">Checking file permissions… (~5 sec)</div>';
       document.getElementById('permModalFooter').style.display = 'none';
       document.getElementById('permModal').classList.add('open');
       google.script.run
-        .withSuccessHandler(function(results) {
-          _permResults = results || [];
-          renderPermResults(results);
-        })
+        .withSuccessHandler(function(results) { _permResults = results || []; renderPermResults(results); })
         .withFailureHandler(function(err) {
           document.getElementById('permModalBody').innerHTML = '<p style="color:#721C24;font-size:0.88rem;">' + esc(err.message) + '</p>';
           document.getElementById('permModalFooter').style.display = 'flex';
@@ -607,21 +711,19 @@
 
     function closePermModal() {
       document.getElementById('permModal').classList.remove('open');
-      _permSessionId = null;
-      _permResults = [];
+      _permSessionId = null; _permResults = [];
     }
 
     function renderPermResults(results) {
       var body = document.getElementById('permModalBody');
       if (!results || !results.length) {
-        body.innerHTML = '<p style="font-size:0.88rem;color:var(--muted);">No resources found for this session. Add resources first, then check access.</p>';
+        body.innerHTML = '<p style="font-size:0.88rem;color:var(--muted);">No resources found. Add resources first.</p>';
         document.getElementById('permModalFooter').style.display = 'flex';
         document.getElementById('fixPermBtn').style.display = 'none';
         return;
       }
-
       var hasRestricted = results.some(function(r) { return r.access === 'restricted' || r.access === 'error'; });
-      var ACCESS_BADGE = {
+      var BADGE = {
         'public':     '<span style="background:#D4EDDA;color:#155724;padding:2px 8px;border-radius:4px;font-size:0.72rem;font-weight:700;">✅ Public</span>',
         'restricted': '<span style="background:#F8D7DA;color:#721C24;padding:2px 8px;border-radius:4px;font-size:0.72rem;font-weight:700;">⚠️ Restricted</span>',
         'youtube':    '<span style="background:#D4EDDA;color:#155724;padding:2px 8px;border-radius:4px;font-size:0.72rem;font-weight:700;">✅ YouTube</span>',
@@ -629,62 +731,50 @@
         'error':      '<span style="background:#F8D7DA;color:#721C24;padding:2px 8px;border-radius:4px;font-size:0.72rem;font-weight:700;">⚠️ Error</span>',
         'unknown':    '<span style="background:var(--bg);color:var(--muted);padding:2px 8px;border-radius:4px;font-size:0.72rem;font-weight:700;">? Unknown</span>'
       };
-      var EMBED_LABEL = { slides:'Slides', doc:'Doc', drive:'Drive File', youtube:'YouTube', web:'Web Link' };
-
+      var LABEL = { slides:'Slides', doc:'Doc', drive:'Drive File', youtube:'YouTube', web:'Web Link' };
       var rows = results.map(function(r) {
-        var badge = ACCESS_BADGE[r.access] || ACCESS_BADGE['unknown'];
-        var embedLabel = EMBED_LABEL[r.embedType] || r.embedType;
         return '<tr style="border-bottom:1px solid var(--border);">' +
           '<td style="padding:9px 10px;font-size:0.82rem;font-weight:600;color:var(--navy);max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + esc(r.name) + '">' + esc(r.name) + '</td>' +
-          '<td style="padding:9px 10px;font-size:0.78rem;color:var(--muted);white-space:nowrap;">' + esc(embedLabel) + '</td>' +
-          '<td style="padding:9px 10px;">' + badge + '</td>' +
+          '<td style="padding:9px 10px;font-size:0.78rem;color:var(--muted);white-space:nowrap;">' + esc(LABEL[r.embedType] || r.embedType) + '</td>' +
+          '<td style="padding:9px 10px;">' + (BADGE[r.access] || BADGE['unknown']) + '</td>' +
         '</tr>';
       }).join('');
-
       body.innerHTML =
-        '<p style="font-size:0.82rem;color:var(--muted);margin-bottom:12px;">Drive-hosted files need <strong>Anyone with the link</strong> sharing for iframes to render in Google Sites. External links and YouTube are always fine.</p>' +
+        '<p style="font-size:0.82rem;color:var(--muted);margin-bottom:12px;">Drive-hosted files need <strong>Anyone with the link</strong> sharing to render in embeds. External links and YouTube are always fine.</p>' +
         '<table style="width:100%;border-collapse:collapse;">' +
           '<thead><tr style="background:var(--bg);">' +
             '<th style="padding:7px 10px;font-size:0.72rem;font-weight:700;color:var(--muted);text-align:left;text-transform:uppercase;letter-spacing:0.6px;">Resource</th>' +
-            '<th style="padding:7px 10px;font-size:0.72rem;font-weight:700;color:var(--muted);text-align:left;text-transform:uppercase;letter-spacing:0.6px;">Embed Type</th>' +
+            '<th style="padding:7px 10px;font-size:0.72rem;font-weight:700;color:var(--muted);text-align:left;text-transform:uppercase;letter-spacing:0.6px;">Type</th>' +
             '<th style="padding:7px 10px;font-size:0.72rem;font-weight:700;color:var(--muted);text-align:left;text-transform:uppercase;letter-spacing:0.6px;">Access</th>' +
           '</tr></thead>' +
           '<tbody>' + rows + '</tbody>' +
         '</table>';
-
       document.getElementById('permModalFooter').style.display = 'flex';
       document.getElementById('fixPermBtn').style.display = hasRestricted ? 'inline-flex' : 'none';
       document.getElementById('perm-status').textContent = '';
     }
 
     function fixAllPermissions() {
-      var restrictedIds = _permResults
-        .filter(function(r) { return (r.access === 'restricted' || r.access === 'error') && r.fileId; })
-        .map(function(r) { return r.fileId; });
-      if (!restrictedIds.length) return;
+      var ids = _permResults.filter(function(r) { return (r.access === 'restricted' || r.access === 'error') && r.fileId; }).map(function(r) { return r.fileId; });
+      if (!ids.length) return;
       document.getElementById('fixPermBtn').disabled = true;
-      document.getElementById('perm-status').textContent = 'Fixing ' + restrictedIds.length + ' file(s)...';
+      document.getElementById('perm-status').textContent = 'Fixing ' + ids.length + ' file(s)…';
       google.script.run
         .withSuccessHandler(function(res) {
           document.getElementById('fixPermBtn').disabled = false;
           document.getElementById('perm-status').textContent = res.fixed + ' file(s) made public.';
-          openPermModal(_permSessionId); // re-run check to confirm
+          openPermModal(_permSessionId);
         })
         .withFailureHandler(function(err) {
           document.getElementById('fixPermBtn').disabled = false;
           document.getElementById('perm-status').textContent = 'Error: ' + err.message;
         })
-        .webFixPermissions(restrictedIds);
-    }
-
-    function openNewSessionWizard() {
-      window.location.href = window.location.href.split('?')[0] + '?page=wizard';
+        .webFixPermissions(ids);
     }
 
     // ── Resources Modal ────────────────────────────────────────────────────────
 
     var _resSessionId = null;
-
     var RES_TYPES = ['Reading','Video','Slide Deck','Facilitator Guide','Planning Doc','Meeting Link','Web Resource','Audio / Podcast','Other'];
     var MIME_TO_TYPE = {
       'application/vnd.google-apps.document':     'Reading',
@@ -714,7 +804,7 @@
       var url = document.getElementById('res-folderUrl').value.trim();
       if (!url) return;
       var btn = document.getElementById('res-loadBtn');
-      btn.disabled = true; btn.textContent = 'Loading...';
+      btn.disabled = true; btn.textContent = 'Loading…';
       google.script.run
         .withSuccessHandler(function(result) {
           btn.disabled = false; btn.textContent = 'Load Files';
@@ -751,13 +841,11 @@
       el.style.display = 'block';
     }
 
-    // Extract Google Drive file ID from a share/view URL
     function getDriveFileId(url) {
       var m = url.match(/\/d\/([a-zA-Z0-9_-]{25,})/);
       if (m) return m[1];
       m = url.match(/[?&]id=([a-zA-Z0-9_-]{25,})/);
-      if (m) return m[1];
-      return null;
+      return m ? m[1] : null;
     }
 
     function addResLinkRow() {
@@ -767,21 +855,17 @@
       var opts = RES_TYPES.map(function(t) { return '<option>' + t + '</option>'; }).join('');
       row.innerHTML =
         '<input type="text" placeholder="Name" style="width:28%;">' +
-        '<input type="url" placeholder="https:// (Drive links work too)" style="flex:1;">' +
+        '<input type="url" placeholder="https:// or Drive link" style="flex:1;">' +
         '<select>' + opts + '</select>' +
-        '<button style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:1rem;padding:0 4px;" onclick="this.parentElement.remove()">×</button>';
+        '<button style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:1rem;" onclick="this.parentElement.remove()">×</button>';
       rows.appendChild(row);
     }
 
     function submitResources() {
       var resources = [];
-
-      // Checked Drive folder files
       document.querySelectorAll('#res-fileList input[type=checkbox]:checked').forEach(function(cb) {
         resources.push({ fileId: cb.dataset.fileId, url: cb.dataset.url, name: cb.dataset.name, type: cb.dataset.type });
       });
-
-      // URL link rows
       document.querySelectorAll('#res-linkRows .link-row').forEach(function(row) {
         var inputs = row.querySelectorAll('input');
         var sel = row.querySelector('select');
@@ -793,14 +877,10 @@
           resources.push(entry);
         }
       });
-
-      var linkRows = resources; // alias for count display
       if (!resources.length) { closeResourcesModal(); return; }
-
       document.getElementById('res-spinner').style.display = 'block';
-      document.getElementById('res-status').textContent = 'Adding ' + resources.length + ' resource(s)...';
+      document.getElementById('res-status').textContent = 'Adding ' + resources.length + ' resource(s)…';
       document.getElementById('res-submit').disabled = true;
-
       google.script.run
         .withSuccessHandler(function(res) {
           document.getElementById('res-spinner').style.display = 'none';
@@ -826,93 +906,186 @@
       return '📄';
     }
 
-    // ── Participants Modal ─────────────────────────────────────────────────────
+    // ── Email Newsletter Wizard ────────────────────────────────────────────────
 
-    var _participantsSessionId = null;
-
-    function openParticipantsModal(sessionId) {
-      _participantsSessionId = sessionId;
-      document.getElementById('participants-input').value = '';
-      document.getElementById('participants-status').textContent = '';
-      document.getElementById('participants-spinner').style.display = 'none';
-      document.getElementById('participants-current').innerHTML = '<div style="font-size:0.82rem;color:var(--muted);">Loading participants...</div>';
-      document.getElementById('participantsModal').classList.add('open');
+    function openNewsletterModal(sessionId) {
+      _newsletterSessionId = sessionId;
+      _newsletterDraft = null;
+      document.getElementById('newsletterModal').classList.add('open');
+      document.getElementById('newsletterModalBody').innerHTML = '<div class="draft-loading">✨ Building newsletter with AI (~15 sec)…</div>';
+      document.getElementById('newsletterModalFooter').style.display = 'none';
       google.script.run
-        .withSuccessHandler(function(list) {
-          var el = document.getElementById('participants-current');
-          if (!list || !list.length) {
-            el.innerHTML = '<div style="font-size:0.82rem;color:var(--muted);font-style:italic;">No participants added yet.</div>';
-          } else {
-            var rows = list.map(function(p) {
-              return '<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 10px;background:var(--bg);border:1px solid var(--border);border-radius:6px;margin-bottom:5px;">' +
-                '<span style="font-size:0.82rem;font-weight:600;color:var(--navy);">' + esc(p.name || p.email) + '</span>' +
-                '<span style="font-size:0.78rem;color:var(--muted);margin:0 8px;flex:1;text-align:right;">' + esc(p.email) + '</span>' +
-                '<button onclick="removeParticipant(\'' + esc(p.email) + '\')" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:0.85rem;padding:0 4px;" title="Remove">×</button>' +
-              '</div>';
-            }).join('');
-            el.innerHTML = '<div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.7px;color:var(--muted);margin-bottom:6px;">' + list.length + ' Participant(s)</div>' + rows;
-          }
+        .withSuccessHandler(function(data) {
+          if (!data) { showAlert('Could not generate newsletter. Ensure the session has a brief.', 'error'); closeNewsletterModal(); return; }
+          _newsletterDraft = data;
+          _renderNewsletterEditor(data);
+          // Also fetch participants to pre-fill recipients
+          google.script.run
+            .withSuccessHandler(function(list) {
+              var el = document.getElementById('nl-recipients');
+              if (el && list && list.length) {
+                el.value = list.map(function(p) { return p.email; }).join(', ');
+              }
+            })
+            .withFailureHandler(function() {})
+            .webGetParticipants(sessionId);
         })
-        .withFailureHandler(function() {
-          document.getElementById('participants-current').innerHTML = '';
-        })
-        .webGetParticipants(sessionId);
+        .withFailureHandler(function(err) { showAlert(err.message, 'error'); closeNewsletterModal(); })
+        .webGetNewsletterDraft(sessionId);
     }
 
-    function closeParticipantsModal() {
-      document.getElementById('participantsModal').classList.remove('open');
-      _participantsSessionId = null;
+    function closeNewsletterModal() {
+      document.getElementById('newsletterModal').classList.remove('open');
+      _newsletterSessionId = null;
+      _newsletterDraft = null;
     }
 
-    function parseParticipantLines(raw) {
-      // Accepts (one per line):
-      //   Alice Smith <alice@example.com>
-      //   bob@example.com
-      //   Carol, carol@example.com
-      var result = [];
-      raw.split('\n').forEach(function(line) {
-        line = line.trim();
-        if (!line) return;
-        var angleMatch = line.match(/^(.+?)\s*<([^>]+@[^>]+)>$/);
-        if (angleMatch) { result.push({ name: angleMatch[1].trim(), email: angleMatch[2].trim() }); return; }
-        var commaMatch = line.match(/^([^,@]+),\s*(.+@.+)$/);
-        if (commaMatch) { result.push({ name: commaMatch[1].trim(), email: commaMatch[2].trim() }); return; }
-        if (line.includes('@')) result.push({ name: '', email: line });
-      });
-      return result;
+    function _renderNewsletterEditor(data) {
+      document.getElementById('newsletterModalBody').innerHTML =
+        '<div class="newsletter-grid">' +
+          // Editor column
+          '<div class="newsletter-editor">' +
+            '<div class="form-group"><label>Recipients</label>' +
+              '<input type="text" id="nl-recipients" placeholder="alice@example.com, bob@example.com">' +
+              '<div style="font-size:0.72rem;color:var(--muted);margin-top:4px;">Pre-filled from participants · edit as needed</div>' +
+            '</div>' +
+            '<div class="form-group"><label>Subject Line</label>' +
+              '<input type="text" id="nl-subject" oninput="updateNlPreview()" value="' + esc(data.subject || '') + '">' +
+            '</div>' +
+            '<div class="form-group"><label>Opening Hook</label>' +
+              '<input type="text" id="nl-heroLine" oninput="updateNlPreview()" value="' + esc(data.heroLine || '') + '" placeholder="A punchy one-liner…">' +
+            '</div>' +
+            '<div class="form-group"><label>Intro Paragraph</label>' +
+              '<textarea id="nl-intro" rows="4" oninput="updateNlPreview()" style="min-height:unset;">' + esc(data.intro || '') + '</textarea>' +
+            '</div>' +
+            '<div class="form-group"><label>What We\'ll Explore <span style="font-weight:400;color:var(--muted);">(one bullet per line)</span></label>' +
+              '<textarea id="nl-highlights" rows="4" oninput="updateNlPreview()" style="min-height:unset;">' + esc((data.highlights || []).join('\n')) + '</textarea>' +
+            '</div>' +
+            '<div class="form-group" style="margin-bottom:0;"><label>Pre-Reading Note</label>' +
+              '<input type="text" id="nl-preReadNote" oninput="updateNlPreview()" value="' + esc(data.preReadingNote || '') + '" placeholder="Why these resources matter…">' +
+            '</div>' +
+          '</div>' +
+          // Preview column
+          '<div>' +
+            '<div class="nl-preview-label">📧 Live Preview</div>' +
+            '<div class="nl-preview-wrap" id="nl-preview"></div>' +
+          '</div>' +
+        '</div>';
+      document.getElementById('newsletterModalFooter').style.display = 'flex';
+      updateNlPreview();
     }
 
-    function addParticipants() {
-      if (!_participantsSessionId) return;
-      var raw = document.getElementById('participants-input').value.trim();
-      if (!raw) { document.getElementById('participants-status').textContent = 'Enter at least one participant.'; return; }
-      var participants = parseParticipantLines(raw);
-      if (!participants.length) { document.getElementById('participants-status').textContent = 'No valid email addresses found.'; return; }
-      document.getElementById('participants-spinner').style.display = 'block';
-      document.getElementById('participants-status').textContent = 'Adding...';
+    function updateNlPreview() {
+      var preview = document.getElementById('nl-preview');
+      if (!preview || !_newsletterDraft) return;
+      var heroLine = (document.getElementById('nl-heroLine') || {}).value || '';
+      var intro = (document.getElementById('nl-intro') || {}).value || '';
+      var highlightsRaw = (document.getElementById('nl-highlights') || {}).value || '';
+      var preReadNote = (document.getElementById('nl-preReadNote') || {}).value || '';
+      var highlights = highlightsRaw.split('\n').map(function(l) { return l.trim(); }).filter(Boolean);
+      preview.innerHTML = _buildNlHtml(heroLine, intro, highlights, preReadNote);
+    }
+
+    function _buildNlHtml(heroLine, intro, highlights, preReadNote) {
+      var navy = '#0B2B46';
+      var cyan = '#5DCDF5';
+      var d = _newsletterDraft || {};
+
+      var chips = [
+        d.sessionDate ? String(d.sessionDate).substring(0, 10) : null,
+        d.sessionFormat,
+        d.sessionAudience
+      ].filter(Boolean);
+      var chipsHtml = chips.map(function(c) {
+        return '<span style="display:inline-block;background:rgba(93,205,245,0.18);color:' + cyan + ';border:1px solid rgba(93,205,245,0.35);padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;margin-right:6px;margin-top:4px;">' + esc(c) + '</span>';
+      }).join('');
+
+      var resources = d.resources || [];
+      var resourcesHtml = resources.map(function(r) {
+        return '<div style="padding:10px 0;border-bottom:1px solid #EEF2F7;">' +
+          '<a href="' + esc(r.url || '#') + '" style="font-size:13px;font-weight:700;color:' + navy + ';text-decoration:none;">' + esc(r.title || r.name || '') + '</a>' +
+          (r.relevanceStatement ? '<p style="font-size:12px;color:#7F8FA4;margin:3px 0 0;line-height:1.5;">' + esc(r.relevanceStatement) + '</p>' : '') +
+        '</div>';
+      }).join('');
+
+      var highlightsHtml = highlights.map(function(h) {
+        return '<li style="font-size:13px;line-height:1.7;color:#2C3E50;padding:2px 0;">' + esc(h) + '</li>';
+      }).join('');
+
+      return '<div style="background:#F5F7FA;font-family:Arial,Helvetica,sans-serif;padding:12px;">' +
+        '<div style="max-width:100%;background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.08);">' +
+          // Header
+          '<div style="background:' + navy + ';padding:24px 28px;">' +
+            '<p style="color:' + cyan + ';font-size:10px;letter-spacing:2px;text-transform:uppercase;margin:0 0 6px;font-weight:700;">MNGAIA Learning Community</p>' +
+            '<h1 style="color:#fff;font-size:18px;font-weight:800;margin:0 0 10px;line-height:1.3;">' + esc(d.sessionName || '') + '</h1>' +
+            (chipsHtml ? '<div>' + chipsHtml + '</div>' : '') +
+          '</div>' +
+          // Hero line
+          (heroLine ? '<div style="padding:22px 28px 0;">' +
+            '<p style="font-size:16px;font-weight:700;color:' + navy + ';line-height:1.4;margin:0;border-left:3px solid ' + cyan + ';padding-left:14px;">' + esc(heroLine) + '</p>' +
+          '</div>' : '') +
+          // Body
+          '<div style="padding:20px 28px;">' +
+            (intro ? '<p style="font-size:14px;line-height:1.8;color:#2C3E50;margin:0 0 20px;">' + esc(intro).replace(/\n/g, '<br>') + '</p>' : '') +
+            (highlights.length ?
+              '<p style="font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#7F8FA4;margin:0 0 10px;">What We\'ll Explore</p>' +
+              '<ul style="padding-left:18px;margin:0 0 20px;">' + highlightsHtml + '</ul>'
+            : '') +
+            (resources.length && preReadNote ?
+              '<p style="font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#7F8FA4;margin:0 0 8px;">Pre-Reading</p>' +
+              '<p style="font-size:13px;color:#555;margin:0 0 12px;line-height:1.6;">' + esc(preReadNote) + '</p>' +
+              '<div style="background:#F7FAFC;border:1px solid #DDE4ED;border-radius:6px;padding:0 14px;">' + resourcesHtml + '</div>'
+            : '') +
+          '</div>' +
+          // CTA
+          (d.libraryUrl ?
+            '<div style="padding:4px 28px 24px;text-align:center;">' +
+              '<a href="' + esc(d.libraryUrl) + '" style="display:inline-block;background:' + cyan + ';color:' + navy + ';padding:12px 28px;border-radius:6px;font-weight:700;text-decoration:none;font-size:14px;">Open Learning Library →</a>' +
+            '</div>'
+          : '') +
+          // Footer
+          '<div style="background:#F5F7FA;padding:14px 28px;border-top:1px solid #DDE4ED;">' +
+            '<p style="color:#8A9BAE;font-size:11px;margin:0;">MNGAIA Learning Community · ' + esc(String(d.sessionDate || '').substring(0, 10)) + '</p>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    }
+
+    function sendNewsletter() {
+      if (!_newsletterSessionId || !_newsletterDraft) return;
+      var recipientsRaw = (document.getElementById('nl-recipients') || {}).value || '';
+      var recipients = recipientsRaw.split(',').map(function(e) { return e.trim(); }).filter(Boolean);
+      if (!recipients.length) { alert('Enter at least one recipient email.'); return; }
+      var subject = (document.getElementById('nl-subject') || {}).value || '';
+      if (!subject.trim()) { alert('Enter a subject line.'); return; }
+
+      var heroLine = (document.getElementById('nl-heroLine') || {}).value || '';
+      var intro = (document.getElementById('nl-intro') || {}).value || '';
+      var highlightsRaw = (document.getElementById('nl-highlights') || {}).value || '';
+      var preReadNote = (document.getElementById('nl-preReadNote') || {}).value || '';
+      var highlights = highlightsRaw.split('\n').map(function(l) { return l.trim(); }).filter(Boolean);
+
+      // Build the full sendable HTML (DOCTYPE + body wrapper)
+      var innerHtml = _buildNlHtml(heroLine, intro, highlights, preReadNote);
+      var fullHtml = '<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>' +
+        '<body style="margin:0;padding:0;background:#F5F7FA;">' + innerHtml + '</body></html>';
+
+      var btn = document.getElementById('sendNewsletterBtn');
+      setBtnLoading(btn, 'Sending…');
+      document.getElementById('newsletter-status').textContent = 'Sending to ' + recipients.length + ' recipient(s)…';
       google.script.run
         .withSuccessHandler(function(res) {
-          document.getElementById('participants-spinner').style.display = 'none';
-          document.getElementById('participants-input').value = '';
-          var msg = res.added + ' added';
-          if (res.skipped) msg += ' · ' + res.skipped + ' skipped (duplicate or invalid)';
-          document.getElementById('participants-status').textContent = msg + '.';
-          openParticipantsModal(_participantsSessionId); // refresh list
+          resetBtn(btn, '✉️ Send Email');
+          closeNewsletterModal();
+          showAlert('✅ Email sent to ' + res.recipientCount + ' recipient(s)!', 'success');
+          loadDashboard();
         })
         .withFailureHandler(function(err) {
-          document.getElementById('participants-spinner').style.display = 'none';
-          document.getElementById('participants-status').textContent = 'Error: ' + err.message;
+          resetBtn(btn, '✉️ Send Email');
+          document.getElementById('newsletter-status').textContent = '';
+          showAlert(err.message, 'error');
         })
-        .webAddParticipants(_participantsSessionId, participants);
-    }
-
-    function removeParticipant(email) {
-      if (!_participantsSessionId) return;
-      document.getElementById('participants-status').textContent = 'Removing ' + email + '...';
-      google.script.run
-        .withSuccessHandler(function() { openParticipantsModal(_participantsSessionId); })
-        .withFailureHandler(function(err) { document.getElementById('participants-status').textContent = 'Error: ' + err.message; })
-        .webRemoveParticipant(_participantsSessionId, email);
+        .webSendNewsletterEmail(_newsletterSessionId, recipients, subject, fullHtml);
     }
 
     // ── Page Builder ───────────────────────────────────────────────────────────
@@ -927,12 +1100,9 @@
     function openSettingsModal() {
       document.getElementById('settings-assetsStatus').textContent = '';
       document.getElementById('settingsModal').classList.add('open');
-      // Pre-fill stored folder ID as a constructed URL if available
       google.script.run
         .withSuccessHandler(function(folderId) {
-          if (folderId) {
-            document.getElementById('settings-assetsFolder').value = 'https://drive.google.com/drive/folders/' + folderId;
-          }
+          if (folderId) document.getElementById('settings-assetsFolder').value = 'https://drive.google.com/drive/folders/' + folderId;
         })
         .withFailureHandler(function() {})
         .webGetDesignAssetsFolder();
@@ -948,16 +1118,16 @@
       if (!url) { status.textContent = 'Paste a Drive folder URL first.'; status.style.color = '#721C24'; return; }
       status.textContent = 'Saving…'; status.style.color = 'var(--muted)';
       google.script.run
-        .withSuccessHandler(function() {
-          status.textContent = '✅ Design Assets folder saved.';
-          status.style.color = '#155724';
-        })
-        .withFailureHandler(function(err) {
-          status.textContent = 'Error: ' + (err.message || 'Could not save.');
-          status.style.color = '#721C24';
-        })
+        .withSuccessHandler(function() { status.textContent = '✅ Design Assets folder saved.'; status.style.color = '#155724'; })
+        .withFailureHandler(function(err) { status.textContent = 'Error: ' + (err.message || 'Could not save.'); status.style.color = '#721C24'; })
         .webSetDesignAssetsFolder(url);
     }
+
+    function openNewSessionWizard() {
+      window.location.href = window.location.href.split('?')[0] + '?page=wizard';
+    }
+
+    // ── Utilities ──────────────────────────────────────────────────────────────
 
     function showAlert(msg, type) {
       var el = document.getElementById('alert');

@@ -403,6 +403,43 @@ Return valid JSON with this exact schema:
     return this._call(prompt, 0.75);
   },
 
+  /**
+   * Drafts structured newsletter content sections for the email wizard.
+   * Returns editable sections the client assembles into a live-preview template.
+   * @returns {{ subject, heroLine, intro, highlights, preReadingNote }}
+   */
+  draftNewsletterSections: function(brief, resources, date, libraryUrl) {
+    const resourceLines = resources.length
+      ? resources.map((r, i) => `${i + 1}. "${r.title}" — ${r.relevanceStatement || 'recommended resource'}`).join('\n')
+      : 'No pre-reading resources yet.';
+
+    const prompt = `
+You are a warm, intellectually curious community facilitator writing a newsletter email to engage participants before a monthly collaborative gathering.
+
+Session Details:
+- Date: ${date}
+- Theme Overview: ${brief.overview}
+- Learning Objectives: ${brief.learningObjectives.join('; ')}
+- Pre-Reading Resources:
+${resourceLines}
+- Two guiding questions:
+  1. ${brief.inquiryQuestions[0]}
+  2. ${brief.inquiryQuestions[1]}
+
+Write newsletter content in a warm, intellectually curious tone — NOT corporate, NOT bland. It should feel like it's from a thoughtful colleague, not a marketing team.
+
+Return valid JSON with exactly this schema:
+{
+  "subject": "Email subject line — compelling, 8–12 words",
+  "heroLine": "One punchy sentence (15–20 words) that frames why this session matters — a hook, not a summary",
+  "intro": "2–3 sentence warm intro paragraph — conversational, human. Mention the theme and build anticipation.",
+  "highlights": ["3–4 short bullet points (max 15 words each) about what participants will explore or gain from this session"],
+  "preReadingNote": "One warm sentence explaining why engaging with the pre-reading materials matters for this session (max 20 words)"
+}
+    `.trim();
+    return this._call(prompt, 0.8);
+  },
+
   // ─── Legacy: Brainstorm Analysis (kept for menu compatibility) ──────────────
 
   analyzeBrainstorm: function(text, options) {

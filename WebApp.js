@@ -145,6 +145,28 @@ function webSendEmail(sessionId, recipients, subject, htmlBody) {
   return EmailService.sendApprovedDraft(sessionId, recipients, subject, htmlBody);
 }
 
+/**
+ * Returns structured newsletter draft data for the email wizard.
+ * @param {string} sessionId
+ * @returns {{ subject, heroLine, intro, highlights, preReadingNote, sessionName, ... }}
+ */
+function webGetNewsletterDraft(sessionId) {
+  return EmailService.getNewsletterDraft(sessionId);
+}
+
+/**
+ * Sends a pre-assembled newsletter HTML email (no template wrapping).
+ * Called from the newsletter wizard after the user clicks Send.
+ * @param {string} sessionId
+ * @param {string[]} recipients
+ * @param {string} subject
+ * @param {string} fullHtml - Complete DOCTYPE HTML assembled client-side
+ * @returns {{ success: boolean, recipientCount: number }}
+ */
+function webSendNewsletterEmail(sessionId, recipients, subject, fullHtml) {
+  return EmailService.sendRawEmail(sessionId, recipients, subject, fullHtml);
+}
+
 // ─── Library API ──────────────────────────────────────────────────────────────
 
 /**

@@ -82,6 +82,63 @@ const EmailService = {
   },
 
   /**
+   * Returns structured newsletter draft data for the email wizard.
+   * Includes AI-generated sections + session metadata + resources for client-side rendering.
+   * @param {string} sessionId
+   * @returns {{ subject, heroLine, intro, highlights, preReadingNote, sessionName, sessionDate, sessionFormat, sessionAudience, libraryUrl, hasGems, resources }}
+   */
+  getNewsletterDraft: function(sessionId) {
+    const session = SessionService.getSession(sessionId);
+    if (!session || !session.brief) return null;
+
+    const libraryUrl = session.libraryUrl || this._buildLibraryUrl(sessionId);
+    const allResources = SynthesisService.getResources(sessionId);
+    const preReading = allResources.filter(r => r.preReading).slice(0, 3);
+    const topResources = preReading.length > 0 ? preReading : allResources.slice(0, 3);
+
+    const resourcesForGemini = topResources.map(r => ({
+      url: r.url || '',
+      title: r.title || r.name || 'Resource',
+      relevanceStatement: r.relevanceStatement || ''
+    }));
+
+    const sections = GeminiService.draftNewsletterSections(
+      session.brief,
+      resourcesForGemini,
+      session.date,
+      libraryUrl
+    );
+
+    return Object.assign({}, sections, {
+      sessionName:     session.name,
+      sessionDate:     session.date,
+      sessionFormat:   session.format,
+      sessionAudience: session.audience,
+      libraryUrl:      libraryUrl,
+      hasGems:         !!(session.gems && session.gems.length),
+      resources:       resourcesForGemini
+    });
+  },
+
+  /**
+   * Sends a pre-assembled full HTML email directly — no template wrapping.
+   * Used by the newsletter wizard which builds its own template client-side.
+   * @param {string} sessionId
+   * @param {string[]} recipients
+   * @param {string} subject
+   * @param {string} fullHtml - Complete DOCTYPE HTML string
+   */
+  sendRawEmail: function(sessionId, recipients, subject, fullHtml) {
+    recipients.forEach(email => {
+      GmailApp.sendEmail(email, subject, '', { htmlBody: fullHtml });
+    });
+    SessionService.updateSession(sessionId, {
+      EMAIL_SENT: 'Yes — ' + new Date().toLocaleDateString()
+    });
+    return { success: true, recipientCount: recipients.length };
+  },
+
+  /**
    * Sends a pre-approved draft directly (called from web app after review).
    * Applies the branded email template around the body content before sending.
    */

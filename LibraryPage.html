@@ -189,95 +189,124 @@
     .res-filter:hover { border-color: var(--navy); color: var(--navy); }
     .res-filter.active { background: var(--navy); color: var(--white); border-color: var(--navy); }
 
-    .resources-list { display: flex; flex-direction: column; gap: 10px; }
+    /* ── Resource card system ────────────────────────────────────── */
+    .resources-list { display: flex; flex-direction: column; gap: 14px; }
     .resource-card {
-      background: var(--white); border: 1px solid var(--border); border-radius: 10px;
-      padding: 18px 20px; display: flex; gap: 16px; align-items: flex-start;
-      transition: border-color 0.15s, box-shadow 0.15s;
+      background: var(--white); border: 1px solid var(--border); border-radius: 12px;
+      overflow: hidden; display: flex; align-items: stretch;
+      transition: border-color 0.18s, box-shadow 0.18s, transform 0.18s;
     }
-    .resource-card:hover { border-color: var(--cyan); box-shadow: 0 2px 12px rgba(93,205,245,0.1); }
-    .resource-score-bar {
-      display: flex; flex-direction: column; align-items: center; gap: 4px; flex-shrink: 0;
-      padding-top: 2px;
-    }
-    .score-pips { display: flex; flex-direction: column; gap: 3px; }
-    .score-pip { width: 4px; height: 10px; border-radius: 2px; background: var(--border); }
-    .score-pip.lit.s5 { background: #155724; }
-    .score-pip.lit.s4 { background: #2563EB; }
-    .score-pip.lit.s3 { background: var(--navy); }
-    .score-pip.lit.s2 { background: var(--muted); }
-    .score-pip.lit.s1 { background: #c0c8d0; }
-    .score-digit { font-size: 0.65rem; font-weight: 800; color: var(--muted); letter-spacing: 0; }
-    .resource-body { flex: 1; min-width: 0; }
-    .resource-name { font-size: 0.93rem; font-weight: 700; color: var(--navy); margin-bottom: 5px; line-height: 1.4; }
-    .resource-name a { color: inherit; }
-    .resource-name a:hover { color: var(--cyan); }
-    .resource-stmt { font-size: 0.83rem; color: var(--text); line-height: 1.55; margin-bottom: 10px; }
-    .resource-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+    .resource-card:hover { border-color: var(--cyan); box-shadow: 0 6px 24px rgba(11,43,70,0.09); transform: translateY(-1px); }
+    .resource-card[data-hidden="true"] { display: none; }
+    .resource-tags { display: flex; flex-wrap: wrap; gap: 5px; }
     .rtag {
-      padding: 2px 9px; border-radius: 12px; font-size: 0.68rem; font-weight: 700;
+      padding: 2px 9px; border-radius: 12px; font-size: 0.67rem; font-weight: 700;
       background: var(--bg); color: var(--muted); border: 1px solid var(--border);
     }
     .rtag.pre  { background: var(--acc-bg);  color: var(--acc);  border-color: #C3E6CB; }
     .rtag.deep { background: var(--deep-bg); color: var(--deep); border-color: #B8DAFF; }
     .rtag.mid  { background: var(--mid-bg);  color: var(--mid);  border-color: #FFEEBA; }
     .rtag.nlm  { background: var(--nlm-bg);  color: var(--nlm);  border-color: #E1BEE7; }
-    .resource-card[data-hidden="true"] { display: none; }
 
-    /* ── Meeting link card ───────────────────────────────────────── */
-    .resource-card.rc-meeting {
-      padding: 0; border-color: #28a745;
-      background: linear-gradient(135deg, #f0fff4 0%, #e9f7ef 100%);
+    /* Type chips — tiny label badge */
+    .rc-chip {
+      display: inline-flex; align-items: center; gap: 3px;
+      font-size: 0.6rem; font-weight: 700; letter-spacing: 0.9px; text-transform: uppercase;
+      padding: 2px 8px; border-radius: 10px; flex-shrink: 0; white-space: nowrap;
     }
-    .resource-card.rc-meeting:hover { border-color: #1e7e34; box-shadow: 0 2px 14px rgba(40,167,69,0.18); }
-    .rc-meeting-header {
-      background: linear-gradient(90deg, #1e7e34 0%, #2daa4a 100%);
-      padding: 12px 18px; display: flex; align-items: center; gap: 10px;
+    .rc-chip-video  { background: #1a1a1a; color: #ff5252; }
+    .rc-chip-slides { background: #EEF2FF; color: #4f46e5; border: 1px solid #c7d2fe; }
+    .rc-chip-audio  { background: #f5f0ff; color: #7c3aed; border: 1px solid #ddd6fe; }
+    .rc-chip-read   { background: var(--bg); color: var(--muted); border: 1px solid var(--border); }
+
+    /* ── Reading card ─────────────────────────────────────────────── */
+    /* Left edge = relevance colour bar; body = title + summary + footer */
+    .rc-read-score {
+      width: 5px; flex-shrink: 0; border-radius: 0;
     }
-    .rc-meeting-label {
-      font-size: 0.62rem; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase;
-      color: rgba(255,255,255,0.8); background: rgba(0,0,0,0.18); padding: 2px 9px; border-radius: 10px; flex-shrink: 0;
+    .rc-read-score.s5 { background: linear-gradient(180deg, #0a6e2e, #2d9147); }
+    .rc-read-score.s4 { background: linear-gradient(180deg, #1a56db, #3b82f6); }
+    .rc-read-score.s3 { background: linear-gradient(180deg, var(--navy), #2a6496); }
+    .rc-read-score.s2 { background: linear-gradient(180deg, #7f8fa4, #adb5bd); }
+    .rc-read-score.s1 { background: #dee2e6; }
+    .rc-read-body   { flex: 1; min-width: 0; padding: 16px 20px; display: flex; flex-direction: column; gap: 10px; }
+    .rc-read-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+    .rc-read-title  { font-size: 0.93rem; font-weight: 700; color: var(--navy); line-height: 1.4; flex: 1; min-width: 0; }
+    .rc-read-title a { color: inherit; text-decoration: none; }
+    .rc-read-title a:hover { color: var(--cyan); }
+    .rc-read-stmt   { font-size: 0.83rem; color: var(--text); line-height: 1.6; }
+    .rc-read-footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+    .rc-score-badge { font-size: 0.63rem; font-weight: 800; color: var(--muted); white-space: nowrap; flex-shrink: 0; }
+
+    /* ── Video / Slides embed card ──────────────────────────────── */
+    /* No header — embed is the hero. Minimal footer below. */
+    .resource-card.rc-embed { flex-direction: column; }
+    .rc-embed-wrapper { width: 100%; aspect-ratio: 16/9; background: #0a0a0a; flex-shrink: 0; }
+    .rc-embed-wrapper.slides-aspect { aspect-ratio: 4/3; }
+    .rc-embed-wrapper iframe { width: 100%; height: 100%; border: none; display: block; }
+    .rc-media-footer { padding: 14px 18px 16px; display: flex; flex-direction: column; gap: 8px; }
+    .rc-media-toprow { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .rc-media-ext {
+      font-size: 0.72rem; font-weight: 600; color: var(--muted); text-decoration: none;
+      padding: 3px 8px; border: 1px solid var(--border); border-radius: 5px; white-space: nowrap;
     }
-    .rc-meeting-header-title { flex: 1; font-size: 0.88rem; font-weight: 700; color: #fff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .rc-meeting-body { padding: 14px 18px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
-    .rc-meeting-stmt { font-size: 0.83rem; color: #1e6038; line-height: 1.55; flex: 1; min-width: 200px; }
+    .rc-media-ext:hover { border-color: var(--cyan); color: var(--navy); }
+    .rc-media-title { font-size: 0.93rem; font-weight: 700; color: var(--navy); line-height: 1.4; }
+    .rc-media-title a { color: inherit; text-decoration: none; }
+    .rc-media-title a:hover { color: var(--cyan); }
+    .rc-media-stmt { font-size: 0.82rem; color: var(--text); line-height: 1.55; }
+
+    /* ── Meeting / Live session card ────────────────────────────── */
+    @keyframes live-pulse {
+      0%   { box-shadow: 0 0 0 0   rgba(105,240,174,0.7); }
+      70%  { box-shadow: 0 0 0 8px rgba(105,240,174,0);   }
+      100% { box-shadow: 0 0 0 0   rgba(105,240,174,0);   }
+    }
+    .resource-card.rc-meeting { flex-direction: column; border-color: rgba(40,167,69,0.4); }
+    .resource-card.rc-meeting:hover { border-color: #28a745; box-shadow: 0 6px 24px rgba(40,167,69,0.14); transform: translateY(-1px); }
+    .rc-live-bar {
+      background: linear-gradient(90deg, #145a22 0%, #1e7e34 100%);
+      padding: 8px 18px; display: flex; align-items: center; gap: 8px;
+    }
+    .rc-live-dot {
+      width: 8px; height: 8px; border-radius: 50%; background: #69f0ae; flex-shrink: 0;
+      animation: live-pulse 1.8s infinite;
+    }
+    .rc-live-text { font-size: 0.6rem; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: rgba(255,255,255,0.85); }
+    .rc-meeting-body { padding: 18px 20px; display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+    .rc-meeting-info { flex: 1; min-width: 200px; }
+    .rc-meeting-title-text { font-size: 0.97rem; font-weight: 700; color: var(--navy); margin-bottom: 5px; line-height: 1.4; }
+    .rc-meeting-stmt { font-size: 0.82rem; color: var(--text); line-height: 1.55; }
     .rc-join-btn {
       display: inline-flex; align-items: center; gap: 8px; flex-shrink: 0;
-      padding: 12px 24px; border-radius: 8px; font-weight: 700; font-size: 0.92rem;
+      padding: 11px 22px; border-radius: 8px; font-weight: 700; font-size: 0.88rem;
       background: #28a745; color: #fff !important; text-decoration: none;
-      box-shadow: 0 3px 10px rgba(40,167,69,0.4); transition: all 0.15s;
+      box-shadow: 0 3px 10px rgba(40,167,69,0.35); transition: all 0.15s;
     }
-    .rc-join-btn:hover { background: #1e7e34; transform: translateY(-1px); box-shadow: 0 5px 16px rgba(40,167,69,0.5); }
-
-    /* ── Video / Slides embed card ───────────────────────────────── */
-    .resource-card.rc-embed { padding: 0; }
-    .rc-embed-header {
-      padding: 10px 16px; display: flex; align-items: center; gap: 10px;
-      border-bottom: 1px solid var(--border); background: var(--bg);
-    }
-    .rc-embed-icon { font-size: 1.05rem; flex-shrink: 0; }
-    .rc-embed-title-text { flex: 1; font-size: 0.88rem; font-weight: 700; color: var(--navy); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .rc-embed-title-text a { color: inherit; }
-    .rc-embed-title-text a:hover { color: var(--cyan); }
-    .rc-embed-wrapper { width: 100%; aspect-ratio: 16 / 9; background: #000; overflow: hidden; display: block; }
-    .rc-embed-wrapper.slides-aspect { aspect-ratio: 4 / 3; }
-    .rc-embed-wrapper iframe { width: 100%; height: 100%; border: none; display: block; }
-    .rc-embed-footer { padding: 12px 16px; }
-    .rc-embed-stmt { font-size: 0.83rem; color: var(--text); line-height: 1.55; margin-bottom: 8px; }
+    .rc-join-btn:hover { background: #1e7e34; transform: translateY(-1px); box-shadow: 0 5px 18px rgba(40,167,69,0.45); }
 
     /* ── Audio / Podcast card ────────────────────────────────────── */
-    .resource-card.rc-audio {
-      background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%);
-      border-color: #d1b3e8; align-items: center;
+    /* Artwork block on left; info + listen button on right */
+    .resource-card.rc-audio { }
+    .resource-card.rc-audio:hover { border-color: #7c3aed; box-shadow: 0 6px 24px rgba(124,58,237,0.10); }
+    .rc-audio-art {
+      width: 90px; flex-shrink: 0;
+      background: linear-gradient(145deg, #4c1d95 0%, #6d28d9 100%);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 2rem;
     }
-    .resource-card.rc-audio:hover { border-color: #9C27B0; box-shadow: 0 2px 12px rgba(156,39,176,0.12); }
-    .rc-audio-glyph { font-size: 2.2rem; flex-shrink: 0; }
+    .rc-audio-content { flex: 1; min-width: 0; padding: 16px 18px; display: flex; flex-direction: column; gap: 8px; }
+    .rc-audio-title { font-size: 0.92rem; font-weight: 700; color: var(--navy); line-height: 1.4; }
+    .rc-audio-title a { color: inherit; text-decoration: none; }
+    .rc-audio-title a:hover { color: var(--cyan); }
+    .rc-audio-stmt { font-size: 0.82rem; color: var(--text); line-height: 1.55; flex: 1; }
+    .rc-audio-footer { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
     .rc-listen-btn {
-      display: inline-flex; align-items: center; gap: 6px; margin-top: 10px;
-      padding: 7px 14px; border-radius: 6px; font-size: 0.8rem; font-weight: 700;
-      background: #9C27B0; color: #fff !important; text-decoration: none; transition: opacity 0.15s;
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 7px 16px; border-radius: 6px; font-size: 0.8rem; font-weight: 700;
+      background: #6d28d9; color: #fff !important; text-decoration: none; transition: opacity 0.15s; flex-shrink: 0;
     }
-    .rc-listen-btn:hover { opacity: 0.85; }
+    .rc-listen-btn:hover { opacity: 0.87; }
 
     /* ── Gems ────────────────────────────────────────────────────── */
     .gems-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
@@ -748,30 +777,37 @@
 
     function _buildMeetingCard(r, tagsHtml) {
       return '<div class="resource-card rc-meeting" ' + _cardDataAttrs(r) + '>' +
-        '<div class="rc-meeting-header">' +
-          '<span style="font-size:1.15rem;">📅</span>' +
-          '<span class="rc-meeting-header-title">' + esc(r.title || 'Virtual Session') + '</span>' +
-          '<span class="rc-meeting-label">Live Session</span>' +
+        '<div class="rc-live-bar">' +
+          '<span class="rc-live-dot"></span>' +
+          '<span class="rc-live-text">Live Session</span>' +
         '</div>' +
         '<div class="rc-meeting-body">' +
-          '<div class="rc-meeting-stmt">' + esc(r.relevanceStatement || 'Click to join the live session.') + '</div>' +
+          '<div class="rc-meeting-info">' +
+            '<div class="rc-meeting-title-text">📹 ' + esc(r.title || 'Virtual Session') + '</div>' +
+            '<div class="rc-meeting-stmt">' + esc(r.relevanceStatement || 'Click to join the live session.') + '</div>' +
+            (tagsHtml ? '<div class="resource-tags" style="margin-top:10px;">' + tagsHtml + '</div>' : '') +
+          '</div>' +
           '<a href="' + esc(r.url) + '" target="_blank" class="rc-join-btn">🟢 Join Session →</a>' +
         '</div>' +
-        (tagsHtml ? '<div style="padding:0 18px 14px;"><div class="resource-tags">' + tagsHtml + '</div></div>' : '') +
       '</div>';
     }
 
     function _buildVideoCard(r, tagsHtml) {
       var embedUrl = _ytEmbedUrl(r.url) || _driveVideoEmbedUrl(r);
       if (!embedUrl) return _buildReadingCard(r, tagsHtml);
+      var isYt = r.url.includes('youtube') || r.url.includes('youtu.be');
+      var srcLabel = isYt ? 'YouTube' : 'Drive';
       return '<div class="resource-card rc-embed" ' + _cardDataAttrs(r) + '>' +
-        '<div class="rc-embed-header">' +
-          '<span class="rc-embed-icon">🎥</span>' +
-          '<span class="rc-embed-title-text"><a href="' + esc(r.url) + '" target="_blank">' + esc(r.title || r.url) + ' ↗</a></span>' +
+        '<div class="rc-embed-wrapper">' +
+          '<iframe src="' + esc(embedUrl) + '" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen" allowfullscreen loading="lazy"></iframe>' +
         '</div>' +
-        '<div class="rc-embed-wrapper"><iframe src="' + esc(embedUrl) + '" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen" allowfullscreen loading="lazy"></iframe></div>' +
-        '<div class="rc-embed-footer">' +
-          (r.relevanceStatement ? '<div class="rc-embed-stmt">' + esc(r.relevanceStatement) + '</div>' : '') +
+        '<div class="rc-media-footer">' +
+          '<div class="rc-media-toprow">' +
+            '<span class="rc-chip rc-chip-video">🎥 Video</span>' +
+            '<a class="rc-media-ext" href="' + esc(r.url) + '" target="_blank">Open on ' + srcLabel + ' ↗</a>' +
+          '</div>' +
+          '<div class="rc-media-title"><a href="' + esc(r.url) + '" target="_blank">' + esc(r.title || r.url) + '</a></div>' +
+          (r.relevanceStatement ? '<div class="rc-media-stmt">' + esc(r.relevanceStatement) + '</div>' : '') +
           (tagsHtml ? '<div class="resource-tags">' + tagsHtml + '</div>' : '') +
         '</div>' +
       '</div>';
@@ -781,13 +817,16 @@
       var embedUrl = _slidesEmbedUrl(r.url);
       if (!embedUrl) return _buildReadingCard(r, tagsHtml);
       return '<div class="resource-card rc-embed" ' + _cardDataAttrs(r) + '>' +
-        '<div class="rc-embed-header">' +
-          '<span class="rc-embed-icon">📊</span>' +
-          '<span class="rc-embed-title-text"><a href="' + esc(r.url) + '" target="_blank">' + esc(r.title || r.url) + ' ↗</a></span>' +
+        '<div class="rc-embed-wrapper slides-aspect">' +
+          '<iframe src="' + esc(embedUrl) + '" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen" allowfullscreen loading="lazy"></iframe>' +
         '</div>' +
-        '<div class="rc-embed-wrapper slides-aspect"><iframe src="' + esc(embedUrl) + '" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen" allowfullscreen loading="lazy"></iframe></div>' +
-        '<div class="rc-embed-footer">' +
-          (r.relevanceStatement ? '<div class="rc-embed-stmt">' + esc(r.relevanceStatement) + '</div>' : '') +
+        '<div class="rc-media-footer">' +
+          '<div class="rc-media-toprow">' +
+            '<span class="rc-chip rc-chip-slides">📊 Slides</span>' +
+            '<a class="rc-media-ext" href="' + esc(r.url) + '" target="_blank">Open Slides ↗</a>' +
+          '</div>' +
+          '<div class="rc-media-title"><a href="' + esc(r.url) + '" target="_blank">' + esc(r.title || r.url) + '</a></div>' +
+          (r.relevanceStatement ? '<div class="rc-media-stmt">' + esc(r.relevanceStatement) + '</div>' : '') +
           (tagsHtml ? '<div class="resource-tags">' + tagsHtml + '</div>' : '') +
         '</div>' +
       '</div>';
@@ -795,31 +834,33 @@
 
     function _buildAudioCard(r, tagsHtml) {
       return '<div class="resource-card rc-audio" ' + _cardDataAttrs(r) + '>' +
-        '<div class="rc-audio-glyph">🎧</div>' +
-        '<div class="resource-body">' +
-          '<div class="resource-name"><a href="' + esc(r.url) + '" target="_blank">' + esc(r.title || r.url) + ' ↗</a></div>' +
-          (r.relevanceStatement ? '<div class="resource-stmt">' + esc(r.relevanceStatement) + '</div>' : '') +
-          (tagsHtml ? '<div class="resource-tags" style="margin-bottom:8px;">' + tagsHtml + '</div>' : '') +
-          '<a href="' + esc(r.url) + '" target="_blank" class="rc-listen-btn">▶ Listen →</a>' +
+        '<div class="rc-audio-art">🎙️</div>' +
+        '<div class="rc-audio-content">' +
+          '<span class="rc-chip rc-chip-audio">🎧 Podcast</span>' +
+          '<div class="rc-audio-title"><a href="' + esc(r.url) + '" target="_blank">' + esc(r.title || r.url) + ' ↗</a></div>' +
+          (r.relevanceStatement ? '<div class="rc-audio-stmt">' + esc(r.relevanceStatement) + '</div>' : '') +
+          '<div class="rc-audio-footer">' +
+            '<a href="' + esc(r.url) + '" target="_blank" class="rc-listen-btn">▶ Listen</a>' +
+            (tagsHtml ? '<div class="resource-tags">' + tagsHtml + '</div>' : '') +
+          '</div>' +
         '</div>' +
       '</div>';
     }
 
     function _buildReadingCard(r, tagsHtml) {
-      var score = Math.max(1, Math.min(5, r.relevanceScore || 0));
-      var pips = '';
-      for (var p = 5; p >= 1; p--) {
-        pips += '<div class="score-pip' + (p <= score ? ' lit s' + score : '') + '"></div>';
-      }
+      var score = Math.max(1, Math.min(5, r.relevanceScore || 3));
       return '<div class="resource-card" ' + _cardDataAttrs(r) + '>' +
-        '<div class="resource-score-bar">' +
-          '<div class="score-pips">' + pips + '</div>' +
-          '<div class="score-digit">' + score + '/5</div>' +
-        '</div>' +
-        '<div class="resource-body">' +
-          '<div class="resource-name"><a href="' + esc(r.url) + '" target="_blank">' + esc(r.title || r.url) + ' ↗</a></div>' +
-          (r.relevanceStatement ? '<div class="resource-stmt">' + esc(r.relevanceStatement) + '</div>' : '') +
-          '<div class="resource-tags">' + tagsHtml + '</div>' +
+        '<div class="rc-read-score s' + score + '"></div>' +
+        '<div class="rc-read-body">' +
+          '<div class="rc-read-header">' +
+            '<div class="rc-read-title"><a href="' + esc(r.url) + '" target="_blank">' + esc(r.title || r.url) + ' ↗</a></div>' +
+            '<span class="rc-chip rc-chip-read">📄 Read</span>' +
+          '</div>' +
+          (r.relevanceStatement ? '<div class="rc-read-stmt">' + esc(r.relevanceStatement) + '</div>' : '') +
+          '<div class="rc-read-footer">' +
+            '<div class="resource-tags">' + tagsHtml + '</div>' +
+            '<span class="rc-score-badge">' + score + '/5 relevance</span>' +
+          '</div>' +
         '</div>' +
       '</div>';
     }

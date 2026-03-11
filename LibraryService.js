@@ -21,8 +21,12 @@ const LibraryService = {
     const brief = session.brief || {};
 
     // Separate meeting links from content resources
+    // Filter content resources to public-only (isPublic !== false hides Internal resources)
     const meetings  = allResources.filter(r => this._isMeeting(r));
-    const resources = allResources.filter(r => !this._isMeeting(r));
+    const resources = allResources
+      .filter(r => !this._isMeeting(r))
+      .filter(r => r.isPublic !== false)
+      .sort((a, b) => a.sortOrder - b.sortOrder || b.relevanceScore - a.relevanceScore);
 
     // Ensure the isMain meeting sorts first; fall back to first entry
     meetings.sort((a, b) => (b.isMain ? 1 : 0) - (a.isMain ? 1 : 0));

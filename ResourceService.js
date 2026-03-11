@@ -57,11 +57,13 @@ const ResourceService = {
         // Skip dupes
         if (existing.has(url)) return;
 
-        // Build row data (13-col schema: cols A-J = original, K-M = meeting metadata)
+        // Build row data (15-col schema: A-J = content, K-M = meeting metadata, N-O = visibility/order)
+        const rType    = r.type || 'Resource';
+        const internal = (rType === 'Planning Doc' || rType === 'Facilitator Guide');
         newRows.push([
           url,
           r.name || 'Untitled',
-          r.type || 'Resource',
+          rType,
           '', // relevanceScore (filled by synthesis)
           '', // engagementLevel
           '', // keyTags
@@ -71,7 +73,9 @@ const ResourceService = {
           '', // summary
           r.isMain     ? 'Yes' : '', // K: isMain
           r.startTime  || '',        // L: startTime (ISO string)
-          r.endTime    || ''         // M: endTime   (ISO string)
+          r.endTime    || '',        // M: endTime   (ISO string)
+          internal     ? 'No' : 'Yes', // N: isPublic
+          ''                           // O: sortOrder (blank until facilitator sets order)
         ]);
         existing.add(url);
         added++;
@@ -88,7 +92,7 @@ const ResourceService = {
 
     // Batch write to sheet
     if (newRows.length > 0) {
-      sheet.getRange(sheet.getLastRow() + 1, 1, newRows.length, 13).setValues(newRows);
+      sheet.getRange(sheet.getLastRow() + 1, 1, newRows.length, 15).setValues(newRows);
     }
 
     return { added: added, shortcuts: shortcuts, errors: errors };
@@ -147,6 +151,60 @@ const ResourceService = {
       if (data[i][0]) set.add(String(data[i][0]).trim());
     }
     return set;
+  },
+
+  /**
+   * Removes a single resource row from the Project DB by its URL.
+   * @param {string} sessionId
+   * @param {string} url - The resource URL (col A value) to delete
+   * @returns {{ ok: boolean }}
+   */
+  removeResource: function(sessionId, url) {
+    const session = SessionService.getSession(sessionId);
+    if (!session) throw new Error('Session not found: ' + sessionId);
+    const dbId = this._extractId(session.dbUrl);
+    const sheet = SpreadsheetApp.openById(dbId).getSheetByName('Resources');
+    if (!sheet) throw new Error('Resources sheet not found.');
+
+    const data = sheet.getDataRange().getValues();
+    for (let i = data.length - 1; i >= 1; i--) {
+      if (String(data[i][0]).trim() === String(url).trim()) {
+        sheet.deleteRow(i + 1); // sheet rows are 1-indexed
+        return { ok: true };
+      }
+    }
+    return { ok: false, message: 'URL not found in Resources sheet.' };
+  },
+
+  /**
+   * Batch-updates isPublic (col N) and sortOrder (col O) for a set of resources.
+   * @param {string} sessionId
+   * @param {{ url: string, isPublic: string, sortOrder: number }[]} updates
+   * @returns {{ updated: number }}
+   */
+  updateResourceSettings: function(sessionId, updates) {
+    const session = SessionService.getSession(sessionId);
+    if (!session) throw new Error('Session not found: ' + sessionId);
+    const dbId = this._extractId(session.dbUrl);
+    const sheet = SpreadsheetApp.openById(dbId).getSheetByName('Resources');
+    if (!sheet) throw new Error('Resources sheet not found.');
+
+    const data   = sheet.getDataRange().getValues();
+    const urlMap = {}; // url → row index (1-based)
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0]) urlMap[String(data[i][0]).trim()] = i + 1;
+    }
+
+    let updated = 0;
+    updates.forEach(function(u) {
+      const rowNum = urlMap[String(u.url).trim()];
+      if (!rowNum) return;
+      sheet.getRange(rowNum, 14).setValue(u.isPublic || 'Yes'); // col N
+      sheet.getRange(rowNum, 15).setValue(u.sortOrder || '');   // col O
+      updated++;
+    });
+
+    return { updated: updated };
   },
 
   _extractId: function(url) {

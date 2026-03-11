@@ -187,7 +187,9 @@ const SynthesisService = {
           summary:           row[9] || '',
           isMain:    row[10] === 'Yes',
           startTime: row[11] ? (row[11] instanceof Date ? row[11].toISOString() : String(row[11])) : '',
-          endTime:   row[12] ? (row[12] instanceof Date ? row[12].toISOString() : String(row[12])) : ''
+          endTime:   row[12] ? (row[12] instanceof Date ? row[12].toISOString() : String(row[12])) : '',
+          isPublic:  row[13] !== 'No',                     // col N — default true if blank or 'Yes'
+          sortOrder: parseInt(row[14]) || 9999             // col O — default 9999 (unordered → end)
         }))
         .sort((a, b) => b.relevanceScore - a.relevanceScore);
     } catch (e) {

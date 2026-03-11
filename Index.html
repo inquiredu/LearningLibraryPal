@@ -209,6 +209,31 @@
     .cal-ev-title { flex:1; font-weight:600; color:var(--navy); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     .cal-ev-date  { font-size:0.74rem; color:var(--muted); white-space:nowrap; flex-shrink:0; }
     .cal-group-label { font-size:0.68rem; font-weight:700; text-transform:uppercase; letter-spacing:0.9px; color:var(--muted); margin:8px 0 3px; }
+
+    /* ── Manage Resources Modal ── */
+    .mg-list { display:flex; flex-direction:column; }
+    .mg-row { display:flex; align-items:center; gap:8px; padding:10px 0;
+      border-bottom:1px solid var(--border); cursor:default; transition:opacity 0.15s; }
+    .mg-row:last-child { border-bottom:none; }
+    .mg-drag { cursor:grab; color:var(--muted); font-size:1.1rem; padding:0 4px;
+      user-select:none; flex-shrink:0; }
+    .mg-drag:active { cursor:grabbing; }
+    .mg-title { flex:1; font-size:0.875rem; font-weight:600; min-width:0; overflow:hidden;
+      text-overflow:ellipsis; white-space:nowrap; color:var(--text); }
+    .mg-type-badge { font-size:0.68rem; color:var(--muted); background:var(--bg);
+      border:1px solid var(--border); border-radius:8px; padding:2px 7px; flex-shrink:0; white-space:nowrap; }
+    .mg-vis { font-size:0.78rem; border:1px solid var(--border); border-radius:6px;
+      padding:3px 7px; background:var(--white); flex-shrink:0; cursor:pointer; }
+    .mg-vis:focus { outline:2px solid var(--cyan); border-color:var(--cyan); }
+    .mg-del { background:none; border:none; cursor:pointer; color:var(--muted);
+      font-size:1rem; padding:0 4px; flex-shrink:0; line-height:1; }
+    .mg-del:hover { color:#e53e3e; }
+    .mg-row.staged-delete { opacity:0.35; }
+    .mg-row.staged-delete .mg-title { text-decoration:line-through; }
+    .mg-row.mg-dragging { opacity:0.4; }
+    .mg-row.mg-drag-over-before { border-top:2px solid var(--cyan); }
+    .mg-row.mg-drag-over-after  { border-bottom:2px solid var(--cyan) !important; }
+    .mg-hint { font-size:0.73rem; color:var(--muted); padding:10px 0 0; }
   </style>
 </head>
 <body>
@@ -376,6 +401,29 @@
         <span style="flex:1;font-size:0.78rem;color:var(--muted);" id="res-status"></span>
         <button class="btn btn-outline btn-sm" onclick="closeResourcesModal()">Cancel</button>
         <button class="btn btn-primary btn-sm" id="res-submit" onclick="submitResources()">Add to Session</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ Manage Resources Modal ══ -->
+  <div id="manageModal" class="modal-overlay">
+    <div class="modal" style="max-width:560px;">
+      <div class="modal-header">
+        <h2>🗂️ Manage Resources</h2>
+        <button class="modal-close" onclick="closeManageModal()">×</button>
+      </div>
+      <div class="modal-body" style="padding:0 1.5rem 1rem;">
+        <div id="mg-spinner" style="text-align:center;padding:2rem;color:var(--muted);">Loading…</div>
+        <div id="mg-list" class="mg-list" style="display:none;"></div>
+        <div id="mg-empty" style="display:none;color:var(--muted);padding:2rem;text-align:center;font-size:0.9rem;">
+          No resources added to this session yet.
+        </div>
+        <p class="mg-hint" id="mg-hint" style="display:none;">Drag ⠇ to reorder · toggle Public/Internal visibility · 🗑 to delete (staged until Save).</p>
+      </div>
+      <div class="modal-footer">
+        <span style="flex:1;font-size:0.82rem;color:var(--muted);" id="mg-status"></span>
+        <button class="btn btn-outline btn-sm" onclick="closeManageModal()">Cancel</button>
+        <button class="btn btn-primary btn-sm" id="mg-save-btn" onclick="saveResourceChanges()">Save Changes</button>
       </div>
     </div>
   </div>
@@ -559,6 +607,7 @@
           '</div>' +
           '<div class="sc-actions">' +
             '<button class="btn btn-ghost btn-xs" onclick="openResourcesModal(\'' + s.id + '\')">📁 Resources</button>' +
+            '<button class="btn btn-ghost btn-xs" onclick="openManageModal(\'' + s.id + '\')" title="View, reorder, and remove resources">🗂️ Manage</button>' +
             '<button class="btn btn-ghost btn-xs" onclick="openPeopleModal(\'' + s.id + '\', \'collab\')">👥 People</button>' +
             '<button class="btn btn-ghost btn-xs" onclick="openPermModal(\'' + s.id + '\')" title="Check Drive file permissions">🔍 Access</button>' +
             '<div class="sc-action-sep"></div>' +
@@ -1675,6 +1724,199 @@
       var base = _appBaseUrl || window.location.href.split('?')[0];
       if (!base) { showAlert('Could not determine app URL — try again in a moment.', 'error'); return; }
       window.open(base + '?page=wizard', '_blank');
+    }
+
+    // ── Manage Resources Modal ─────────────────────────────────────────────────
+
+    var _manageSessionId = null;
+    var _pendingDeletes  = new Set();
+    var _mgDragRow       = null;
+
+    function openManageModal(sessionId) {
+      _manageSessionId = sessionId;
+      _pendingDeletes  = new Set();
+      _mgDragRow       = null;
+
+      document.getElementById('mg-spinner').style.display = '';
+      document.getElementById('mg-list').style.display    = 'none';
+      document.getElementById('mg-empty').style.display   = 'none';
+      document.getElementById('mg-hint').style.display    = 'none';
+      document.getElementById('mg-status').textContent    = '';
+      document.getElementById('mg-save-btn').disabled     = false;
+      document.getElementById('manageModal').classList.add('open');
+
+      google.script.run
+        .withSuccessHandler(function(resources) { _populateManageModal(resources); })
+        .withFailureHandler(function(err) {
+          document.getElementById('mg-spinner').style.display = 'none';
+          document.getElementById('mg-status').textContent = 'Error loading resources: ' + (err.message || err);
+        })
+        .webGetResources(sessionId);
+    }
+
+    function closeManageModal() {
+      document.getElementById('manageModal').classList.remove('open');
+      _manageSessionId = null;
+      _pendingDeletes  = new Set();
+      _mgDragRow       = null;
+    }
+
+    function _populateManageModal(resources) {
+      var spinner = document.getElementById('mg-spinner');
+      var list    = document.getElementById('mg-list');
+      var empty   = document.getElementById('mg-empty');
+      var hint    = document.getElementById('mg-hint');
+
+      spinner.style.display = 'none';
+
+      // Filter out meeting links — those are managed via the Resources add modal
+      var contentResources = resources.filter(function(r) {
+        var url  = (r.url  || '').toLowerCase();
+        var type = (r.type || '').toLowerCase();
+        return !(url.includes('meet.google.com') || url.includes('zoom.us') ||
+                 url.includes('teams.microsoft.com') || type === 'meeting link');
+      });
+
+      if (!contentResources.length) {
+        empty.style.display = '';
+        return;
+      }
+
+      list.innerHTML = '';
+
+      // Sort by existing sortOrder for initial display
+      contentResources.sort(function(a, b) {
+        return (a.sortOrder || 9999) - (b.sortOrder || 9999) || b.relevanceScore - a.relevanceScore;
+      });
+
+      contentResources.forEach(function(r) {
+        var row = document.createElement('div');
+        row.className = 'mg-row';
+        row.setAttribute('draggable', 'true');
+        row.setAttribute('data-url', r.url);
+
+        var visVal  = r.isPublic ? 'Yes' : 'No';
+        var typeStr = esc(r.type || 'Resource');
+        var titleStr = esc(r.title || r.url || 'Untitled');
+
+        row.innerHTML =
+          '<span class="mg-drag" title="Drag to reorder">⠇</span>' +
+          '<span class="mg-title" title="' + titleStr + '">' + titleStr + '</span>' +
+          '<span class="mg-type-badge">' + typeStr + '</span>' +
+          '<select class="mg-vis" title="Visibility">' +
+            '<option value="Yes"' + (visVal === 'Yes' ? ' selected' : '') + '>Public</option>' +
+            '<option value="No"'  + (visVal === 'No'  ? ' selected' : '') + '>Internal</option>' +
+          '</select>' +
+          '<button class="mg-del" title="Delete resource" onclick="_stageDeleteResource(this.closest(\'.mg-row\'), ' + JSON.stringify(r.url) + ')">🗑</button>';
+
+        // ── Drag handlers ──
+        row.addEventListener('dragstart', function(e) {
+          _mgDragRow = row;
+          e.dataTransfer.effectAllowed = 'move';
+          requestAnimationFrame(function() { row.classList.add('mg-dragging'); });
+        });
+        row.addEventListener('dragend', function() {
+          row.classList.remove('mg-dragging');
+          list.querySelectorAll('.mg-row').forEach(function(r2) {
+            r2.classList.remove('mg-drag-over-before', 'mg-drag-over-after');
+          });
+          _mgDragRow = null;
+        });
+        row.addEventListener('dragover', function(e) {
+          e.preventDefault();
+          if (!_mgDragRow || _mgDragRow === row) return;
+          list.querySelectorAll('.mg-row').forEach(function(r2) {
+            r2.classList.remove('mg-drag-over-before', 'mg-drag-over-after');
+          });
+          var rect = row.getBoundingClientRect();
+          if (e.clientY < rect.top + rect.height / 2) {
+            row.classList.add('mg-drag-over-before');
+            list.insertBefore(_mgDragRow, row);
+          } else {
+            row.classList.add('mg-drag-over-after');
+            list.insertBefore(_mgDragRow, row.nextSibling);
+          }
+        });
+
+        list.appendChild(row);
+      });
+
+      list.style.display   = '';
+      hint.style.display   = '';
+    }
+
+    function _stageDeleteResource(row, url) {
+      if (_pendingDeletes.has(url)) {
+        // Undo deletion
+        _pendingDeletes.delete(url);
+        row.classList.remove('staged-delete');
+        row.querySelector('.mg-del').title = 'Delete resource';
+        row.querySelector('.mg-del').textContent = '🗑';
+      } else {
+        // Stage for deletion
+        _pendingDeletes.add(url);
+        row.classList.add('staged-delete');
+        row.querySelector('.mg-del').title = 'Undo delete';
+        row.querySelector('.mg-del').textContent = '↩';
+      }
+    }
+
+    function saveResourceChanges() {
+      var btn    = document.getElementById('mg-save-btn');
+      var status = document.getElementById('mg-status');
+      btn.disabled = true;
+      status.textContent = 'Saving…';
+
+      var list = document.getElementById('mg-list');
+      var rows = list.querySelectorAll('.mg-row:not(.staged-delete)');
+
+      // Build updates array from current DOM order
+      var updates = [];
+      rows.forEach(function(row, i) {
+        var url   = row.getAttribute('data-url');
+        var vis   = row.querySelector('.mg-vis');
+        updates.push({
+          url:       url,
+          isPublic:  vis ? vis.value : 'Yes',
+          sortOrder: i + 1
+        });
+      });
+
+      // Helper to chain deletion then settings save
+      var deleteUrls = Array.from(_pendingDeletes);
+
+      function _doDeletes(remaining, onDone) {
+        if (!remaining.length) { onDone(); return; }
+        var url = remaining[0];
+        google.script.run
+          .withSuccessHandler(function() { _doDeletes(remaining.slice(1), onDone); })
+          .withFailureHandler(function(err) {
+            status.textContent = 'Delete failed: ' + (err.message || err);
+            btn.disabled = false;
+          })
+          .webRemoveResource(_manageSessionId, url);
+      }
+
+      _doDeletes(deleteUrls, function() {
+        google.script.run
+          .withSuccessHandler(function(res) {
+            status.textContent = '✓ Saved · ' + (res.updated || 0) + ' resource(s) updated.';
+            btn.disabled = false;
+            // Remove staged-delete rows from DOM now
+            list.querySelectorAll('.mg-row.staged-delete').forEach(function(r2) { r2.remove(); });
+            _pendingDeletes = new Set();
+            if (!list.querySelectorAll('.mg-row').length) {
+              list.style.display = 'none';
+              document.getElementById('mg-hint').style.display = 'none';
+              document.getElementById('mg-empty').style.display = '';
+            }
+          })
+          .withFailureHandler(function(err) {
+            status.textContent = 'Error: ' + (err.message || err);
+            btn.disabled = false;
+          })
+          .webSaveResourceSettings(_manageSessionId, updates);
+      });
     }
 
     // ── Utilities ──────────────────────────────────────────────────────────────

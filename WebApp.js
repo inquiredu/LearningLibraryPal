@@ -328,6 +328,42 @@ function webFixPermissions(fileIds) {
   return PermissionService.fixPermissions(fileIds);
 }
 
+// ─── Resource Management ─────────────────────────────────────────────────────
+
+/**
+ * Returns all resources for a session as plain objects (including isPublic + sortOrder).
+ * Used by the Manage Resources modal in the dashboard.
+ * @param {string} sessionId
+ * @returns {Object[]}
+ */
+function webGetResources(sessionId) {
+  return SynthesisService.getResources(sessionId);
+}
+
+/**
+ * Removes a single resource from the session's Project DB by URL.
+ * @param {string} sessionId
+ * @param {string} url
+ * @returns {{ ok: boolean }}
+ */
+function webRemoveResource(sessionId, url) {
+  const result = ResourceService.removeResource(sessionId, url);
+  invalidateLibraryCache(sessionId);
+  return result;
+}
+
+/**
+ * Batch-updates visibility (isPublic) and display order (sortOrder) for resources.
+ * @param {string} sessionId
+ * @param {{ url: string, isPublic: string, sortOrder: number }[]} updates
+ * @returns {{ updated: number }}
+ */
+function webSaveResourceSettings(sessionId, updates) {
+  const result = ResourceService.updateResourceSettings(sessionId, updates);
+  invalidateLibraryCache(sessionId);
+  return result;
+}
+
 // ─── Calendar Browser ────────────────────────────────────────────────────────
 
 /**

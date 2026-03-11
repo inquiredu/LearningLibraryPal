@@ -196,9 +196,9 @@ function getLibraryData(sessionId) {
 
   const data = LibraryService.buildLibraryData(sessionId);
 
-  // Cache for 5 minutes (300 seconds)
+  // Cache for 60 seconds — short enough that facilitator changes appear promptly
   try {
-    cache.put(cacheKey, JSON.stringify(data), 300);
+    cache.put(cacheKey, JSON.stringify(data), 60);
   } catch (e) { /* data may be too large for cache — skip */ }
 
   return data;
@@ -348,6 +348,19 @@ function webGetResources(sessionId) {
  */
 function webRemoveResource(sessionId, url) {
   const result = ResourceService.removeResource(sessionId, url);
+  invalidateLibraryCache(sessionId);
+  return result;
+}
+
+/**
+ * Removes multiple resources from the Project DB in a single server call.
+ * More efficient than calling webRemoveResource N times from the client.
+ * @param {string} sessionId
+ * @param {string[]} urls - Array of resource URLs to delete
+ * @returns {{ removed: number }}
+ */
+function webRemoveResources(sessionId, urls) {
+  const result = ResourceService.removeResources(sessionId, urls);
   invalidateLibraryCache(sessionId);
   return result;
 }

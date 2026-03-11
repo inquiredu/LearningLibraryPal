@@ -1882,27 +1882,15 @@
         });
       });
 
-      // Helper to chain deletion then settings save
       var deleteUrls = Array.from(_pendingDeletes);
 
-      function _doDeletes(remaining, onDone) {
-        if (!remaining.length) { onDone(); return; }
-        var url = remaining[0];
-        google.script.run
-          .withSuccessHandler(function() { _doDeletes(remaining.slice(1), onDone); })
-          .withFailureHandler(function(err) {
-            status.textContent = 'Delete failed: ' + (err.message || err);
-            btn.disabled = false;
-          })
-          .webRemoveResource(_manageSessionId, url);
-      }
-
-      _doDeletes(deleteUrls, function() {
+      // Inner: save visibility + order after deletes are done
+      function _saveSettings() {
         google.script.run
           .withSuccessHandler(function(res) {
             status.textContent = '✓ Saved · ' + (res.updated || 0) + ' resource(s) updated.';
             btn.disabled = false;
-            // Remove staged-delete rows from DOM now
+            // Remove staged-delete rows from DOM
             list.querySelectorAll('.mg-row.staged-delete').forEach(function(r2) { r2.remove(); });
             _pendingDeletes = new Set();
             if (!list.querySelectorAll('.mg-row').length) {
@@ -1910,13 +1898,27 @@
               document.getElementById('mg-hint').style.display = 'none';
               document.getElementById('mg-empty').style.display = '';
             }
+            loadDashboard(); // refresh session cards to reflect any changes
           })
           .withFailureHandler(function(err) {
             status.textContent = 'Error: ' + (err.message || err);
             btn.disabled = false;
           })
           .webSaveResourceSettings(_manageSessionId, updates);
-      });
+      }
+
+      // Single batch call for deletions (one GAS round-trip regardless of count)
+      if (deleteUrls.length) {
+        google.script.run
+          .withSuccessHandler(function() { _saveSettings(); })
+          .withFailureHandler(function(err) {
+            status.textContent = 'Delete failed: ' + (err.message || err);
+            btn.disabled = false;
+          })
+          .webRemoveResources(_manageSessionId, deleteUrls);
+      } else {
+        _saveSettings();
+      }
     }
 
     // ── Utilities ──────────────────────────────────────────────────────────────

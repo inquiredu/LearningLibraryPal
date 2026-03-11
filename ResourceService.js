@@ -54,6 +54,11 @@ const ResourceService = {
           (r.fileId ? 'https://drive.google.com/open?id=' + r.fileId : '');
         if (!url) return;
 
+        // Validate URL — reject javascript:, data:, and anything non-http
+        const VALID_URL = /^https?:\/\/.{4}/i;
+        const DRIVE_ID  = /^https:\/\/drive\.google\.com\/open\?id=/i;
+        if (!VALID_URL.test(url) && !DRIVE_ID.test(url)) return;
+
         // Skip dupes
         if (existing.has(url)) return;
 
@@ -195,16 +200,52 @@ const ResourceService = {
       if (data[i][0]) urlMap[String(data[i][0]).trim()] = i + 1;
     }
 
+    // Mutate cols N and O in the in-memory data array, then write back in one batch
     let updated = 0;
     updates.forEach(function(u) {
       const rowNum = urlMap[String(u.url).trim()];
       if (!rowNum) return;
-      sheet.getRange(rowNum, 14).setValue(u.isPublic || 'Yes'); // col N
-      sheet.getRange(rowNum, 15).setValue(u.sortOrder || '');   // col O
+      data[rowNum - 1][13] = u.isPublic || 'Yes';
+      data[rowNum - 1][14] = u.sortOrder != null ? String(u.sortOrder) : '';
       updated++;
     });
 
+    // Single setValues call for all N:O cells — 1 write regardless of row count
+    const numRows = data.length - 1;
+    if (numRows > 0) {
+      sheet.getRange(2, 14, numRows, 2)
+        .setValues(data.slice(1).map(function(row) { return [row[13], row[14]]; }));
+    }
+
     return { updated: updated };
+  },
+
+  /**
+   * Removes multiple resource rows from the Project DB in a single server call.
+   * Reads the sheet once, deletes matching rows in reverse order (preserves indices).
+   * @param {string} sessionId
+   * @param {string[]} urls - Array of resource URLs to delete
+   * @returns {{ removed: number }}
+   */
+  removeResources: function(sessionId, urls) {
+    const session = SessionService.getSession(sessionId);
+    if (!session) throw new Error('Session not found: ' + sessionId);
+    const dbId = this._extractId(session.dbUrl);
+    const sheet = SpreadsheetApp.openById(dbId).getSheetByName('Resources');
+    if (!sheet) throw new Error('Resources sheet not found.');
+
+    const urlSet = new Set(urls.map(function(u) { return String(u).trim(); }));
+    const data   = sheet.getDataRange().getValues();
+    let removed  = 0;
+
+    // Iterate in reverse so row deletions don't shift indices of remaining rows
+    for (let i = data.length - 1; i >= 1; i--) {
+      if (urlSet.has(String(data[i][0]).trim())) {
+        sheet.deleteRow(i + 1); // sheet rows are 1-indexed
+        removed++;
+      }
+    }
+    return { removed: removed };
   },
 
   _extractId: function(url) {

@@ -63,7 +63,9 @@ const LibraryService = {
         overview: brief.overview || '',
         learningObjectives: brief.learningObjectives || [],
         inquiryQuestions: brief.inquiryQuestions || [],
-        notebookLMStarterPrompt: brief.notebookLMStarterPrompt || ''
+        notebookLMStarterPrompt: brief.notebookLMStarterPrompt || '',
+        agendaItems: brief.agendaItems || [],
+        sessionDuration: brief.sessionDuration || ''
       },
       meetings: meetings,
       resources: resources,

@@ -639,7 +639,7 @@
         countdown.textContent = 'Returning to dashboard in 3 seconds...';
         document.querySelector('.success-wrap').appendChild(countdown);
         setTimeout(function() {
-          window.location.href = window.location.href.replace(/[?&]page=wizard/, '').replace(/\?$/, '');
+          window.location.href = _wAppBaseUrl || window.location.href.replace(/[?&]page=wizard/, '').replace(/\?$/, '');
         }, 3000);
       }
     }
@@ -650,11 +650,20 @@
     var _isDialogMode = (window.google && google.script && google.script.host &&
                          google.script.host.origin === 'https://docs.google.com');
     var _isWebApp = !_isDialogMode;
+    var _wAppBaseUrl = null; // real exec URL fetched server-side (sandbox href is unreliable)
+
+    // Fetch the real base URL once on load — same fix as Index.html _appBaseUrl
+    if (_isWebApp) {
+      google.script.run
+        .withSuccessHandler(function(url) { _wAppBaseUrl = url; })
+        .withFailureHandler(function() {})
+        .webGetAppBaseUrl();
+    }
 
     function closeOrRedirect() {
       if (_isWebApp) {
-        // Strip ?page=wizard to return to dashboard
-        window.location.href = window.location.href.replace(/[?&]page=wizard/, '').replace(/\?$/, '');
+        // Use the server-fetched base URL; fall back to href manipulation only if needed
+        window.location.href = _wAppBaseUrl || window.location.href.replace(/[?&]page=wizard/, '').replace(/\?$/, '');
       } else {
         google.script.host.close();
       }

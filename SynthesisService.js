@@ -135,6 +135,24 @@ const SynthesisService = {
           }
         }
 
+        // ── Agenda: extract structured timeline into the session brief ───────
+        // Always re-extracts on re-synthesis so the agenda stays current.
+        if (resourceType === 'Agenda' && content) {
+          try {
+            const agendaData = GeminiService.enrichBriefFromAgenda(content, session.theme);
+            if (agendaData && Array.isArray(agendaData.agendaItems) && agendaData.agendaItems.length) {
+              const currentBrief = Object.assign({}, brief);
+              currentBrief.agendaItems    = agendaData.agendaItems;
+              currentBrief.sessionDuration = agendaData.duration || '';
+              SessionService.updateSession(sessionId, { BRIEF_JSON: JSON.stringify(currentBrief) });
+              brief = currentBrief;
+              console.log('Session agenda extracted: ' + agendaData.agendaItems.length + ' items.');
+            }
+          } catch (e) {
+            console.error('Agenda extraction failed: ' + e.message);
+          }
+        }
+
         processedCount++;
         Utilities.sleep(500);
       } catch (e) {

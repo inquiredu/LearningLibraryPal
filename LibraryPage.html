@@ -192,6 +192,23 @@
     .obj-label { font-size: 0.67rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: var(--muted); margin-bottom: 8px; }
 
     /* ── Questions ───────────────────────────────────────────────── */
+    /* ── Agenda ── */
+    .agenda-list { display: flex; flex-direction: column; }
+    .agenda-item {
+      display: flex; gap: 16px; padding: 12px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .agenda-item:last-child { border-bottom: none; }
+    .agenda-time {
+      font-size: 0.78rem; color: var(--muted); white-space: nowrap;
+      min-width: 100px; font-weight: 700; padding-top: 2px;
+    }
+    .agenda-activity { font-size: 0.9rem; color: var(--text); line-height: 1.5; }
+    .agenda-duration {
+      font-size: 0.78rem; color: var(--muted); text-align: right;
+      padding-top: 12px; font-style: italic;
+    }
+
     .questions-list { display: flex; flex-direction: column; gap: 8px; }
     .q-item {
       background: var(--white); border: 1px solid var(--border); border-radius: 10px;
@@ -704,6 +721,21 @@
           </div>
         </section>
 
+        <!-- Agenda (hidden until agendaItems loaded) -->
+        <section class="section" id="agenda" style="display:none;">
+          <div class="section-heading" onclick="toggleSection(this.closest('.section'))">
+            <div class="section-heading-icon">📅</div>
+            <h2>Session Agenda</h2>
+            <div class="section-heading-end">
+              <span class="count" id="agendaCount"></span>
+              <span class="section-toggle">›</span>
+            </div>
+          </div>
+          <div class="section-content">
+            <div class="agenda-list" id="agendaList"></div>
+          </div>
+        </section>
+
         <!-- Questions -->
         <section class="section" id="questions">
           <div class="section-heading" onclick="toggleSection(this.closest('.section'))">
@@ -878,6 +910,7 @@
 
       // Build sections
       renderOverview(brief);
+      renderAgenda(brief);
       renderQuestions(brief.inquiryQuestions || []);
       renderMeetings(data.meetings || []);
       renderResources(data.resources || []);
@@ -930,6 +963,36 @@
       objHtml += '</div>';
 
       grid.innerHTML = overviewHtml + objHtml;
+    }
+
+    // ── Agenda ────────────────────────────────────────────────────────────────
+    function renderAgenda(brief) {
+      var items    = brief.agendaItems || [];
+      var section  = document.getElementById('agenda');
+      var list     = document.getElementById('agendaList');
+
+      if (!items.length) {
+        section.style.display = 'none';
+        return;
+      }
+
+      section.style.display = '';
+      document.getElementById('agendaCount').textContent = items.length + ' items';
+
+      var html = '';
+      items.forEach(function(item) {
+        html +=
+          '<div class="agenda-item">' +
+            '<div class="agenda-time">' + esc(item.time || '') + '</div>' +
+            '<div class="agenda-activity">' + esc(item.activity || '') + '</div>' +
+          '</div>';
+      });
+
+      if (brief.sessionDuration) {
+        html += '<div class="agenda-duration">Total: ' + esc(brief.sessionDuration) + '</div>';
+      }
+
+      list.innerHTML = html;
     }
 
     // ── Inquiry Questions ─────────────────────────────────────────────────────

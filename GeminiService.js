@@ -216,6 +216,12 @@ Rules:
                'Use "Meeting / Session Link" as the title unless a better name is evident. ' +
                'Your summary should briefly confirm this is a logistics link.';
 
+      case 'Agenda':
+        return 'This is a SESSION AGENDA document — internal logistics for the facilitator, not participant content. ' +
+               'Extract: the overall session timeline, each agenda item with its time slot, any breaks, and total duration. ' +
+               'Set relevanceScore to 5. Set notebookLMReady to false — agendas are logistics, not queryable content. ' +
+               'Your summary should be a concise bullet list of agenda items with times.';
+
       case 'Slide Deck':
         return 'This is a SLIDE DECK. Analyze the slide text for key concepts, main arguments, and narrative arc. ' +
                'Assess whether the deck is standalone-readable or requires presenter context. ' +
@@ -279,6 +285,47 @@ Return valid JSON with this exact schema:
 }
     `.trim();
     return this._call(prompt, 0.6);
+  },
+
+  // ─── Agenda Extraction ───────────────────────────────────────────────────────
+
+  /**
+   * Extracts structured agenda data from an Agenda document.
+   * Called by SynthesisService when an "Agenda" resource type is processed.
+   * Result is merged into the session brief as `agendaItems` and `sessionDuration`.
+   *
+   * @param {string} content - Agenda document text
+   * @param {string} theme   - Session theme (for context)
+   * @returns {{ agendaItems: {time: string, activity: string}[], duration: string }}
+   */
+  enrichBriefFromAgenda: function(content, theme) {
+    const prompt = `
+You are reading a session agenda document for a learning session on "${theme}".
+
+Extract the structured agenda and return ONLY valid JSON matching this exact schema:
+{
+  "agendaItems": [
+    { "time": "9:00–9:15 AM", "activity": "Welcome & Introductions" },
+    { "time": "9:15–10:00 AM", "activity": "Opening presentation" }
+  ],
+  "duration": "3 hours"
+}
+
+Rules:
+- Extract EVERY time slot and activity in order
+- If explicit times are not given, use sequence labels: "Part 1", "Part 2", etc.
+- Keep each activity description concise (under 100 characters)
+- Include breaks as their own items
+- Maximum 25 items
+- "duration" must be a human-readable total e.g. "2.5 hours" or "90 minutes"
+- If duration cannot be determined, set "duration" to ""
+
+Agenda document:
+---
+${content.substring(0, 7000)}
+---
+    `.trim();
+    return this._call(prompt, 0.3);
   },
 
   // ─── Phase 3: Gems Instruction Sets ─────────────────────────────────────────

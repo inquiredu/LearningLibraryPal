@@ -1,8 +1,8 @@
-# MNGAIA Content Engine — Handoff (March 10, 2026)
+# MNGAIA Content Engine — Handoff (March 11, 2026)
 
 ## Current Status: All features implemented and pushed — deployment version update required
 
-All code is committed to `main` and pushed to GitHub. Several feature groups were added across two sessions.
+All code is committed to `main` and pushed to GitHub. Multiple feature groups and bug fixes added across three sessions.
 One manual action is required before the live web app reflects the latest changes.
 
 ---
@@ -22,7 +22,54 @@ One manual action is required before the live web app reflects the latest change
 
 ---
 
-## What Was Built (cumulative across both sessions)
+## What Was Built (March 11, 2026 session)
+
+### 15. Context Resource Type
+- New type "Context" for background docs the facilitator wants Gemini to read during synthesis
+- Strictly faithful extraction (`_typeInstructions` in GeminiService) — no inference or embellishment
+- Defaults `isPublic=No` — never appears in Library page or emails
+- Set relevanceScore=5, notebookLMReady=false automatically
+
+### 16. Internal Resource Email Fix (bug)
+- Internal resources (Planning Doc, Facilitator Guide, Agenda, Context) were leaking into pre-reading lists for draft/send email flows
+- `EmailService.draftAndSend`, `getDraft`, and `getNewsletterDraft` now all filter `r.isPublic !== false` before building resource lists
+
+### 17. Resource Type Selector in Drive File Picker
+- Both Drive Navigator and Folder URL file lists now show an inline type `<select>` per file (defaults to MIME-inferred type)
+- `submitResources()` reads from the select — facilitator's choice always wins
+
+### 18. Drive 📁 Picker in Link Rows
+- Each "Add Resource" link row now has a 📁 button that opens an inline Drive navigator overlay
+- Clicking any file populates the URL + Name inputs and auto-sets the type select from MIME mapping
+- Fixed-position overlay with breadcrumb navigation; dismisses on file select or ×
+
+### 19. Delete Button Fix (bug)
+- `JSON.stringify(r.url)` inside a double-quoted HTML onclick attribute broke the attribute entirely — delete button was silently broken
+- Fixed by using `data-del-url` attribute and `this.dataset.delUrl` in the onclick
+
+### 20. Duplicate Resource Prevention (bug)
+- Same file checked in both Drive navigator and folder URL panels was submitted twice
+- `submitResources()` now deduplicates by URL/fileId before sending to server
+
+### 21. Agenda Document Type + Inquiry Question Enrichment
+- New "Agenda" type with `GeminiService.enrichBriefFromAgenda()` → extracts `agendaItems[]` + `sessionDuration` into session brief
+- Library page shows collapsible "📅 Session Agenda" section (hidden until items exist)
+- Post-synthesis: `GeminiService.enrichInquiryQuestions()` rewrites inquiry questions grounded in actual resource content
+
+### 22. Resource Visibility + Manage Resources Modal
+- Resources tab extended to 15 cols: N=isPublic, O=sortOrder
+- Planning Doc / Facilitator Guide / Agenda / Context default `isPublic=No`
+- New "🗂️ Manage Resources" modal: toggle visibility, drag-reorder, stage/batch delete
+- Library page applies isPublic filter server-side; sortOrder sort before relevanceScore fallback
+
+### 23. ALLOWED_EMAILS Auth Bypass
+- `Config.js` now has `ALLOWED_EMAILS: []` array
+- Any email in this list bypasses the domain restriction — useful for testing with a personal Gmail
+- Add: `ALLOWED_EMAILS: ['you@gmail.com']` in Config.js, then clasp push + new deployment version
+
+---
+
+## What Was Built (prior sessions, cumulative)
 
 ### 1. Email Template Fix
 - `EmailService.sendApprovedDraft()` now wraps Gemini HTML in the MNGAIA branded email template before sending

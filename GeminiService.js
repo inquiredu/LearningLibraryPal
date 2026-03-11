@@ -222,6 +222,14 @@ Rules:
                'Set relevanceScore to 5. Set notebookLMReady to false — agendas are logistics, not queryable content. ' +
                'Your summary should be a concise bullet list of agenda items with times.';
 
+      case 'Context':
+        return 'This is a CONTEXT DOCUMENT — background material the facilitator has provided so Gemini has richer knowledge about the session. ' +
+               'It is NOT a participant resource and must never be framed as one. ' +
+               'Extract: key facts, concepts, constraints, organizational context, and any terminology or framing relevant to the session theme. ' +
+               'Be strictly faithful to what is written — no inference, embellishment, or creative interpretation. ' +
+               'Your summary should be a concise, accurate knowledge extraction the facilitator can use as internal reference. ' +
+               'Set relevanceScore to 5. Set notebookLMReady to false.';
+
       case 'Slide Deck':
         return 'This is a SLIDE DECK. Analyze the slide text for key concepts, main arguments, and narrative arc. ' +
                'Assess whether the deck is standalone-readable or requires presenter context. ' +

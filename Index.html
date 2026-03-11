@@ -976,7 +976,7 @@
     // ── Resources Modal ────────────────────────────────────────────────────────
 
     var _resSessionId = null;
-    var RES_TYPES = ['Reading','Video','Slide Deck','Agenda','Facilitator Guide','Planning Doc','Meeting Link','Web Resource','Audio / Podcast','Other'];
+    var RES_TYPES = ['Reading','Video','Slide Deck','Agenda','Facilitator Guide','Planning Doc','Context','Meeting Link','Web Resource','Audio / Podcast','Other'];
     var MIME_TO_TYPE = {
       'application/vnd.google-apps.document':     'Reading',
       'application/vnd.google-apps.presentation': 'Slide Deck',
@@ -1283,11 +1283,117 @@
       row.className = 'link-row';
       var opts = RES_TYPES.map(function(t) { return '<option>' + t + '</option>'; }).join('');
       row.innerHTML =
-        '<input type="text" placeholder="Name" style="width:28%;">' +
+        '<input type="text" placeholder="Name" style="width:24%;">' +
         '<input type="url" placeholder="https:// or Drive link" style="flex:1;">' +
         '<select>' + opts + '</select>' +
-        '<button style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:1rem;" onclick="this.parentElement.remove()">×</button>';
+        '<button title="Browse Drive" onclick="pickDriveFile(this)" style="background:none;border:1px solid var(--border);border-radius:4px;cursor:pointer;font-size:0.88rem;padding:2px 6px;flex-shrink:0;color:var(--navy);">📁</button>' +
+        '<button style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:1rem;flex-shrink:0;" onclick="this.parentElement.remove()">×</button>';
       rows.appendChild(row);
+    }
+
+    // ── Inline Drive File Picker (for link rows) ────────────────────────────────
+
+    var _drivePickRow = null;
+
+    function _initDrivePickOverlay() {
+      if (document.getElementById('drive-pick-overlay')) return;
+      var d = document.createElement('div');
+      d.id = 'drive-pick-overlay';
+      d.style.cssText = 'display:none;position:fixed;z-index:9999;background:#fff;border:1.5px solid var(--border);border-radius:8px;box-shadow:0 4px 24px rgba(0,0,0,0.18);padding:12px;width:300px;max-width:90vw;';
+      d.innerHTML =
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">' +
+          '<span style="font-size:0.8rem;font-weight:700;color:var(--navy);">📁 Select a file</span>' +
+          '<button onclick="closeDrivePick()" style="background:none;border:none;cursor:pointer;font-size:1.1rem;color:var(--muted);line-height:1;">×</button>' +
+        '</div>' +
+        '<div id="dpo-breadcrumb" style="font-size:0.72rem;color:var(--muted);min-height:16px;display:flex;gap:3px;flex-wrap:wrap;align-items:center;padding-bottom:6px;border-bottom:1px solid var(--border);margin-bottom:6px;"></div>' +
+        '<div id="dpo-spinner" style="display:none;padding:10px;text-align:center;font-size:0.8rem;color:var(--muted);">Loading…</div>' +
+        '<div id="dpo-list" style="overflow-y:auto;max-height:240px;display:flex;flex-direction:column;gap:2px;"></div>';
+      document.body.appendChild(d);
+    }
+
+    function pickDriveFile(btn) {
+      _initDrivePickOverlay();
+      _drivePickRow = btn.closest('.link-row');
+      var overlay = document.getElementById('drive-pick-overlay');
+      var rect = btn.getBoundingClientRect();
+      overlay.style.top  = Math.min(rect.bottom + 4, window.innerHeight - 340) + 'px';
+      overlay.style.left = Math.max(8, Math.min(rect.left, window.innerWidth - 316)) + 'px';
+      overlay.style.display = 'block';
+      document.getElementById('dpo-spinner').style.display = '';
+      document.getElementById('dpo-list').innerHTML = '';
+      document.getElementById('dpo-breadcrumb').innerHTML = '';
+      google.script.run
+        .withSuccessHandler(function(r) {
+          document.getElementById('dpo-spinner').style.display = 'none';
+          if (r.error) { showAlert(r.error, 'error'); return; }
+          _renderDrivePickPanel(r);
+        })
+        .withFailureHandler(function(err) {
+          document.getElementById('dpo-spinner').style.display = 'none';
+          showAlert('Error: ' + err.message, 'error');
+        })
+        .getDriveNavigate(null);
+    }
+
+    function _pickNavTo(folderId) {
+      document.getElementById('dpo-list').innerHTML = '';
+      document.getElementById('dpo-spinner').style.display = '';
+      google.script.run
+        .withSuccessHandler(function(r) {
+          document.getElementById('dpo-spinner').style.display = 'none';
+          if (r.error) { showAlert(r.error, 'error'); return; }
+          _renderDrivePickPanel(r);
+        })
+        .withFailureHandler(function(err) {
+          document.getElementById('dpo-spinner').style.display = 'none';
+          showAlert('Error: ' + err.message, 'error');
+        })
+        .getDriveNavigate(folderId);
+    }
+
+    function _renderDrivePickPanel(result) {
+      var bc = document.getElementById('dpo-breadcrumb');
+      bc.innerHTML = result.path.map(function(seg, i) {
+        var isLast = i === result.path.length - 1;
+        if (isLast) return '<span style="font-weight:700;color:var(--navy);">' + esc(seg.name) + '</span>';
+        return '<span onclick="_pickNavTo(\'' + esc(seg.id) + '\')" style="cursor:pointer;color:var(--cyan);text-decoration:underline;">' + esc(seg.name) + '</span>';
+      }).join('<span style="margin:0 2px;color:var(--muted);">›</span>');
+      var list = document.getElementById('dpo-list');
+      var html = '';
+      result.folders.forEach(function(f) {
+        html += '<div onclick="_pickNavTo(\'' + esc(f.id) + '\')" style="display:flex;align-items:center;gap:7px;padding:5px 8px;border-radius:5px;cursor:pointer;font-size:0.82rem;color:var(--navy);" ' +
+          'onmouseover="this.style.background=\'var(--bg-alt,#f4f6f9)\'" onmouseout="this.style.background=\'\'">' +
+          '<span>📁</span><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(f.name) + '</span></div>';
+      });
+      result.files.forEach(function(f) {
+        var type = MIME_TO_TYPE[f.mimeType] || 'Reading';
+        var icon = resIcon(type, f.mimeType);
+        html += '<div class="dpo-file" data-url="' + esc(f.url) + '" data-name="' + esc(f.name) + '" data-type="' + esc(type) + '" onclick="_selectDrivePickFile(this)" style="display:flex;align-items:center;gap:7px;padding:5px 8px;border-radius:5px;cursor:pointer;font-size:0.82rem;" ' +
+          'onmouseover="this.style.background=\'var(--bg-alt,#f4f6f9)\'" onmouseout="this.style.background=\'\'">' +
+          '<span>' + icon + '</span>' +
+          '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + esc(f.name) + '</span>' +
+          '</div>';
+      });
+      if (!result.folders.length && !result.files.length) {
+        html = '<div style="padding:10px;font-size:0.8rem;color:var(--muted);">This folder is empty.</div>';
+      }
+      list.innerHTML = html;
+    }
+
+    function _selectDrivePickFile(el) {
+      if (!_drivePickRow) return;
+      var inputs = _drivePickRow.querySelectorAll('input');
+      var typeSel = _drivePickRow.querySelector('select');
+      if (inputs[1]) inputs[1].value = el.dataset.url;
+      if (inputs[0] && !inputs[0].value.trim()) inputs[0].value = el.dataset.name;
+      if (typeSel && el.dataset.type) typeSel.value = el.dataset.type;
+      closeDrivePick();
+    }
+
+    function closeDrivePick() {
+      var overlay = document.getElementById('drive-pick-overlay');
+      if (overlay) overlay.style.display = 'none';
+      _drivePickRow = null;
     }
 
     function submitResources() {
@@ -1332,6 +1438,14 @@
         }
       });
 
+      // Deduplicate by URL — prevents double-adding when same file appears in both nav + folder panels
+      var _seenUrls = new Set();
+      resources = resources.filter(function(r) {
+        var key = String(r.url || r.fileId || '').trim().toLowerCase();
+        if (!key || _seenUrls.has(key)) return false;
+        _seenUrls.add(key);
+        return true;
+      });
 
       if (!resources.length) { closeResourcesModal(); return; }
       document.getElementById('res-spinner').style.display = 'block';
@@ -1819,7 +1933,7 @@
             '<option value="Yes"' + (visVal === 'Yes' ? ' selected' : '') + '>Public</option>' +
             '<option value="No"'  + (visVal === 'No'  ? ' selected' : '') + '>Internal</option>' +
           '</select>' +
-          '<button class="mg-del" title="Delete resource" onclick="_stageDeleteResource(this.closest(\'.mg-row\'), ' + JSON.stringify(r.url) + ')">🗑</button>';
+          '<button class="mg-del" data-del-url="' + esc(r.url) + '" title="Delete resource" onclick="_stageDeleteResource(this.closest(\'.mg-row\'), this.dataset.delUrl)">🗑</button>';
 
         // ── Drag handlers ──
         row.addEventListener('dragstart', function(e) {
@@ -1948,7 +2062,7 @@
     function esc(str) { return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
     function _safeUrl(url) { if (!url) return '#'; return /^https?:\/\//i.test(url) ? url : 'https://' + url; }
 
-    window.onload = loadDashboard;
+    window.onload = function() { loadDashboard(); _initDrivePickOverlay(); };
   </script>
 </body>
 </html>

@@ -31,6 +31,14 @@ const CONFIG = {
   ALLOWED_DOMAIN: 'ai4mn.org',
 
   /**
+   * Specific email addresses allowed access regardless of domain.
+   * Useful for testing with a personal Gmail, or granting access to
+   * external collaborators who don't have an @ai4mn.org account.
+   * Example: ['you@gmail.com', 'partner@otherdomain.org']
+   */
+  ALLOWED_EMAILS: [],
+
+  /**
    * Public routes that skip domain authentication entirely.
    * The 'library' page is always public so shared session links work for anyone.
    */

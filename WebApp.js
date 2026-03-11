@@ -546,6 +546,12 @@ function _isAuthorizedUser() {
     var email = Session.getActiveUser().getEmail();
     if (!email) return false;                                // anonymous / not signed in
     if (!CONFIG.ALLOWED_DOMAIN) return true;                 // any Google account allowed
+    // Specific email bypass — add addresses to ALLOWED_EMAILS in Config.js for testing
+    // or external collaborators without the org domain
+    if (CONFIG.ALLOWED_EMAILS && CONFIG.ALLOWED_EMAILS.length) {
+      if (CONFIG.ALLOWED_EMAILS.map(function(e) { return e.toLowerCase(); })
+                                .indexOf(email.toLowerCase()) !== -1) return true;
+    }
     return email.toLowerCase().endsWith('@' + CONFIG.ALLOWED_DOMAIN.toLowerCase());
   } catch (e) {
     return false;

@@ -20,17 +20,18 @@ const EmailService = {
     // Get library URL for this session
     const libraryUrl = session.libraryUrl || this._buildLibraryUrl(sessionId);
 
-    // Get top pre-reading resources
+    // Get top pre-reading resources — exclude Internal resources (Planning Doc, Context, etc.)
     const allResources = SynthesisService.getResources(sessionId);
-    const preReadingResources = allResources
+    const publicResources = allResources.filter(r => r.isPublic !== false);
+    const preReadingResources = publicResources
       .filter(r => r.preReading)
       .slice(0, 3)
       .map(r => ({ url: r.url, title: r.title, relevanceStatement: r.relevanceStatement }));
 
-    // If no pre-reading flagged yet, take top 3 by score
+    // If no pre-reading flagged yet, take top 3 public resources by score
     const resources = preReadingResources.length > 0
       ? preReadingResources
-      : allResources.slice(0, 3).map(r => ({ url: r.url, title: r.title, relevanceStatement: r.relevanceStatement }));
+      : publicResources.slice(0, 3).map(r => ({ url: r.url, title: r.title, relevanceStatement: r.relevanceStatement }));
 
     // Draft with Gemini
     const draft = GeminiService.draftPreSessionEmail(
@@ -66,14 +67,15 @@ const EmailService = {
 
     const libraryUrl = session.libraryUrl || this._buildLibraryUrl(sessionId);
     const allResources = SynthesisService.getResources(sessionId);
-    const resources = allResources
+    const publicResources = allResources.filter(r => r.isPublic !== false);
+    const resources = publicResources
       .filter(r => r.preReading)
       .slice(0, 3)
       .map(r => ({ url: r.url, title: r.title, relevanceStatement: r.relevanceStatement }));
 
     return GeminiService.draftPreSessionEmail(
       session.brief,
-      resources.length > 0 ? resources : allResources.slice(0, 3).map(r => ({
+      resources.length > 0 ? resources : publicResources.slice(0, 3).map(r => ({
         url: r.url, title: r.title, relevanceStatement: r.relevanceStatement
       })),
       session.date,
@@ -93,8 +95,9 @@ const EmailService = {
 
     const libraryUrl = session.libraryUrl || this._buildLibraryUrl(sessionId);
     const allResources = SynthesisService.getResources(sessionId);
-    const preReading = allResources.filter(r => r.preReading).slice(0, 3);
-    const topResources = preReading.length > 0 ? preReading : allResources.slice(0, 3);
+    const publicResources = allResources.filter(r => r.isPublic !== false);
+    const preReading = publicResources.filter(r => r.preReading).slice(0, 3);
+    const topResources = preReading.length > 0 ? preReading : publicResources.slice(0, 3);
 
     const resourcesForGemini = topResources.map(r => ({
       url: r.url || '',

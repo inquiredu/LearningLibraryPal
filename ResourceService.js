@@ -14,6 +14,7 @@ const ResourceService = {
     'Agenda',
     'Facilitator Guide',
     'Planning Doc',
+    'Context',
     'Meeting Link',
     'Web Resource',
     'Audio / Podcast',
@@ -65,7 +66,7 @@ const ResourceService = {
 
         // Build row data (15-col schema: A-J = content, K-M = meeting metadata, N-O = visibility/order)
         const rType    = r.type || 'Resource';
-        const internal = (rType === 'Planning Doc' || rType === 'Facilitator Guide' || rType === 'Agenda');
+        const internal = (rType === 'Planning Doc' || rType === 'Facilitator Guide' || rType === 'Agenda' || rType === 'Context');
         newRows.push([
           url,
           r.name || 'Untitled',

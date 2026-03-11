@@ -170,6 +170,41 @@ const SynthesisService = {
     const folderCount = this._processResearchFolder(session, resourcesSheet, sessionContext);
     processedCount += folderCount;
 
+    // ── Post-synthesis: enrich inquiry questions from actual resource content ──
+    // Only runs when at least one resource was processed this cycle.
+    // Reads the in-memory rows (already written to sheet) to build a digest of
+    // resource titles, key concept tags, and summaries, then asks Gemini to
+    // rewrite the inquiry questions grounded in the specific materials curated.
+    if (processedCount > 0) {
+      try {
+        const contentRows = rows.slice(1).filter(function(r) {
+          return String(r[2] || '').trim() !== 'Meeting Link' &&
+                 r[9] && String(r[9]).trim();
+        });
+
+        if (contentRows.length && brief.inquiryQuestions && brief.inquiryQuestions.length) {
+          const digest = contentRows.map(function(r, idx) {
+            return (idx + 1) + '. ' + (r[1] || 'Resource') +
+              (r[5] ? ' [' + r[5] + ']' : '') +
+              '\n   ' + String(r[9]).substring(0, 200);
+          }).join('\n\n');
+
+          const enriched = GeminiService.enrichInquiryQuestions(
+            brief.inquiryQuestions, digest, session.theme, session.audience
+          );
+
+          if (enriched && Array.isArray(enriched.inquiryQuestions) && enriched.inquiryQuestions.length) {
+            const updatedBrief = Object.assign({}, brief);
+            updatedBrief.inquiryQuestions = enriched.inquiryQuestions;
+            SessionService.updateSession(sessionId, { BRIEF_JSON: JSON.stringify(updatedBrief) });
+            console.log('Inquiry questions enriched from ' + contentRows.length + ' resources.');
+          }
+        }
+      } catch (e) {
+        console.error('Inquiry question enrichment failed: ' + e.message);
+      }
+    }
+
     return processedCount;
   },
 

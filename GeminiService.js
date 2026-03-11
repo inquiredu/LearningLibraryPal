@@ -328,6 +328,60 @@ ${content.substring(0, 7000)}
     return this._call(prompt, 0.3);
   },
 
+  // ─── Post-Synthesis: Inquiry Question Enrichment ────────────────────────────
+
+  /**
+   * Enriches inquiry questions based on the actual synthesized resource content.
+   * Called by SynthesisService after all resources are processed, so questions
+   * become grounded in the specific ideas, tensions, and arguments present in
+   * the curated materials — not just the session theme in the abstract.
+   *
+   * @param {string[]} currentQuestions - Existing inquiry questions from the brief
+   * @param {string}   resourceDigest   - Compiled titles, summaries, and key tags from synthesized resources
+   * @param {string}   theme
+   * @param {string}   audience
+   * @returns {{ inquiryQuestions: string[] }}
+   */
+  enrichInquiryQuestions: function(currentQuestions, resourceDigest, theme, audience) {
+    const currentQ = (currentQuestions || []).join('\n- ');
+    const prompt = `
+You are an expert learning facilitator refining inquiry questions for a collaborative session.
+
+Session Theme: "${theme}"
+Audience: ${audience}
+
+These inquiry questions were drafted before the session resources were curated:
+- ${currentQ}
+
+The facilitator has now assembled the following resources for this session. These are the actual materials participants will read, watch, and discuss:
+---
+${resourceDigest.substring(0, 6000)}
+---
+
+Your task: Rewrite and enrich the inquiry questions so they:
+1. Connect directly to specific ideas, arguments, tensions, or perspectives found in the actual resources above
+2. Surface genuine productive disagreements or unexplored angles present in the resource content
+3. Are still open-ended, invite multiple perspectives, and work for a diverse group
+4. Feel grounded — a participant who has engaged with the materials will immediately see the connection
+5. Can be answered at multiple depths (accessible to newcomers, rich for experts)
+
+Keep exactly 5 questions. Preserve the spirit of any questions already working well.
+Do NOT invent ideas not present in the resources — stay grounded in what is actually there.
+
+Return valid JSON:
+{
+  "inquiryQuestions": [
+    "Question 1",
+    "Question 2",
+    "Question 3",
+    "Question 4",
+    "Question 5"
+  ]
+}
+    `.trim();
+    return this._call(prompt, 0.6);
+  },
+
   // ─── Phase 3: Gems Instruction Sets ─────────────────────────────────────────
 
   /**

@@ -169,6 +169,15 @@
     .nl-bullet-row:hover .nl-bullet-del { opacity: 1; }
     .nl-add-bullet { background: none; border: 1px dashed #BCC5CF; color: #8A9BAE; cursor: pointer; font-size: 11px; padding: 3px 10px; border-radius: 4px; margin-top: 5px; }
     .nl-add-bullet:hover { border-color: var(--cyan); color: var(--navy); }
+    .nl-link-row { display: flex; gap: 6px; align-items: center; margin-bottom: 6px; }
+    .nl-link-row input { padding: 5px 8px; border: 1.5px solid var(--border); border-radius: 5px; font-size: 0.79rem; font-family: inherit; outline: none; }
+    .nl-link-row input:focus { border-color: var(--cyan); }
+    .nl-link-label-in { flex: 0 0 130px; }
+    .nl-link-url-in { flex: 1; }
+    .nl-link-del { background: none; border: none; color: #BCC5CF; cursor: pointer; font-size: 15px; padding: 0 2px; line-height: 1; }
+    .nl-link-del:hover { color: #c0392b; }
+    .nl-btn-preview { display: inline-block; padding: 11px 22px; border-radius: 6px; font-weight: 700; font-size: 13px; cursor: default; margin: 4px 5px; transition: opacity 0.15s; }
+    .nl-cta-bar { text-align: center; padding: 14px 0 4px; display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; min-height: 50px; }
 
     /* ── Resources modal ── */
     .res-section-label { font-size:0.72rem; font-weight:700; text-transform:uppercase; letter-spacing:0.8px; color:var(--muted); margin:16px 0 8px; padding-bottom:6px; border-bottom:1px solid var(--border); }
@@ -1400,21 +1409,26 @@
                 '<div style="background:#F7FAFC;border:1px solid #DDE4ED;border-radius:6px;padding:0 14px;margin-top:12px;">' + resourcesHtml + '</div>'
               : '') +
               '<div style="margin-top:20px;">' +
-                '<span class="nl-ve-label">Join Session Link ✎</span>' +
-                '<div style="display:flex;align-items:center;gap:8px;">' +
-                  '<input type="url" id="nl-meetUrl" value="' + esc(d.mainMeetingUrl || '') + '" placeholder="https://meet.google.com/… (leave blank to omit)" ' +
-                    'style="flex:1;padding:7px 10px;border:1.5px solid var(--border);border-radius:6px;font-size:0.82rem;font-family:inherit;">' +
+                '<span class="nl-ve-label">Action Buttons ✎</span>' +
+                '<div style="font-size:0.71rem;color:var(--muted);margin-bottom:8px;">These appear as clickable buttons at the bottom of the email. Edit label and URL, or add more.</div>' +
+                // Meet link row
+                '<div class="nl-link-row">' +
+                  '<input class="nl-link-label-in" type="text" id="nl-meetLabel" value="Join Session \u2192" placeholder="Button label" oninput="updateNlCtaPreview()">' +
+                  '<input class="nl-link-url-in" type="url" id="nl-meetUrl" value="' + esc(d.mainMeetingUrl || '') + '" placeholder="https://meet.google.com/… (leave blank to hide)" oninput="updateNlCtaPreview()">' +
                 '</div>' +
-                '<div style="font-size:0.71rem;color:var(--muted);margin-top:4px;">This appears as a prominent button above the Library link in the email.</div>' +
+                // Library link row (always present if libraryUrl exists)
+                (d.libraryUrl ?
+                  '<div class="nl-link-row">' +
+                    '<input class="nl-link-label-in" type="text" id="nl-libraryLabel" value="Open Learning Library \u2192" placeholder="Button label" oninput="updateNlCtaPreview()">' +
+                    '<input class="nl-link-url-in" type="url" id="nl-libraryUrl" value="' + esc(d.libraryUrl) + '" placeholder="Library URL" oninput="updateNlCtaPreview()">' +
+                  '</div>'
+                : '') +
+                // Extra custom links
+                '<div id="nl-extraLinks"></div>' +
+                '<button class="nl-add-bullet" style="margin-top:6px;" onclick="addNlExtraLink()">+ Add another link</button>' +
               '</div>' +
-              (d.libraryUrl ?
-                '<div style="text-align:center;padding-top:16px;display:flex;justify-content:center;gap:10px;flex-wrap:wrap;">' +
-                  '<div style="display:inline-block;background:#28a745;color:#fff;padding:12px 24px;border-radius:6px;font-weight:700;font-size:13px;cursor:default;" id="nl-meetPreview">' +
-                    (d.mainMeetingUrl ? 'Join Session &rarr;' : '<span style="opacity:0.4">Join Session (add link above)</span>') +
-                  '</div>' +
-                  '<div style="display:inline-block;background:' + cyan + ';color:' + navy + ';padding:12px 24px;border-radius:6px;font-weight:700;font-size:13px;cursor:default;">Open Learning Library →</div>' +
-                '</div>'
-              : '') +
+              // Live CTA preview
+              '<div id="nl-ctaPreview" class="nl-cta-bar" style="padding-top:14px;"></div>' +
             '</div>' +
             // Footer — non-editable
             '<div style="background:#F5F7FA;padding:14px 28px;border-top:1px solid #DDE4ED;">' +
@@ -1450,6 +1464,48 @@
     function removeNlBullet(btn) {
       var row = btn.closest ? btn.closest('.nl-bullet-row') : btn.parentElement;
       if (row) row.remove();
+    }
+
+    function addNlExtraLink() {
+      var container = document.getElementById('nl-extraLinks');
+      if (!container) return;
+      var row = document.createElement('div');
+      row.className = 'nl-link-row';
+      row.innerHTML =
+        '<input class="nl-link-label-in" type="text" placeholder="Button label" oninput="updateNlCtaPreview()">' +
+        '<input class="nl-link-url-in" type="url" placeholder="https://…" oninput="updateNlCtaPreview()">' +
+        '<button class="nl-link-del" onclick="this.closest(\'.nl-link-row\').remove();updateNlCtaPreview();" title="Remove">×</button>';
+      container.appendChild(row);
+      row.querySelector('input').focus();
+    }
+
+    function updateNlCtaPreview() {
+      var preview = document.getElementById('nl-ctaPreview');
+      if (!preview) return;
+      var navy = '#0B2B46', cyan = '#5DCDF5';
+      var html = '';
+      // Meet button
+      var meetUrl   = ((document.getElementById('nl-meetUrl')   || {}).value || '').trim();
+      var meetLabel = ((document.getElementById('nl-meetLabel') || {}).value || '').trim() || 'Join Session \u2192';
+      if (meetUrl) {
+        html += '<span class="nl-btn-preview" style="background:#28a745;color:#fff;">' + esc(meetLabel) + '</span>';
+      }
+      // Library button
+      var libUrl   = ((document.getElementById('nl-libraryUrl')   || {}).value || '').trim();
+      var libLabel = ((document.getElementById('nl-libraryLabel') || {}).value || '').trim() || 'Open Learning Library \u2192';
+      if (libUrl) {
+        html += '<span class="nl-btn-preview" style="background:' + cyan + ';color:' + navy + ';">' + esc(libLabel) + '</span>';
+      }
+      // Extra links
+      document.querySelectorAll('#nl-extraLinks .nl-link-row').forEach(function(row) {
+        var inputs = row.querySelectorAll('input');
+        var label = (inputs[0] && inputs[0].value.trim()) || 'Link';
+        var url   = inputs[1] && inputs[1].value.trim();
+        if (url) {
+          html += '<span class="nl-btn-preview" style="background:#6c757d;color:#fff;">' + esc(label) + '</span>';
+        }
+      });
+      preview.innerHTML = html || '<span style="font-size:0.75rem;color:var(--muted);align-self:center;">No buttons yet — add a URL above</span>';
     }
 
     // Safely extract plain text from a contenteditable element

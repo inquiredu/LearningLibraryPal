@@ -1052,10 +1052,14 @@
       result.files.forEach(function(f) {
         var type = MIME_TO_TYPE[f.mimeType] || 'Reading';
         var icon = resIcon(type, f.mimeType);
+        var typeOpts = RES_TYPES.map(function(t) {
+          return '<option value="' + t + '"' + (t === type ? ' selected' : '') + '>' + t + '</option>';
+        }).join('');
         html += '<label style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--bg);border:1px solid var(--border);border-radius:5px;cursor:pointer;font-size:0.82rem;">' +
-          '<input type="checkbox" data-file-id="' + esc(f.fileId) + '" data-url="' + esc(f.url) + '" data-name="' + esc(f.name) + '" data-type="' + esc(type) + '">' +
+          '<input type="checkbox" class="folder-file-cb" data-file-id="' + esc(f.fileId) + '" data-url="' + esc(f.url) + '" data-name="' + esc(f.name) + '">' +
           '<span>' + icon + '</span>' +
-          '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + esc(f.name) + '">' + esc(f.name) + '</span>' +
+          '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;" title="' + esc(f.name) + '">' + esc(f.name) + '</span>' +
+          '<select class="folder-type-sel" style="padding:2px 5px;border:1px solid var(--border);border-radius:4px;font-size:0.72rem;color:var(--text);background:#fff;flex-shrink:0;" onclick="event.stopPropagation()">' + typeOpts + '</select>' +
           '</label>';
       });
       html += '</div>';
@@ -1118,10 +1122,14 @@
       result.files.forEach(function(f) {
         var type = MIME_TO_TYPE[f.mimeType] || 'Reading';
         var icon = resIcon(type, f.mimeType);
+        var typeOpts = RES_TYPES.map(function(t) {
+          return '<option value="' + t + '"' + (t === type ? ' selected' : '') + '>' + t + '</option>';
+        }).join('');
         html += '<label style="display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:5px;cursor:pointer;font-size:0.82rem;">' +
-          '<input type="checkbox" class="nav-file-cb" data-file-id="' + esc(f.fileId) + '" data-url="' + esc(f.url) + '" data-name="' + esc(f.name) + '" data-type="' + esc(type) + '">' +
+          '<input type="checkbox" class="nav-file-cb" data-file-id="' + esc(f.fileId) + '" data-url="' + esc(f.url) + '" data-name="' + esc(f.name) + '">' +
           '<span>' + icon + '</span>' +
-          '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + esc(f.name) + '">' + esc(f.name) + '</span>' +
+          '<span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;" title="' + esc(f.name) + '">' + esc(f.name) + '</span>' +
+          '<select class="nav-type-sel" style="padding:2px 5px;border:1px solid var(--border);border-radius:4px;font-size:0.72rem;color:var(--text);background:#fff;flex-shrink:0;" onclick="event.stopPropagation()">' + typeOpts + '</select>' +
           '</label>';
       });
       if (!result.folders.length && !result.files.length) {
@@ -1285,14 +1293,18 @@
     function submitResources() {
       var resources = [];
 
-      // Drive navigator checked files
+      // Drive navigator checked files — read type from the inline select
       document.querySelectorAll('#res-navList .nav-file-cb:checked').forEach(function(cb) {
-        resources.push({ fileId: cb.dataset.fileId, url: cb.dataset.url, name: cb.dataset.name, type: cb.dataset.type });
+        var typeSel = cb.parentElement && cb.parentElement.querySelector('.nav-type-sel');
+        resources.push({ fileId: cb.dataset.fileId, url: cb.dataset.url, name: cb.dataset.name,
+          type: typeSel ? typeSel.value : 'Reading' });
       });
 
-      // Drive folder URL checked files
-      document.querySelectorAll('#res-fileList input[type=checkbox]:checked').forEach(function(cb) {
-        resources.push({ fileId: cb.dataset.fileId, url: cb.dataset.url, name: cb.dataset.name, type: cb.dataset.type });
+      // Drive folder URL checked files — read type from the inline select
+      document.querySelectorAll('#res-fileList .folder-file-cb:checked').forEach(function(cb) {
+        var typeSel = cb.parentElement && cb.parentElement.querySelector('.folder-type-sel');
+        resources.push({ fileId: cb.dataset.fileId, url: cb.dataset.url, name: cb.dataset.name,
+          type: typeSel ? typeSel.value : 'Reading' });
       });
 
       // Calendar event checked items (include timing + main flag)

@@ -465,6 +465,7 @@
         <div class="spinner" id="newsletter-spinner" style="display:none;width:20px;height:20px;margin:0;"></div>
         <span style="flex:1;font-size:0.78rem;color:var(--muted);" id="newsletter-status"></span>
         <button class="btn btn-outline btn-sm" onclick="closeNewsletterModal()">Cancel</button>
+        <button class="btn btn-primary btn-sm" id="saveNewsletterBtn" onclick="saveNewsletter()" style="background:var(--navy);border-color:var(--navy);">Save Draft</button>
         <button class="btn btn-primary btn-sm" id="sendNewsletterBtn" onclick="sendNewsletter()">✉️ Send Email</button>
       </div>
     </div>
@@ -1524,13 +1525,24 @@
         return '<span style="display:inline-block;background:rgba(93,205,245,0.18);color:' + cyan + ';border:1px solid rgba(93,205,245,0.35);padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;margin-right:6px;margin-top:4px;">' + esc(c) + '</span>';
       }).join('');
 
-      var bulletsHtml = (d.highlights || []).map(function(h) {
-        return '<div class="nl-bullet-row">' +
-          '<span style="color:#7F8FA4;font-size:13px;flex-shrink:0;">•</span>' +
-          '<div class="nl-bullet" contenteditable="true" onkeydown="if(event.key===\'Enter\'){event.preventDefault();addNlBullet(this);}" style="font-size:13px;line-height:1.7;color:#2C3E50;">' + esc(h) + '</div>' +
-          '<button class="nl-bullet-del" onclick="removeNlBullet(this)" title="Remove">×</button>' +
-        '</div>';
-      }).join('');
+      var bulletsHtml = '';
+      if (d.highlightsHtmlArr && d.highlightsHtmlArr.length) {
+        bulletsHtml = d.highlightsHtmlArr.map(function(hHtml) {
+          return '<div class="nl-bullet-row">' +
+            '<span style="color:#7F8FA4;font-size:13px;flex-shrink:0;">•</span>' +
+            '<div class="nl-bullet" contenteditable="true" onkeydown="if(event.key===\'Enter\'){event.preventDefault();addNlBullet(this);}" style="font-size:13px;line-height:1.7;color:#2C3E50;">' + hHtml + '</div>' +
+            '<button class="nl-bullet-del" onclick="removeNlBullet(this)" title="Remove">×</button>' +
+          '</div>';
+        }).join('');
+      } else {
+        bulletsHtml = (d.highlights || []).map(function(h) {
+          return '<div class="nl-bullet-row">' +
+            '<span style="color:#7F8FA4;font-size:13px;flex-shrink:0;">•</span>' +
+            '<div class="nl-bullet" contenteditable="true" onkeydown="if(event.key===\'Enter\'){event.preventDefault();addNlBullet(this);}" style="font-size:13px;line-height:1.7;color:#2C3E50;">' + esc(h) + '</div>' +
+            '<button class="nl-bullet-del" onclick="removeNlBullet(this)" title="Remove">×</button>' +
+          '</div>';
+        }).join('');
+      }
 
       var resources = d.resources || [];
       var resourcesHtml = resources.map(function(r) {
@@ -1565,12 +1577,12 @@
               '<span class="nl-ve-label">Opening Hook ✎</span>' +
               '<div id="nl-heroLine" class="nl-ve-field" contenteditable="true" onkeydown="if(event.key===\'Enter\')event.preventDefault();" ' +
                 'style="font-size:15px;font-weight:700;color:' + navy + ';line-height:1.4;border-left:3px solid ' + cyan + ';padding:4px 8px 4px 14px;">' +
-                esc(d.heroLine || '') +
+                (d.heroLineHtml || esc(d.heroLine || '')) +
               '</div>' +
               '<span class="nl-ve-label">Intro Paragraph ✎</span>' +
               '<div id="nl-intro" class="nl-ve-field" contenteditable="true" ' +
                 'style="font-size:14px;line-height:1.8;color:#2C3E50;padding:4px 6px;">' +
-                esc(d.intro || '') +
+                (d.introHtml || esc(d.intro || '')) +
               '</div>' +
               '<span class="nl-ve-label">What We\'ll Explore ✎</span>' +
               '<div id="nl-bullets">' + bulletsHtml + '</div>' +
@@ -1579,7 +1591,7 @@
                 '<span class="nl-ve-label">Pre-Reading Note ✎</span>' +
                 '<div id="nl-preReadNote" class="nl-ve-field" contenteditable="true" onkeydown="if(event.key===\'Enter\')event.preventDefault();" ' +
                   'style="font-size:13px;color:#555;line-height:1.6;padding:4px 6px;">' +
-                  esc(d.preReadingNote || '') +
+                  (d.preReadNoteHtml || esc(d.preReadingNote || '')) +
                 '</div>' +
                 '<div style="background:#F7FAFC;border:1px solid #DDE4ED;border-radius:6px;padding:0 14px;margin-top:12px;">' + resourcesHtml + '</div>'
               : '') +
@@ -1588,13 +1600,13 @@
                 '<div style="font-size:0.71rem;color:var(--muted);margin-bottom:8px;">These appear as clickable buttons at the bottom of the email. Edit label and URL, or add more.</div>' +
                 // Meet link row
                 '<div class="nl-link-row">' +
-                  '<input class="nl-link-label-in" type="text" id="nl-meetLabel" value="Join Session \u2192" placeholder="Button label" oninput="updateNlCtaPreview()">' +
-                  '<input class="nl-link-url-in" type="url" id="nl-meetUrl" value="' + esc(d.mainMeetingUrl || '') + '" placeholder="https://meet.google.com/… (leave blank to hide)" oninput="updateNlCtaPreview()">' +
+                  '<input class="nl-link-label-in" type="text" id="nl-meetLabel" value="' + esc(d.meetLabel || 'Join Session \u2192') + '" placeholder="Button label" oninput="updateNlCtaPreview()">' +
+                  '<input class="nl-link-url-in" type="url" id="nl-meetUrl" value="' + esc(d.meetingUrl || d.mainMeetingUrl || '') + '" placeholder="https://meet.google.com/… (leave blank to hide)" oninput="updateNlCtaPreview()">' +
                 '</div>' +
                 // Library link row (always present if libraryUrl exists)
                 (d.libraryUrl ?
                   '<div class="nl-link-row">' +
-                    '<input class="nl-link-label-in" type="text" id="nl-libraryLabel" value="Open Learning Library \u2192" placeholder="Button label" oninput="updateNlCtaPreview()">' +
+                    '<input class="nl-link-label-in" type="text" id="nl-libraryLabel" value="' + esc(d.libLabel || 'Open Learning Library \u2192') + '" placeholder="Button label" oninput="updateNlCtaPreview()">' +
                     '<input class="nl-link-url-in" type="url" id="nl-libraryUrl" value="' + esc(d.libraryUrl) + '" placeholder="Library URL" oninput="updateNlCtaPreview()">' +
                   '</div>'
                 : '') +
@@ -1611,6 +1623,24 @@
             '</div>' +
           '</div>' +
         '</div>';
+
+      // Re-populate extra links if any
+      if (d.extraLinks && d.extraLinks.length) {
+        var extraContainer = document.getElementById('nl-extraLinks');
+        if (extraContainer) {
+          d.extraLinks.forEach(function(link) {
+            var row = document.createElement('div');
+            row.className = 'nl-link-row';
+            row.innerHTML =
+              '<input class="nl-link-label-in" type="text" placeholder="Button label" value="' + esc(link.label || '') + '" oninput="updateNlCtaPreview()">' +
+              '<input class="nl-link-url-in" type="url" placeholder="https://…" value="' + esc(link.url || '') + '" oninput="updateNlCtaPreview()">' +
+              '<button class="nl-link-del" onclick="this.closest(\'.nl-link-row\').remove();updateNlCtaPreview();" title="Remove">×</button>';
+            extraContainer.appendChild(row);
+          });
+        }
+      }
+
+      updateNlCtaPreview();
 
       document.getElementById('newsletterModalFooter').style.display = 'flex';
     }
@@ -1683,6 +1713,13 @@
       preview.innerHTML = html || '<span style="font-size:0.75rem;color:var(--muted);align-self:center;">No buttons yet — add a URL above</span>';
     }
 
+    // Extract rich HTML from a contenteditable element
+    function _nlHtml(idOrEl) {
+      var el = typeof idOrEl === 'string' ? document.getElementById(idOrEl) : idOrEl;
+      if (!el) return '';
+      return (el.innerHTML || '').trim();
+    }
+
     // Safely extract plain text from a contenteditable element
     function _nlText(idOrEl) {
       var el = typeof idOrEl === 'string' ? document.getElementById(idOrEl) : idOrEl;
@@ -1695,7 +1732,7 @@
       return tmp.value.trim();
     }
 
-    function _buildNlHtml(heroLine, intro, highlights, preReadNote) {
+    function _buildNlHtml(heroLineHtml, introHtml, highlightsHtmlArr, preReadNoteHtml, customButtonsHtml) {
       var navy = '#0B2B46';
       var cyan = '#5DCDF5';
       var d = _newsletterDraft || {};
@@ -1717,8 +1754,8 @@
         '</div>';
       }).join('');
 
-      var highlightsHtml = highlights.map(function(h) {
-        return '<li style="font-size:13px;line-height:1.7;color:#2C3E50;padding:2px 0;">' + esc(h) + '</li>';
+      var highlightsListHtml = (highlightsHtmlArr || []).map(function(hHtml) {
+        return '<li style="font-size:13px;line-height:1.7;color:#2C3E50;padding:2px 0;">' + hHtml + '</li>';
       }).join('');
 
       return '<div style="background:#F5F7FA;font-family:Arial,Helvetica,sans-serif;padding:12px;">' +
@@ -1730,32 +1767,25 @@
             (chipsHtml ? '<div>' + chipsHtml + '</div>' : '') +
           '</div>' +
           // Hero line
-          (heroLine ? '<div style="padding:22px 28px 0;">' +
-            '<p style="font-size:16px;font-weight:700;color:' + navy + ';line-height:1.4;margin:0;border-left:3px solid ' + cyan + ';padding-left:14px;">' + esc(heroLine) + '</p>' +
+          (heroLineHtml ? '<div style="padding:22px 28px 0;">' +
+            '<div style="font-size:16px;font-weight:700;color:' + navy + ';line-height:1.4;margin:0;border-left:3px solid ' + cyan + ';padding-left:14px;">' + heroLineHtml + '</div>' +
           '</div>' : '') +
           // Body
           '<div style="padding:20px 28px;">' +
-            (intro ? '<p style="font-size:14px;line-height:1.8;color:#2C3E50;margin:0 0 20px;">' + esc(intro).replace(/\n/g, '<br>') + '</p>' : '') +
-            (highlights.length ?
+            (introHtml ? '<div style="font-size:14px;line-height:1.8;color:#2C3E50;margin:0 0 20px;">' + introHtml + '</div>' : '') +
+            (highlightsHtmlArr && highlightsHtmlArr.length ?
               '<p style="font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#7F8FA4;margin:0 0 10px;">What We\'ll Explore</p>' +
-              '<ul style="padding-left:18px;margin:0 0 20px;">' + highlightsHtml + '</ul>'
+              '<ul style="padding-left:18px;margin:0 0 20px;">' + highlightsListHtml + '</ul>'
             : '') +
-            (resources.length && preReadNote ?
+            (resources.length && preReadNoteHtml ?
               '<p style="font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#7F8FA4;margin:0 0 8px;">Pre-Reading</p>' +
-              '<p style="font-size:13px;color:#555;margin:0 0 12px;line-height:1.6;">' + esc(preReadNote) + '</p>' +
+              '<div style="font-size:13px;color:#555;margin:0 0 12px;line-height:1.6;">' + preReadNoteHtml + '</div>' +
               '<div style="background:#F7FAFC;border:1px solid #DDE4ED;border-radius:6px;padding:0 14px;">' + resourcesHtml + '</div>'
             : '') +
           '</div>' +
           // CTA buttons
-          ((d.meetingUrl || d.libraryUrl) ?
-            '<div style="padding:4px 28px 24px;text-align:center;">' +
-              (d.meetingUrl ?
-                '<a href="' + esc(_safeUrl(d.meetingUrl)) + '" style="display:inline-block;background:#28a745;color:#fff;padding:12px 24px;border-radius:6px;font-weight:700;text-decoration:none;font-size:14px;margin:4px 6px;">Join Session →</a>'
-              : '') +
-              (d.libraryUrl ?
-                '<a href="' + esc(d.libraryUrl) + '" style="display:inline-block;background:' + cyan + ';color:' + navy + ';padding:12px 24px;border-radius:6px;font-weight:700;text-decoration:none;font-size:14px;margin:4px 6px;">Open Learning Library →</a>'
-              : '') +
-            '</div>'
+          (customButtonsHtml ?
+            '<div style="padding:4px 28px 24px;text-align:center;">' + customButtonsHtml + '</div>'
           : '') +
           // Footer
           '<div style="background:#F5F7FA;padding:14px 28px;border-top:1px solid #DDE4ED;">' +
@@ -1763,6 +1793,96 @@
           '</div>' +
         '</div>' +
       '</div>';
+    }
+
+    function _gatherNewsletterData() {
+      var meetLabel = ((document.getElementById('nl-meetLabel') || {}).value || '').trim() || 'Join Session \u2192';
+      var meetUrl   = ((document.getElementById('nl-meetUrl') || {}).value || '').trim();
+      var libLabel  = ((document.getElementById('nl-libraryLabel') || {}).value || '').trim() || 'Open Learning Library \u2192';
+      var libUrl    = ((document.getElementById('nl-libraryUrl') || {}).value || '').trim();
+
+      var customButtonsHtml = '';
+      var customButtonsData = [];
+
+      var navy = '#0B2B46', cyan = '#5DCDF5';
+
+      if (meetUrl) {
+        customButtonsHtml += '<a href="' + esc(_safeUrl(meetUrl)) + '" style="display:inline-block;background:#28a745;color:#fff;padding:12px 24px;border-radius:6px;font-weight:700;text-decoration:none;font-size:14px;margin:4px 6px;">' + esc(meetLabel) + '</a>';
+        customButtonsData.push({ type: 'meet', label: meetLabel, url: meetUrl });
+      }
+      if (libUrl) {
+        customButtonsHtml += '<a href="' + esc(libUrl) + '" style="display:inline-block;background:' + cyan + ';color:' + navy + ';padding:12px 24px;border-radius:6px;font-weight:700;text-decoration:none;font-size:14px;margin:4px 6px;">' + esc(libLabel) + '</a>';
+        customButtonsData.push({ type: 'library', label: libLabel, url: libUrl });
+      }
+
+      var extraLinks = [];
+      document.querySelectorAll('#nl-extraLinks .nl-link-row').forEach(function(row) {
+        var inputs = row.querySelectorAll('input');
+        var label = (inputs[0] && inputs[0].value.trim()) || 'Link';
+        var url   = inputs[1] && inputs[1].value.trim();
+        if (url) {
+          customButtonsHtml += '<a href="' + esc(_safeUrl(url)) + '" style="display:inline-block;background:#6c757d;color:#fff;padding:12px 24px;border-radius:6px;font-weight:700;text-decoration:none;font-size:14px;margin:4px 6px;">' + esc(label) + '</a>';
+          customButtonsData.push({ type: 'extra', label: label, url: url });
+          extraLinks.push({ label: label, url: url });
+        }
+      });
+
+      var heroLineHtml  = _nlHtml('nl-heroLine');
+      var introHtml     = _nlHtml('nl-intro');
+      var preReadNoteHtml = _nlHtml('nl-preReadNote');
+      var highlightsHtmlArr = [];
+      document.querySelectorAll('#nl-bullets .nl-bullet').forEach(function(el) {
+        var hHtml = _nlHtml(el); if (hHtml) highlightsHtmlArr.push(hHtml);
+      });
+
+      return {
+        subject: (document.getElementById('nl-subject') || {}).value || '',
+        heroLineHtml: heroLineHtml,
+        introHtml: introHtml,
+        highlightsHtmlArr: highlightsHtmlArr,
+        preReadNoteHtml: preReadNoteHtml,
+        meetLabel: meetLabel,
+        meetUrl: meetUrl,
+        libLabel: libLabel,
+        libUrl: libUrl,
+        extraLinks: extraLinks,
+        customButtonsHtml: customButtonsHtml
+      };
+    }
+
+    function saveNewsletter() {
+      if (!_newsletterSessionId || !_newsletterDraft) return;
+      var data = _gatherNewsletterData();
+
+      var saveObj = Object.assign({}, _newsletterDraft, {
+        subject: data.subject,
+        heroLineHtml: data.heroLineHtml,
+        introHtml: data.introHtml,
+        highlightsHtmlArr: data.highlightsHtmlArr,
+        preReadNoteHtml: data.preReadNoteHtml,
+        meetLabel: data.meetLabel,
+        meetingUrl: data.meetUrl,
+        libLabel: data.libLabel,
+        libraryUrl: data.libUrl,
+        extraLinks: data.extraLinks
+      });
+
+      var btn = document.getElementById('saveNewsletterBtn');
+      setBtnLoading(btn, 'Saving…');
+      document.getElementById('newsletter-status').textContent = 'Saving draft…';
+      google.script.run
+        .withSuccessHandler(function(res) {
+          resetBtn(btn, 'Save Draft');
+          document.getElementById('newsletter-status').textContent = 'Draft saved!';
+          setTimeout(function() { document.getElementById('newsletter-status').textContent = ''; }, 3000);
+          loadDashboard();
+        })
+        .withFailureHandler(function(err) {
+          resetBtn(btn, 'Save Draft');
+          document.getElementById('newsletter-status').textContent = '';
+          showAlert(err.message, 'error');
+        })
+        .webSaveNewsletterDraft(_newsletterSessionId, saveObj);
     }
 
     function sendNewsletter() {
@@ -1773,20 +1893,10 @@
       var subject = (document.getElementById('nl-subject') || {}).value || '';
       if (!subject.trim()) { alert('Enter a subject line.'); return; }
 
-      var heroLine  = _nlText('nl-heroLine');
-      var intro     = _nlText('nl-intro');
-      var preReadNote = _nlText('nl-preReadNote');
-      var meetUrl   = ((document.getElementById('nl-meetUrl') || {}).value || '').trim();
-      var highlights = [];
-      document.querySelectorAll('#nl-bullets .nl-bullet').forEach(function(el) {
-        var t = _nlText(el); if (t) highlights.push(t);
-      });
-
-      // Inject edited meeting URL back into draft for _buildNlHtml
-      if (_newsletterDraft) _newsletterDraft.meetingUrl = meetUrl;
+      var data = _gatherNewsletterData();
 
       // Build the full sendable HTML (DOCTYPE + body wrapper)
-      var innerHtml = _buildNlHtml(heroLine, intro, highlights, preReadNote);
+      var innerHtml = _buildNlHtml(data.heroLineHtml, data.introHtml, data.highlightsHtmlArr, data.preReadNoteHtml, data.customButtonsHtml);
       var fullHtml = '<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>' +
         '<body style="margin:0;padding:0;background:#F5F7FA;">' + innerHtml + '</body></html>';
 

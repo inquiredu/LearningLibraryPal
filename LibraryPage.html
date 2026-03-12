@@ -834,9 +834,8 @@
 
   </div><!-- /#content -->
 
+  <?!= HtmlService.createHtmlOutputFromFile('_Utils').getContent(); ?>
   <script>
-    <?!= HtmlService.createHtmlOutputFromFile('_Utils').getContent(); ?>
-
     var SESSION_ID      = '<?!= sessionId ?>';
     var _checklistSaved = {};
     var _checklistTotal = 0;

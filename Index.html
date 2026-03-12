@@ -471,9 +471,8 @@
     </div>
   </div>
 
+  <?!= HtmlService.createHtmlOutputFromFile('_Utils').getContent(); ?>
   <script>
-    <?!= HtmlService.createHtmlOutputFromFile('_Utils').getContent(); ?>
-
     var _peopleSessionId = null;
     var _peopleActiveTab = 'collab';
     var _newsletterSessionId = null;
@@ -2176,7 +2175,7 @@
     function setBtnLoading(btn, label) { btn.disabled = true; btn._orig = btn.textContent; btn.textContent = label; }
     function resetBtn(btn, label) { btn.disabled = false; btn.textContent = label || btn._orig || label; }
 
-    window.onload = function() { loadDashboard(); _initDrivePickOverlay(); };
+    window.onload = function() { loadDashboard(); if (typeof _initDrivePickOverlay === 'function') _initDrivePickOverlay(); };
   </script>
 </body>
 </html>

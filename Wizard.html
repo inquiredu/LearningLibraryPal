@@ -223,9 +223,8 @@
     </div>
   </div>
 
+  <?!= HtmlService.createHtmlOutputFromFile('_Utils').getContent(); ?>
   <script>
-    <?!= HtmlService.createHtmlOutputFromFile('_Utils').getContent(); ?>
-
     // ── State ──────────────────────────────────────────────────────────────────
     var _sessionId  = null;
     var _sessionResult = null;

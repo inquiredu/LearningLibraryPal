@@ -852,7 +852,7 @@
         .withSuccessHandler(renderLibrary)
         .withFailureHandler(function(err) {
           document.getElementById('loading').innerHTML =
-            '<p style="color:#721C24;padding:40px;text-align:center;">Error: ' + err.message + '</p>';
+            '<p style="color:#721C24;padding:40px;text-align:center;">Error: ' + esc(err.message) + '</p>';
         })
         .getLibraryData(SESSION_ID);
     };

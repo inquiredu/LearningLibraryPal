@@ -472,6 +472,8 @@
   </div>
 
   <script>
+    <?!= HtmlService.createHtmlOutputFromFile('_Utils').getContent(); ?>
+
     var _peopleSessionId = null;
     var _peopleActiveTab = 'collab';
     var _newsletterSessionId = null;
@@ -1903,6 +1905,10 @@
       var btn = document.getElementById('sendNewsletterBtn');
       setBtnLoading(btn, 'Sending…');
       document.getElementById('newsletter-status').textContent = 'Sending to ' + recipients.length + ' recipient(s)…';
+      
+      // Auto-save draft on send
+      google.script.run.webSaveNewsletterDraft(_newsletterSessionId, data);
+
       google.script.run
         .withSuccessHandler(function(res) {
           resetBtn(btn, '✉️ Send Email');
@@ -2169,8 +2175,6 @@
 
     function setBtnLoading(btn, label) { btn.disabled = true; btn._orig = btn.textContent; btn.textContent = label; }
     function resetBtn(btn, label) { btn.disabled = false; btn.textContent = label || btn._orig || label; }
-    function esc(str) { return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-    function _safeUrl(url) { if (!url) return '#'; return /^https?:\/\//i.test(url) ? url : 'https://' + url; }
 
     window.onload = function() { loadDashboard(); _initDrivePickOverlay(); };
   </script>

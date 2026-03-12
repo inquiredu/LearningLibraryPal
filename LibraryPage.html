@@ -835,15 +835,17 @@
   </div><!-- /#content -->
 
   <script>
-    var SESSION_ID = '__SESSION_ID__';
+    <?!= HtmlService.createHtmlOutputFromFile('_Utils').getContent(); ?>
+
+    var SESSION_ID      = '<?!= sessionId ?>';
     var _checklistSaved = {};
     var _checklistTotal = 0;
-    var _displayTz      = 'America/Chicago'; // overwritten from data.meta on load
-    var _displayTzLabel = 'CT';
+    var _appTz          = 'America/Chicago'; // overwritten from data.meta on load
+    var _appTzLabel     = 'CT';
 
     // ── Bootstrap ─────────────────────────────────────────────────────────────
     window.onload = function() {
-      if (!SESSION_ID || SESSION_ID === '__SESSION_ID__') {
+      if (!SESSION_ID || SESSION_ID === '<?!= sessionId ?>' || SESSION_ID === '__SESSION_ID__') {
         document.getElementById('loading').innerHTML =
           '<p style="color:#721C24;padding:40px;text-align:center;">No session ID provided.</p>';
         return;
@@ -866,8 +868,8 @@
       var brief = data.brief || {};
 
       // Store display timezone for use by _fmtTime throughout this page load
-      _displayTz      = m.timezone      || 'America/Chicago';
-      _displayTzLabel = m.timezoneLabel || 'CT';
+      _appTz          = m.timezone      || 'America/Chicago';
+      _appTzLabel     = m.timezoneLabel || 'CT';
 
       // Hero
       document.getElementById('heroTitle').textContent = m.name || 'Session';
@@ -1184,19 +1186,6 @@
       if (now >= start)             return 'live';
       if (start - now <= 15 * 60 * 1000) return 'soon';
       return 'upcoming';
-    }
-
-    function _fmtTime(iso) {
-      if (!iso) return '';
-      try {
-        return new Intl.DateTimeFormat('en-US', {
-          timeZone: _displayTz,
-          month: 'short', day: 'numeric',
-          hour: '2-digit', minute: '2-digit'
-        }).format(new Date(iso)) + ' ' + _displayTzLabel;
-      } catch (e) {
-        return new Date(iso).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-      }
     }
 
     function renderMeetings(meetings) {
@@ -1689,17 +1678,6 @@
       }, { rootMargin: '-20% 0px -70% 0px' });
 
       document.querySelectorAll('.section[id]').forEach(function(s) { obs.observe(s); });
-    }
-
-    // ── Utils ─────────────────────────────────────────────────────────────────
-    function esc(str) {
-      return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-    }
-
-    function _safeUrl(url) {
-      if (!url) return '#';
-      if (/^https?:\/\//i.test(url)) return url;
-      return 'https://' + url;
     }
   </script>
 </body>

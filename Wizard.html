@@ -224,6 +224,8 @@
   </div>
 
   <script>
+    <?!= HtmlService.createHtmlOutputFromFile('_Utils').getContent(); ?>
+
     // ── State ──────────────────────────────────────────────────────────────────
     var _sessionId  = null;
     var _sessionResult = null;
@@ -234,10 +236,7 @@
       .webGetAppConfig();
 
     function _fmtEventTime(iso) {
-      if (!iso) return '';
-      try {
-        return new Intl.DateTimeFormat('en-US', { timeZone: _appTz, month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(iso)) + ' ' + _appTzLabel;
-      } catch (e) { return new Date(iso).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }); }
+      return _fmtTime(iso, _appTz, _appTzLabel);
     }
 
     var RESOURCE_TYPES = [
@@ -689,10 +688,6 @@
       document.getElementById('s2-spinner').style.display = on ? 'block' : 'none';
       document.getElementById('s2-status').textContent = msg || '';
       document.getElementById('s2-submit').disabled = on;
-    }
-
-    function esc(str) {
-      return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
   </script>
 </body>

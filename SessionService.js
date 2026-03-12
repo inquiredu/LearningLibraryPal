@@ -112,7 +112,11 @@ const SessionService = {
     row[this.COL.BRAND]      = brand || 'MNGAIA';
     row[this.COL.STATUS]     = 'Active';
     row[this.COL.FOLDER_URL] = sessionFolder.getUrl();
-    row[this.COL.LIBRARY_URL]= '';
+    // Auto-populate the public Library URL
+    let appUrl = '';
+    try { appUrl = ScriptApp.getService().getUrl(); } catch (e) { /* fails if not deployed as web app */ }
+    row[this.COL.LIBRARY_URL]= appUrl ? appUrl + '?page=library&session=' + sessionId : '';
+    
     row[this.COL.DB_URL]     = db.getUrl();
     row[this.COL.EMAIL_SENT] = 'No';
     row[this.COL.BRIEF_JSON] = JSON.stringify(brief);
@@ -214,7 +218,8 @@ const SessionService = {
     resourcesSheet.setName('Resources');
     const headers = [
       'URL', 'Title', 'Type', 'Relevance Score', 'Engagement Level',
-      'Key Tags', 'Pre-Reading', 'NotebookLM Ready', 'Relevance Statement', 'Summary'
+      'Key Tags', 'Pre-Reading', 'NotebookLM Ready', 'Relevance Statement', 'Summary',
+      'isMain', 'startTime', 'endTime'
     ];
     resourcesSheet.getRange(1, 1, 1, headers.length).setValues([headers]);
     resourcesSheet.setFrozenRows(1);

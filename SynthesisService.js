@@ -362,7 +362,8 @@ const SynthesisService = {
             meta.relevanceScore >= 4 ? 'Yes' : 'No',
             meta.notebookLMReady ? 'Yes' : 'No',
             meta.relevanceStatement || '',
-            meta.summary || ''
+            meta.summary || '',
+            '', '', '' // cols K, L, M (isMain, startTime, endTime)
           ]);
           existingUrls.add(url);
           count++;
@@ -373,7 +374,7 @@ const SynthesisService = {
       }
 
       if (newRows.length > 0) {
-        resourcesSheet.getRange(resourcesSheet.getLastRow() + 1, 1, newRows.length, 10).setValues(newRows);
+        resourcesSheet.getRange(resourcesSheet.getLastRow() + 1, 1, newRows.length, 13).setValues(newRows);
       }
     } catch (e) {
       console.error('_processResearchFolder failed: ' + e.message);

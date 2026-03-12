@@ -43,33 +43,35 @@ function doGet(e) {
   }
 
   if (page === 'wizard') {
-    return HtmlService.createTemplateFromFile('Wizard')
-      .evaluate()
-      .setTitle('New Session — ' + CONFIG.APP_NAME)
+    return HtmlService.createHtmlOutputFromFile('Wizard')
+      .setTitle('New Session — MNGAIA')
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   }
 
   if (page === 'library') {
     const sessionId = e.parameter.session || '';
-    const template = HtmlService.createTemplateFromFile('LibraryPage');
-    template.sessionId = sessionId;
-    return template.evaluate()
-      .setTitle('Learning Library — ' + CONFIG.APP_NAME)
+    const output = HtmlService.createHtmlOutputFromFile('LibraryPage')
+      .setTitle('Learning Library — MNGAIA')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+
+    // Inject session ID into the page for client-side fetch
+    const html = output.getContent().replace('__SESSION_ID__', sessionId);
+    return HtmlService.createHtmlOutput(html)
+      .setTitle('Learning Library — MNGAIA')
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   }
 
   if (page === 'design') {
     const sessionId = e.parameter.session || '';
-    const template = HtmlService.createTemplateFromFile('PageBuilder');
-    template.sessionId = sessionId;
-    return template.evaluate()
-      .setTitle('Page Builder — ' + CONFIG.APP_NAME)
+    const html = HtmlService.createHtmlOutputFromFile('PageBuilder')
+      .getContent().replace('__SESSION_ID__', sessionId);
+    return HtmlService.createHtmlOutput(html)
+      .setTitle('Page Builder — MNGAIA')
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   }
 
-  return HtmlService.createTemplateFromFile('Index')
-    .evaluate()
-    .setTitle(CONFIG.APP_NAME)
+  return HtmlService.createHtmlOutputFromFile('Index')
+    .setTitle('MNGAIA Content Engine')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
@@ -176,21 +178,6 @@ function webGetNewsletterDraft(sessionId) {
  */
 function webSendNewsletterEmail(sessionId, recipients, subject, fullHtml) {
   return EmailService.sendRawEmail(sessionId, recipients, subject, fullHtml);
-}
-
-/**
- * Saves the newsletter draft to the session row.
- * Called from the newsletter wizard when clicking "Save Draft".
- * @param {string} sessionId
- * @param {Object} draftData - Newsletter sections
- * @returns {{ ok: boolean }}
- */
-function webSaveNewsletterDraft(sessionId, draftData) {
-  const ok = SessionService.updateSession(sessionId, {
-    NEWSLETTER_JSON: JSON.stringify(draftData)
-  });
-  if (!ok) throw new Error('Could not save draft; session not found.');
-  return { ok: true };
 }
 
 // ─── Library API ──────────────────────────────────────────────────────────────

@@ -114,7 +114,7 @@ const EmailService = {
     meetings.sort((a, b) => (b.isMain ? 1 : 0) - (a.isMain ? 1 : 0));
     const mainMeeting = meetings[0] || null;
 
-    const sections = session.newsletterJson || GeminiService.draftNewsletterSections(
+    const sections = GeminiService.draftNewsletterSections(
       session.brief,
       resourcesForGemini,
       session.date,

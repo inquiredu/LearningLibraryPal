@@ -27,8 +27,7 @@ const SessionService = {
     EMAIL_SENT:  11,
     BRIEF_JSON:  12,
     GEMS_JSON:   13,
-    CREATED_AT:  14,
-    NEWSLETTER_JSON: 15
+    CREATED_AT:  14
   },
 
   // ─── Setup ──────────────────────────────────────────────────────────────────
@@ -45,7 +44,7 @@ const SessionService = {
       const headers = [
         'ID', 'Name', 'Theme', 'Date', 'Format', 'Audience', 'Brand',
         'Status', 'Folder URL', 'Library URL', 'Project DB URL',
-        'Email Sent', 'Brief JSON', 'Gems JSON', 'Created At', 'Newsletter JSON'
+        'Email Sent', 'Brief JSON', 'Gems JSON', 'Created At'
       ];
       sessionsSheet.getRange(1, 1, 1, headers.length).setValues([headers]);
       sessionsSheet.setFrozenRows(1);
@@ -102,7 +101,7 @@ const SessionService = {
     // 4. Write session row to Master Sheet
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const sheet = ss.getSheetByName(this.SESSIONS_SHEET_NAME);
-    const row = new Array(16).fill('');
+    const row = new Array(15).fill('');
     row[this.COL.ID]         = sessionId;
     row[this.COL.NAME]       = name;
     row[this.COL.THEME]      = theme;
@@ -112,17 +111,12 @@ const SessionService = {
     row[this.COL.BRAND]      = brand || 'MNGAIA';
     row[this.COL.STATUS]     = 'Active';
     row[this.COL.FOLDER_URL] = sessionFolder.getUrl();
-    // Auto-populate the public Library URL
-    let appUrl = '';
-    try { appUrl = ScriptApp.getService().getUrl(); } catch (e) { /* fails if not deployed as web app */ }
-    row[this.COL.LIBRARY_URL]= appUrl ? appUrl + '?page=library&session=' + sessionId : '';
-    
+    row[this.COL.LIBRARY_URL]= '';
     row[this.COL.DB_URL]     = db.getUrl();
     row[this.COL.EMAIL_SENT] = 'No';
     row[this.COL.BRIEF_JSON] = JSON.stringify(brief);
     row[this.COL.GEMS_JSON]  = '';
     row[this.COL.CREATED_AT] = new Date().toISOString();
-    row[this.COL.NEWSLETTER_JSON] = '';
     sheet.appendRow(row);
 
     return {
@@ -159,8 +153,7 @@ const SessionService = {
       emailSent:   row[this.COL.EMAIL_SENT],
       brief:       this._safeParseJson(row[this.COL.BRIEF_JSON]),
       gems:        this._safeParseJson(row[this.COL.GEMS_JSON]),
-      createdAt:   row[this.COL.CREATED_AT],
-      newsletterJson: this._safeParseJson(row[this.COL.NEWSLETTER_JSON])
+      createdAt:   row[this.COL.CREATED_AT]
     })).filter(s => s.id);
   },
 
@@ -218,8 +211,7 @@ const SessionService = {
     resourcesSheet.setName('Resources');
     const headers = [
       'URL', 'Title', 'Type', 'Relevance Score', 'Engagement Level',
-      'Key Tags', 'Pre-Reading', 'NotebookLM Ready', 'Relevance Statement', 'Summary',
-      'isMain', 'startTime', 'endTime'
+      'Key Tags', 'Pre-Reading', 'NotebookLM Ready', 'Relevance Statement', 'Summary'
     ];
     resourcesSheet.getRange(1, 1, 1, headers.length).setValues([headers]);
     resourcesSheet.setFrozenRows(1);

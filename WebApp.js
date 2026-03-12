@@ -180,6 +180,21 @@ function webSendNewsletterEmail(sessionId, recipients, subject, fullHtml) {
   return EmailService.sendRawEmail(sessionId, recipients, subject, fullHtml);
 }
 
+/**
+ * Saves the newsletter draft to the session row.
+ * Called from the newsletter wizard when clicking "Save Draft".
+ * @param {string} sessionId
+ * @param {Object} draftData - Newsletter sections
+ * @returns {{ ok: boolean }}
+ */
+function webSaveNewsletterDraft(sessionId, draftData) {
+  const ok = SessionService.updateSession(sessionId, {
+    NEWSLETTER_JSON: JSON.stringify(draftData)
+  });
+  if (!ok) throw new Error('Could not save draft; session not found.');
+  return { ok: true };
+}
+
 // ─── Library API ──────────────────────────────────────────────────────────────
 
 /**

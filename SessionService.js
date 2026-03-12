@@ -27,7 +27,8 @@ const SessionService = {
     EMAIL_SENT:  11,
     BRIEF_JSON:  12,
     GEMS_JSON:   13,
-    CREATED_AT:  14
+    CREATED_AT:  14,
+    NEWSLETTER_JSON: 15
   },
 
   // ─── Setup ──────────────────────────────────────────────────────────────────
@@ -44,7 +45,7 @@ const SessionService = {
       const headers = [
         'ID', 'Name', 'Theme', 'Date', 'Format', 'Audience', 'Brand',
         'Status', 'Folder URL', 'Library URL', 'Project DB URL',
-        'Email Sent', 'Brief JSON', 'Gems JSON', 'Created At'
+        'Email Sent', 'Brief JSON', 'Gems JSON', 'Created At', 'Newsletter JSON'
       ];
       sessionsSheet.getRange(1, 1, 1, headers.length).setValues([headers]);
       sessionsSheet.setFrozenRows(1);
@@ -101,7 +102,7 @@ const SessionService = {
     // 4. Write session row to Master Sheet
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const sheet = ss.getSheetByName(this.SESSIONS_SHEET_NAME);
-    const row = new Array(15).fill('');
+    const row = new Array(16).fill('');
     row[this.COL.ID]         = sessionId;
     row[this.COL.NAME]       = name;
     row[this.COL.THEME]      = theme;
@@ -117,6 +118,7 @@ const SessionService = {
     row[this.COL.BRIEF_JSON] = JSON.stringify(brief);
     row[this.COL.GEMS_JSON]  = '';
     row[this.COL.CREATED_AT] = new Date().toISOString();
+    row[this.COL.NEWSLETTER_JSON] = '';
     sheet.appendRow(row);
 
     return {
@@ -153,7 +155,8 @@ const SessionService = {
       emailSent:   row[this.COL.EMAIL_SENT],
       brief:       this._safeParseJson(row[this.COL.BRIEF_JSON]),
       gems:        this._safeParseJson(row[this.COL.GEMS_JSON]),
-      createdAt:   row[this.COL.CREATED_AT]
+      createdAt:   row[this.COL.CREATED_AT],
+      newsletterJson: this._safeParseJson(row[this.COL.NEWSLETTER_JSON])
     })).filter(s => s.id);
   },
 

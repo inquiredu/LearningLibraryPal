@@ -1,5 +1,6 @@
 # Learning Library Engine
-<img width="2752" height="1536" alt="image" src="https://github.com/user-attachments/assets/b0eaf946-81f0-4587-9186-645bdcf0b328" />
+<img width="1536" height="2752" alt="image" src="https://github.com/user-attachments/assets/1dbea0ae-43a0-4f79-acb9-82f2f7dd6367" />
+
 
 
 [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/inquiredu/LearningLibraryPal?quickstart=1)

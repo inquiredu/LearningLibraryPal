@@ -18,6 +18,13 @@ fi
 
 # 2. Login to Clasp
 echo "🔑 Step 1: Authenticate with Google"
+echo "Before continuing, you MUST enable the Google Apps Script API in your account."
+echo "Please visit: https://script.google.com/home/usersettings"
+echo "Turn the toggle to ON."
+echo ""
+echo "Press Enter when you have enabled the API..."
+read -r
+
 echo "A link will be generated below. Click it, log in to your Google account."
 echo ""
 echo "⚠️ IMPORTANT FOR CODESPACES USERS: If you see a 'This site can't be reached (localhost refused to connect)' error after logging in, DO NOT PANIC! This is normal."
@@ -29,9 +36,21 @@ echo ""
 
 # 3. Create the Apps Script Project
 echo "📂 Step 2: Create a new Apps Script Project"
-echo "We will now create a new Google Sheet and attach the Apps Script to it."
-clasp create --type sheets --title "Learning Library Engine"
-echo ""
+if [ -f .clasp.json ]; then
+    echo "⚠️  A .clasp.json file already exists in this directory."
+    echo "This means a project has already been created or cloned here."
+    echo "We will skip project creation and proceed to push."
+    echo ""
+else
+    echo "What would you like to name your new project? (Press Enter to use 'Learning Library Engine')"
+    read -r PROJECT_NAME
+    if [ -z "$PROJECT_NAME" ]; then
+        PROJECT_NAME="Learning Library Engine"
+    fi
+    echo "Creating new Google Sheet and attaching Apps Script for: $PROJECT_NAME..."
+    clasp create --type sheets --title "$PROJECT_NAME"
+    echo ""
+fi
 
 # 4. Push the Code
 echo "⬆️ Step 3: Push the code to Google"

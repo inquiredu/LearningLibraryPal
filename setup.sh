@@ -38,9 +38,28 @@ echo ""
 echo "📂 Step 2: Create a new Apps Script Project"
 if [ -f .clasp.json ]; then
     echo "⚠️  A .clasp.json file already exists in this directory."
-    echo "This means a project has already been created or cloned here."
-    echo "We will skip project creation and proceed to push."
+    echo "This means you already deployed a project from this folder."
     echo ""
+    echo "Do you want to:"
+    echo "1) Update the EXISTING project (Press Enter)"
+    echo "2) Create a BRAND NEW project (This will detach the old one)"
+    read -r PROJECT_CHOICE
+    
+    if [[ "$PROJECT_CHOICE" == "2" ]]; then
+        echo "Detaching old project..."
+        rm -f .clasp.json
+        echo "What would you like to name your NEW project? (Press Enter to use 'Learning Library Engine')"
+        read -r PROJECT_NAME
+        if [ -z "$PROJECT_NAME" ]; then
+            PROJECT_NAME="Learning Library Engine"
+        fi
+        echo "Creating new Google Sheet and attaching Apps Script for: $PROJECT_NAME..."
+        clasp create --type sheets --title "$PROJECT_NAME"
+        echo ""
+    else
+        echo "Proceeding to update the existing project..."
+        echo ""
+    fi
 else
     echo "What would you like to name your new project? (Press Enter to use 'Learning Library Engine')"
     read -r PROJECT_NAME

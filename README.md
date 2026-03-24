@@ -10,45 +10,39 @@ Since this is a Google Apps Script project, you don't need a traditional server 
 
 The easiest way to build and manage this project is by using `clasp` (Command Line Apps Script Projects), a tool provided by Google.
 
-### Prerequisites
+### Method 1: The Easiest Way (GitHub Codespaces)
+If you have a GitHub account, you can deploy this entirely in your browser without installing anything on your computer.
+1. Click the green **Code** button at the top of this repository.
+2. Select the **Codespaces** tab and click **Create codespace on main** (or `open-source-ready`).
+3. Wait for the cloud editor to load (it takes about a minute).
+4. Once it's loaded, a terminal will open at the bottom. Type the following command and press Enter:
+   ```bash
+   npm run setup
+   ```
+5. Follow the interactive prompts to log into Google, create your project, and push the code!
+6. Once finished, type `npm run open` to open your new Google Sheet and follow **Step 7** below.
+
+### Method 2: Local Installation
+If you prefer to work locally on your own machine:
+
+#### Prerequisites
 1. A Google Account (Workspace/GSuite is recommended, but a standard Gmail works).
 2. [Node.js](https://nodejs.org/) installed on your computer.
 3. Your own Gemini API Key. You can get a free one from [Google AI Studio](https://aistudio.google.com/).
 
----
-
-### Step 1: Clone the Repository
-Open your terminal (or GitHub Codespace / VS Code) and clone this repository to your local machine:
+#### Step 1: Clone the Repository
+Open your terminal and clone this repository:
 ```bash
 git clone https://github.com/inquiredu/LearningLibrary.git
 cd LearningLibrary
 ```
 
-### Step 2: Install Google Clasp
-Install the `clasp` utility globally so you can use it from your command line:
+#### Step 2: Run the Setup Script
+We've included an automated setup script that will handle installing `clasp`, authenticating you, creating the project, and pushing the code.
 ```bash
-npm install -g @google/clasp
+npm run setup
 ```
-
-### Step 3: Authenticate with Google
-Log in to your Google account via the command line. This allows `clasp` to push code directly to your Google Drive.
-```bash
-clasp login
-```
-*A browser window will open. Sign in and grant the necessary permissions.*
-
-### Step 4: Create a New Apps Script Project
-You need to create a new, empty Apps Script project in your Google account to hold this code.
-```bash
-clasp create --type sheets --title "Learning Library Engine"
-```
-*This command creates a new Google Sheet in your Google Drive and binds a new Apps Script project to it. A `.clasp.json` file will automatically be created in your directory linking your local code to that specific project on Google's servers.*
-
-### Step 5: Push the Code
-Now, push the code from your computer up to Google Apps Script.
-```bash
-clasp push
-```
+*(If the script doesn't run automatically, ensure you have permissions by typing `chmod +x setup.sh` first).*
 
 ### Step 6: Configure the App
 Before you start using the app, you need to configure your domain and branding.

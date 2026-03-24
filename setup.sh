@@ -18,8 +18,9 @@ fi
 
 # 2. Login to Clasp
 echo "🔑 Step 1: Authenticate with Google"
-echo "A browser window will open (or give you a link to click). Please log in to the Google account where you want to deploy this project."
-clasp login
+echo "A link will be generated below. Click it, log in to your Google account, and copy the code it gives you."
+echo "Paste that code back into this terminal and press Enter."
+clasp login --no-localhost
 echo ""
 
 # 3. Create the Apps Script Project

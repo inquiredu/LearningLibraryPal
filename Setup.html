@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;800&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root { --navy:#0B2B46; --cyan:#5DCDF5; --bg:#F0F4F8; --border:#DDE4ED; --text:#2C3E50; --muted:#7F8FA4; --green:#155724; --green-bg:#D4EDDA; }
+    * { box-sizing:border-box; margin:0; padding:0; }
+    body { font-family:'Open Sans',sans-serif; background:#fff; color:var(--text); }
+
+    /* Steps header */
+    .steps-bar { background:var(--navy); padding:16px 24px; }
+    .steps-bar h1 { font-family:'Montserrat',sans-serif; font-size:1.1rem; color:#fff; margin-bottom:5px; }
+    .steps-bar p { color:rgba(255,255,255,0.7); font-size:0.8rem; }
+
+    /* Layout */
+    .panel { display:flex; flex-direction:column; min-height: calc(100vh - 80px); }
+    .panel-body { padding:20px 24px; flex:1; overflow-y:auto; }
+    .panel-footer { padding:14px 24px; border-top:1px solid var(--border); background:var(--bg); display:flex; gap:8px; justify-content:flex-end; align-items:center; }
+
+    /* Form */
+    .form-group { margin-bottom:16px; }
+    .form-group label { display:block; font-size:0.8rem; font-weight:700; color:var(--navy); margin-bottom:5px; }
+    .form-group input {
+      width:100%; padding:9px 11px; border:1.5px solid var(--border); border-radius:6px;
+      font-family:'Open Sans',sans-serif; font-size:0.88rem; color:var(--text); transition:border-color 0.15s; background:#fff;
+    }
+    .form-group input:focus { outline:none; border-color:var(--cyan); }
+    .hint { font-size:0.73rem; color:var(--muted); margin-top:4px; line-height:1.4; }
+
+    /* Buttons */
+    .btn { display:inline-flex; align-items:center; gap:5px; padding:9px 18px; border:none; border-radius:6px; font-family:'Open Sans',sans-serif; font-size:0.85rem; font-weight:700; cursor:pointer; transition:opacity 0.15s; }
+    .btn:hover { opacity:0.85; }
+    .btn:disabled { opacity:0.45; cursor:not-allowed; }
+    .btn-primary { background:var(--cyan); color:var(--navy); }
+    .btn-ghost   { background:transparent; color:var(--muted); border:1.5px solid var(--border); }
+
+    /* Success message */
+    .success-msg { display:none; background:var(--green-bg); color:var(--green); padding:12px; border-radius:6px; font-size:0.85rem; font-weight:600; text-align:center; margin-bottom:16px; }
+
+  </style>
+</head>
+<body>
+
+  <div class="steps-bar">
+    <h1>⚙️ Initial Setup</h1>
+    <p>Configure your Learning Library instance</p>
+  </div>
+
+  <div class="panel">
+    <div class="panel-body">
+      
+      <div class="success-msg" id="successMsg">✅ Configuration saved successfully!</div>
+
+      <div class="form-group">
+        <label>Gemini API Key *</label>
+        <input type="password" id="geminiKey" placeholder="AIzaSy...">
+        <div class="hint">Get your key from <a href="https://aistudio.google.com/app/apikey" target="_blank">Google AI Studio</a>. This powers the AI features of the platform.</div>
+      </div>
+
+      <div class="form-group">
+        <label>Root Folder ID (Optional)</label>
+        <input type="text" id="rootFolderId" placeholder="1A2B3C4D5E6F...">
+        <div class="hint">The Drive Folder ID where new session folders will be created. If left blank, a new folder "Learning Library — Master Folder" will be automatically created in the same location as your spreadsheet.</div>
+      </div>
+    </div>
+    <div class="panel-footer">
+      <button class="btn btn-ghost" onclick="google.script.host.close()">Close</button>
+      <button class="btn btn-primary" id="saveBtn" onclick="saveConfig()">Save Configuration</button>
+    </div>
+  </div>
+
+  <script>
+    // Load current config on start
+    window.onload = function() {
+      google.script.run
+        .withSuccessHandler(function(config) {
+          document.getElementById('geminiKey').value = config.geminiKey || '';
+          document.getElementById('rootFolderId').value = config.rootFolderId || '';
+        })
+        .getSetupConfig();
+    };
+
+    function saveConfig() {
+      var btn = document.getElementById('saveBtn');
+      btn.disabled = true;
+      btn.textContent = 'Saving...';
+      document.getElementById('successMsg').style.display = 'none';
+
+      var config = {
+        geminiKey: document.getElementById('geminiKey').value.trim(),
+        rootFolderId: document.getElementById('rootFolderId').value.trim()
+      };
+
+      google.script.run
+        .withSuccessHandler(function() {
+          btn.disabled = false;
+          btn.textContent = 'Save Configuration';
+          document.getElementById('successMsg').style.display = 'block';
+          setTimeout(function() {
+            google.script.host.close();
+          }, 1500);
+        })
+        .withFailureHandler(function(err) {
+          btn.disabled = false;
+          btn.textContent = 'Save Configuration';
+          alert('Error saving configuration: ' + err.message);
+        })
+        .saveSetupConfig(config);
+    }
+  </script>
+</body>
+</html>

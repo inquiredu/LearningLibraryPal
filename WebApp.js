@@ -51,13 +51,13 @@ function doGet(e) {
   if (page === 'library') {
     const sessionId = e.parameter.session || '';
     const output = HtmlService.createHtmlOutputFromFile('LibraryPage')
-      .setTitle('Learning Library — Learning Library')
+      .setTitle('Learning Library')
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 
     // Inject session ID into the page for client-side fetch
     const html = output.getContent().replace('__SESSION_ID__', sessionId);
     return HtmlService.createHtmlOutput(html)
-      .setTitle('Learning Library — Learning Library')
+      .setTitle('Learning Library')
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   }
 

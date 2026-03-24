@@ -253,7 +253,7 @@ const SessionService = {
     const ssFile = DriveApp.getFileById(ss2.getId());
     const parents = ssFile.getParents();
     const parent = parents.hasNext() ? parents.next() : DriveApp.getRootFolder();
-    const newFolder = parent.createFolder('Learning Library — Learning Library');
+    const newFolder = parent.createFolder('Learning Library — Master Folder');
     folderId = newFolder.getId();
     props.setProperty('ROOT_FOLDER_ID', folderId);
     return folderId;

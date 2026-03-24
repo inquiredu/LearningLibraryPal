@@ -18,7 +18,7 @@ function onOpen() {
     .addSeparator()
     .addItem('📅  Authorize Calendar Access', 'triggerCalendarAuth')
     .addItem('🌐  Open Dashboard', 'openDashboard')
-    .addItem('⚙️   Settings', 'showSettings')
+    .addItem('⚙️   Initial Setup', 'showSetupWizard')
     .addToUi();
 }
 
@@ -173,21 +173,26 @@ function openDashboard() {
   SpreadsheetApp.getUi().showModalDialog(html, 'Open Dashboard');
 }
 
-function showSettings() {
-  const ui = SpreadsheetApp.getUi();
+function showSetupWizard() {
+  const html = HtmlService.createHtmlOutputFromFile('Setup')
+    .setWidth(500)
+    .setHeight(420);
+  SpreadsheetApp.getUi().showModalDialog(html, '⚙️ Initial Setup Wizard');
+}
+
+function getSetupConfig() {
   const props = PropertiesService.getScriptProperties();
-  const currentKey = props.getProperty('GEMINI_API_KEY') ? '(set)' : '(not set)';
-  const result = ui.prompt(
-    '⚙️ Settings',
-    `Gemini API Key is currently: ${currentKey}\n\nPaste your Gemini API Key to update (leave blank to keep current):`,
-    ui.ButtonSet.OK_CANCEL
-  );
-  if (result.getSelectedButton() !== ui.Button.OK) return;
-  const newKey = result.getResponseText().trim();
-  if (newKey) {
-    props.setProperty('GEMINI_API_KEY', newKey);
-    ui.alert('✅ API Key saved to Script Properties.');
-  }
+  return {
+    geminiKey: props.getProperty('GEMINI_API_KEY') || '',
+    rootFolderId: props.getProperty('ROOT_FOLDER_ID') || ''
+  };
+}
+
+function saveSetupConfig(config) {
+  const props = PropertiesService.getScriptProperties();
+  if (config.geminiKey) props.setProperty('GEMINI_API_KEY', config.geminiKey);
+  if (config.rootFolderId) props.setProperty('ROOT_FOLDER_ID', config.rootFolderId);
+  return true;
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────

@@ -1,4 +1,4 @@
-# MNGAIA Content Engine — Architecture
+# Learning Library Content Engine — Architecture
 
 ## System Overview
 

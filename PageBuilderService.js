@@ -102,7 +102,7 @@ const PageBuilderService = {
       return '<div style="background:url(' + SitesService._esc(cfg.imageUrl) + ') center/cover no-repeat;padding:64px 32px 56px;text-align:center;font-family:Arial,Helvetica,sans-serif;position:relative;">' +
         '<div style="position:absolute;inset:0;background:' + bgColor + 'CC;"></div>' +
         '<div style="position:relative;z-index:1;">' +
-          '<p style="color:#5DCDF5;font-size:11px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;margin:0 0 14px;">MNGAIA Learning Community</p>' +
+          '<p style="color:#5DCDF5;font-size:11px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;margin:0 0 14px;">Learning Library Learning Community</p>' +
           '<h1 style="color:#FFFFFF;font-size:32px;font-weight:800;line-height:1.2;margin:0 0 12px;">' + title + '</h1>' +
           (subtitle ? '<p style="color:rgba(255,255,255,0.8);font-size:16px;margin:0;">' + subtitle + '</p>' : '') +
           dateStr +
@@ -111,7 +111,7 @@ const PageBuilderService = {
     }
 
     return '<div style="background:' + bgColor + ';padding:56px 32px 48px;text-align:center;font-family:Arial,Helvetica,sans-serif;">' +
-      '<p style="color:#5DCDF5;font-size:11px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;margin:0 0 14px;">MNGAIA Learning Community</p>' +
+      '<p style="color:#5DCDF5;font-size:11px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;margin:0 0 14px;">Learning Library Learning Community</p>' +
       '<h1 style="color:#FFFFFF;font-size:32px;font-weight:800;line-height:1.2;margin:0 0 12px;">' + title + '</h1>' +
       (subtitle ? '<p style="color:rgba(255,255,255,0.8);font-size:16px;margin:0;">' + subtitle + '</p>' : '') +
       dateStr +

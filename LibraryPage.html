@@ -5,7 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;800&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
-  <title>Learning Library — MNGAIA</title>
+  <title>Learning Library — Learning Library</title>
   <style>
     :root {
       --navy:   #0B2B46;
@@ -632,7 +632,7 @@
     <!-- Hero -->
     <div class="hero">
       <div class="hero-inner">
-        <div class="hero-eyebrow">MNGAIA Learning Library</div>
+        <div class="hero-eyebrow">Learning Library Learning Library</div>
         <h1 class="hero-title" id="heroTitle"></h1>
         <div class="hero-chips" id="heroChips"></div>
         <p class="hero-overview" id="heroOverview"></p>
@@ -652,7 +652,7 @@
       <div style="position:relative;background:linear-gradient(135deg,rgba(11,43,70,0.96) 0%,rgba(10,30,54,0.98) 100%);border:1px solid rgba(93,205,245,0.25);border-radius:14px;padding:22px 24px;">
         <button class="onboarding-close-x" onclick="dismissOnboarding()" title="Dismiss">&times;</button>
         <h3>Welcome to the Learning Library</h3>
-        <p>This is your personal learning hub for this MNGAIA session. Everything you need — resources, questions, and tools — is organized below.</p>
+        <p>This is your personal learning hub for this Learning Library session. Everything you need — resources, questions, and tools — is organized below.</p>
         <ol>
           <li><strong>Overview &amp; Objectives</strong> — See the session summary and what you'll explore.</li>
           <li><strong>Inquiry Questions</strong> — Provocative questions to guide your thinking.</li>
@@ -829,7 +829,7 @@
     </div><!-- /.page-body -->
 
     <div class="page-footer">
-      <p>MNGAIA Learning Community &nbsp;·&nbsp; <span id="footerDate"></span></p>
+      <p>Learning Library Learning Community &nbsp;·&nbsp; <span id="footerDate"></span></p>
     </div>
 
   </div><!-- /#content -->
@@ -927,7 +927,7 @@
       showOnboardingIfNew();
     }
 
-    var _ONBOARDING_KEY = 'mngaia-library-visited-' + SESSION_ID;
+    var _ONBOARDING_KEY = 'learning-library-library-visited-' + SESSION_ID;
     function showOnboardingIfNew() {
       try {
         if (!localStorage.getItem(_ONBOARDING_KEY)) {
@@ -1519,7 +1519,7 @@
     // ── Section drag-to-reorder ───────────────────────────────────────────────
 
     var _libDragSection = null;
-    var _SECTION_ORDER_KEY = 'mngaia-lib-order-' + SESSION_ID;
+    var _SECTION_ORDER_KEY = 'learning-library-lib-order-' + SESSION_ID;
 
     function loadSectionOrder() {
       try {

@@ -1,0 +1,10 @@
+# Deployment files
+.clasp.json
+
+# Local editor settings
+.vscode/
+.claude/
+.idea/
+
+# Mac OS
+.DS_Store

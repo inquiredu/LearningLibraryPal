@@ -1,4 +1,4 @@
-# MNGAIA Content Engine — Handoff (March 11, 2026)
+# Learning Library Content Engine — Handoff (March 11, 2026)
 
 ## Current Status: All features implemented and pushed — deployment version update required
 
@@ -72,7 +72,7 @@ One manual action is required before the live web app reflects the latest change
 ## What Was Built (prior sessions, cumulative)
 
 ### 1. Email Template Fix
-- `EmailService.sendApprovedDraft()` now wraps Gemini HTML in the MNGAIA branded email template before sending
+- `EmailService.sendApprovedDraft()` now wraps Gemini HTML in the Learning Library branded email template before sending
 
 ### 2. Sites Code Generator (`SitesService.js`)
 - Generates 5 embed-ready HTML sections for Google Sites: Hero Banner, Session Overview, Inquiry Questions, Resources, AI Gems
@@ -100,7 +100,7 @@ One manual action is required before the live web app reflects the latest change
 
 ### 7. Public Library + Domain-Restricted Dashboard (`Config.js` — new file)
 - `Config.js` holds all deployment settings: `ALLOWED_DOMAIN`, `PUBLIC_PAGES`, `DISPLAY_TIMEZONE`, `TIMEZONE_LABEL`, `APP_NAME`
-- Dashboard and Wizard require `@ai4mn.org` Google account; Library page is fully public (no sign-in)
+- Dashboard and Wizard require `@example.com` Google account; Library page is fully public (no sign-in)
 - Unauthorized users see a branded "Access Restricted" page with a "Switch Account" link
 - **Adopters:** change `ALLOWED_DOMAIN` in `Config.js` to match their own Google Workspace domain
 
@@ -204,8 +204,8 @@ Columns A–M:
 ## Web App Route Map
 
 ```
-/exec (no params)              → Dashboard (Index.html)       — requires @ai4mn.org account
-/exec?page=wizard              → New Session Wizard           — requires @ai4mn.org account
+/exec (no params)              → Dashboard (Index.html)       — requires @example.com account
+/exec?page=wizard              → New Session Wizard           — requires @example.com account
 /exec?page=library&session=ID  → Public Learning Library      — no sign-in required
 /exec?page=diag                → Debug JSON (binding + row count)
 ```

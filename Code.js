@@ -1,5 +1,5 @@
 /**
- * MNGAIA Dynamic Content Engine — Master Orchestration
+ * Learning Library Dynamic Content Engine — Master Orchestration
  * Spreadsheet-bound. All top-level GAS entry points live here.
  */
 
@@ -8,7 +8,7 @@
 function onOpen() {
   SessionService.ensureMasterSheet();
   SpreadsheetApp.getUi()
-    .createMenu('MNGAIA Engine')
+    .createMenu('Learning Library Engine')
     .addItem('🚀  Launch New Session', 'showWizard')
     .addSeparator()
     .addItem('🔬  Synthesize Research', 'menuTriggerSynthesis')
@@ -156,7 +156,7 @@ function openDashboard() {
     `<!DOCTYPE html><html><body style="font-family:'Google Sans',Arial,sans-serif;margin:0;padding:20px 24px;background:#fff;">
     <div style="border:1px solid #DDE4ED;border-radius:8px;overflow:hidden;">
       <div style="background:#0B2B46;padding:10px 16px;">
-        <span style="color:#5DCDF5;font-size:10px;letter-spacing:2px;text-transform:uppercase;font-weight:700;">MNGAIA</span>
+        <span style="color:#5DCDF5;font-size:10px;letter-spacing:2px;text-transform:uppercase;font-weight:700;">Learning Library</span>
         <span style="color:rgba(255,255,255,0.6);font-size:10px;margin-left:8px;">Content Engine</span>
       </div>
       <div style="padding:16px;text-align:center;">

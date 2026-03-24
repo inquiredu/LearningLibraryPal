@@ -54,7 +54,7 @@ const SitesService = {
     const date = session.date ? String(session.date).substring(0, 10) : '';
     const meta = [session.theme, date, session.format].filter(Boolean).join(' · ');
     return `<div style="background:#0B2B46;padding:48px 32px 40px;text-align:center;font-family:Arial,Helvetica,sans-serif;border-radius:0;">
-  <p style="color:#5DCDF5;font-size:11px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;margin:0 0 14px;">MNGAIA Learning Community</p>
+  <p style="color:#5DCDF5;font-size:11px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;margin:0 0 14px;">Learning Library Learning Community</p>
   <h1 style="color:#FFFFFF;font-size:30px;font-weight:800;line-height:1.2;margin:0 0 10px;">${this._esc(session.name)}</h1>
   ${meta ? `<p style="color:rgba(255,255,255,0.65);font-size:14px;margin:0 0 18px;">${this._esc(meta)}</p>` : ''}
   ${tagline ? `<p style="color:rgba(255,255,255,0.85);font-size:15px;line-height:1.7;max-width:600px;margin:0 auto;">${this._esc(tagline)}</p>` : ''}
@@ -269,7 +269,7 @@ ${cards}${libraryNote}
     DriveApp.getFolderById(folderId).addFile(file);
 
     // Title
-    body.appendParagraph('MNGAIA Site Code — ' + (session.name || ''))
+    body.appendParagraph('Learning Library Site Code — ' + (session.name || ''))
       .setHeading(DocumentApp.ParagraphHeading.HEADING1);
     body.appendParagraph('Generated: ' + new Date().toLocaleDateString())
       .setHeading(DocumentApp.ParagraphHeading.SUBTITLE);

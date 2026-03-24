@@ -44,20 +44,20 @@ function doGet(e) {
 
   if (page === 'wizard') {
     return HtmlService.createHtmlOutputFromFile('Wizard')
-      .setTitle('New Session — MNGAIA')
+      .setTitle('New Session — Learning Library')
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   }
 
   if (page === 'library') {
     const sessionId = e.parameter.session || '';
     const output = HtmlService.createHtmlOutputFromFile('LibraryPage')
-      .setTitle('Learning Library — MNGAIA')
+      .setTitle('Learning Library — Learning Library')
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 
     // Inject session ID into the page for client-side fetch
     const html = output.getContent().replace('__SESSION_ID__', sessionId);
     return HtmlService.createHtmlOutput(html)
-      .setTitle('Learning Library — MNGAIA')
+      .setTitle('Learning Library — Learning Library')
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   }
 
@@ -66,12 +66,12 @@ function doGet(e) {
     const html = HtmlService.createHtmlOutputFromFile('PageBuilder')
       .getContent().replace('__SESSION_ID__', sessionId);
     return HtmlService.createHtmlOutput(html)
-      .setTitle('Page Builder — MNGAIA')
+      .setTitle('Page Builder — Learning Library')
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   }
 
   return HtmlService.createHtmlOutputFromFile('Index')
-    .setTitle('MNGAIA Content Engine')
+    .setTitle('Learning Library Content Engine')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 

@@ -449,7 +449,7 @@ Return valid JSON — an array of exactly 4 objects:
       "Knowledge: upload the pre-reading files from 01_Research in your session Drive folder",
       "Model: Gemini 1.5 Pro (recommended for richer responses)",
       "Save, then Share → Anyone with the link → copy the link",
-      "Paste the link in your MNGAIA dashboard under Set Gem Links"
+      "Paste the link in your Learning Library dashboard under Set Gem Links"
     ],
     "starterQueries": [
       "Conversation starter 1 a participant might use",

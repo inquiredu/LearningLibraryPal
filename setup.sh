@@ -18,8 +18,12 @@ fi
 
 # 2. Login to Clasp
 echo "🔑 Step 1: Authenticate with Google"
-echo "A link will be generated below. Click it, log in to your Google account, and copy the code it gives you."
+echo "A link will be generated below. Click it, log in to your Google account."
+echo ""
+echo "⚠️ IMPORTANT FOR CODESPACES USERS: If you see a 'This site can't be reached (localhost refused to connect)' error after logging in, DO NOT PANIC! This is normal."
+echo "Look at the URL of the error page. Copy the long string of text immediately after '&code=' and before the next '&'."
 echo "Paste that code back into this terminal and press Enter."
+echo ""
 clasp login --no-localhost
 echo ""
 

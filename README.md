@@ -1,5 +1,7 @@
 # Learning Library Engine
 
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/inquiredu/LearningLibraryPal?quickstart=1)
+
 A Google Apps Script web application that manages the full content lifecycle for collaborative learning sessions — from intake through synthesis, AI-powered Gems, a shareable learning library, and pre-session email.
 
 This project is open-source and ready for you to deploy and customize for your own organization or community.

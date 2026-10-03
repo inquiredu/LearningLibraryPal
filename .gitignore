@@ -8,3 +8,7 @@
 
 # Mac OS
 .DS_Store
+
+node_modules/
+.clasprc.json
+.clasp.backup.*.json

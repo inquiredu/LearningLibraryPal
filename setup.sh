@@ -1,87 +1,62 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -euo pipefail
+cd "$(dirname "$0")"
 
-# Make sure we stop on errors
-set -e
-
-echo "=================================================="
-echo "🚀 Learning Library Engine Setup"
-echo "=================================================="
-echo ""
-echo "This script will help you deploy your own copy of the Learning Library to your Google account."
-echo ""
-
-# 1. Check if clasp is installed
-if ! command -v clasp &> /dev/null; then
-    echo "⚙️  Installing Google Clasp..."
-    npm install -g @google/clasp
+if [ ! -x node_modules/.bin/clasp ]; then
+  npm ci --ignore-scripts
 fi
+CLASP="$PWD/node_modules/.bin/clasp"
+PROJECT_CHOICE=new
 
-# 2. Login to Clasp
-echo "🔑 Step 1: Authenticate with Google"
-echo "Before continuing, you MUST enable the Google Apps Script API in your account."
-echo "Please visit: https://script.google.com/home/usersettings"
-echo "Turn the toggle to ON."
-echo ""
-echo "Press Enter when you have enabled the API..."
-read -r
-
-echo "A link will be generated below. Click it, log in to your Google account."
-echo ""
-echo "⚠️ IMPORTANT FOR CODESPACES USERS: If you see a 'This site can't be reached (localhost refused to connect)' error after logging in, DO NOT PANIC! This is normal."
-echo "Look at the URL of the error page. Copy the long string of text immediately after '&code=' and before the next '&'."
-echo "Paste that code back into this terminal and press Enter."
-echo ""
-clasp login --no-localhost
-echo ""
-
-# 3. Create the Apps Script Project
-echo "📂 Step 2: Create a new Apps Script Project"
 if [ -f .clasp.json ]; then
-    echo "⚠️  A .clasp.json file already exists in this directory."
-    echo "This means you already deployed a project from this folder."
-    echo ""
-    echo "Do you want to:"
-    echo "1) Update the EXISTING project (Press Enter)"
-    echo "2) Create a BRAND NEW project (This will detach the old one)"
-    read -r PROJECT_CHOICE
-    
-    if [[ "$PROJECT_CHOICE" == "2" ]]; then
-        echo "Detaching old project..."
-        rm -f .clasp.json
-        echo "What would you like to name your NEW project? (Press Enter to use 'Learning Library Engine')"
-        read -r PROJECT_NAME
-        if [ -z "$PROJECT_NAME" ]; then
-            PROJECT_NAME="Learning Library Engine"
-        fi
-        echo "Creating new Google Sheet and attaching Apps Script for: $PROJECT_NAME..."
-        clasp create --type sheets --title "$PROJECT_NAME"
-        echo ""
-    else
-        echo "Proceeding to update the existing project..."
-        echo ""
-    fi
-else
-    echo "What would you like to name your new project? (Press Enter to use 'Learning Library Engine')"
-    read -r PROJECT_NAME
-    if [ -z "$PROJECT_NAME" ]; then
-        PROJECT_NAME="Learning Library Engine"
-    fi
-    echo "Creating new Google Sheet and attaching Apps Script for: $PROJECT_NAME..."
-    clasp create --type sheets --title "$PROJECT_NAME"
-    echo ""
+  SCRIPT_ID=$(node -p "JSON.parse(require('fs').readFileSync('.clasp.json','utf8')).scriptId")
+  echo "This folder currently targets Apps Script project: $SCRIPT_ID"
+  echo "Press Enter to create a NEW project, type update to update that project, or cancel."
+  read -r PROJECT_CHOICE
+  case "$PROJECT_CHOICE" in
+    update)
+      echo "Type the full existing Script ID to confirm the destination:"
+      read -r CONFIRMED_ID
+      [ "$CONFIRMED_ID" = "$SCRIPT_ID" ] || { echo "Project ID did not match. Nothing uploaded."; exit 1; }
+      ;;
+    ''|new) PROJECT_CHOICE=new ;;
+    cancel) exit 0 ;;
+    *) echo "Unknown choice. Nothing uploaded."; exit 1 ;;
+  esac
 fi
 
-# 4. Push the Code
-echo "⬆️ Step 3: Push the code to Google"
-clasp push
-echo ""
+echo "Enable the Apps Script API at https://script.google.com/home/usersettings"
+echo "Press Enter when enabled, then follow clasp's Google sign-in instructions."
+read -r
+if [ "${CODESPACES:-false}" = true ]; then
+  "$CLASP" login --no-localhost
+else
+  "$CLASP" login
+fi
 
-# 5. Open the Project
-echo "✅ Setup Complete!"
-echo "Your code is now securely deployed to your Google account."
-echo ""
-echo "Next steps:"
-echo "1. Run 'npm run open' to open your new Google Sheet."
-echo "2. Look for the 'Learning Library Engine' menu next to 'Help'."
-echo "3. Click '⚙️ Initial Setup' and paste your Gemini API Key."
-echo ""
+if [ "$PROJECT_CHOICE" = new ]; then
+  echo "Name your new library (Enter for Learning Library Engine):"
+  read -r PROJECT_NAME
+  PROJECT_NAME=${PROJECT_NAME:-Learning Library Engine}
+  # clasp create pulls starter files. Use a temporary directory so it cannot replace our source/manifest.
+  SETUP_DIR=$(mktemp -d)
+  trap 'rm -rf "$SETUP_DIR"' EXIT
+  (cd "$SETUP_DIR" && "$CLASP" create-script --type sheets --title "$PROJECT_NAME")
+  if [ -f .clasp.json ]; then
+    cp .clasp.json ".clasp.backup.$(date +%s).json"
+  fi
+  node - "$SETUP_DIR/.clasp.json" <<'JS'
+const fs = require('fs');
+const settings = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
+if (!settings.scriptId || !settings.parentId) throw new Error('New bound project IDs missing.');
+settings.rootDir = '.';
+fs.writeFileSync('.clasp.json', JSON.stringify(settings, null, 2) + '\n');
+JS
+fi
+
+"$CLASP" push
+
+echo "Source uploaded. A web-app deployment has NOT been created or updated."
+echo "1. Run npm run open to open the bound Google Sheet."
+echo "2. Reload the Sheet; choose Learning Library Engine → Initial Setup and save."
+echo "3. Follow README.md to create a private pilot deployment and verify it."

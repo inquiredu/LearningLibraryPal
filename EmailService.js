@@ -1,7 +1,7 @@
 /**
  * EmailService
  * Phase 5: Drafts and sends pre-session engagement emails.
- * Uses Gemini to draft, then sends via GmailApp.
+ * Uses Gemini to draft, then sends via MailApp.
  */
 
 const EmailService = {
@@ -46,7 +46,7 @@ const EmailService = {
 
     // Send to all recipients
     recipients.forEach(email => {
-      GmailApp.sendEmail(email, subject, '', { htmlBody: htmlBody });
+      MailApp.sendEmail(email, subject, '', { htmlBody: htmlBody });
     });
 
     // Mark email as sent in session row
@@ -144,7 +144,7 @@ const EmailService = {
    */
   sendRawEmail: function(sessionId, recipients, subject, fullHtml) {
     recipients.forEach(email => {
-      GmailApp.sendEmail(email, subject, '', { htmlBody: fullHtml });
+      MailApp.sendEmail(email, subject, '', { htmlBody: fullHtml });
     });
     SessionService.updateSession(sessionId, {
       EMAIL_SENT: 'Yes — ' + new Date().toLocaleDateString()
@@ -161,7 +161,7 @@ const EmailService = {
     const libraryUrl = session ? (session.libraryUrl || this._buildLibraryUrl(sessionId)) : '';
     const htmlBody = this._wrapInEmailTemplate(bodyContent, session || {}, libraryUrl);
     recipients.forEach(email => {
-      GmailApp.sendEmail(email, subject, '', { htmlBody: htmlBody });
+      MailApp.sendEmail(email, subject, '', { htmlBody: htmlBody });
     });
     SessionService.updateSession(sessionId, {
       EMAIL_SENT: 'Yes — ' + new Date().toLocaleDateString()

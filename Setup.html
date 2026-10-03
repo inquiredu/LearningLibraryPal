@@ -60,6 +60,11 @@
       </div>
 
       <div class="form-group">
+        <label for="geminiModel">Gemini model</label>
+        <input type="text" id="geminiModel" placeholder="gemini-3.8-flash">
+        <div class="hint">Use a model available to your Google AI Studio project.</div>
+      </div>
+      <div class="form-group">
         <label>Root Folder ID (Optional)</label>
         <input type="text" id="rootFolderId" placeholder="1A2B3C4D5E6F...">
         <div class="hint">The Drive Folder ID where new session folders will be created. If left blank, a new folder "Learning Library — Master Folder" will be automatically created in the same location as your spreadsheet.</div>
@@ -76,9 +81,11 @@
     window.onload = function() {
       google.script.run
         .withSuccessHandler(function(config) {
-          document.getElementById('geminiKey').value = config.geminiKey || '';
+          document.getElementById('geminiKey').placeholder = config.hasGeminiKey ? 'Saved — leave blank to keep existing key' : 'Paste your API key';
+          document.getElementById('geminiModel').value = config.geminiModel || '';
           document.getElementById('rootFolderId').value = config.rootFolderId || '';
         })
+        .withFailureHandler(function(err) { alert(err.message); })
         .getSetupConfig();
     };
 
@@ -90,6 +97,7 @@
 
       var config = {
         geminiKey: document.getElementById('geminiKey').value.trim(),
+        geminiModel: document.getElementById('geminiModel').value.trim(),
         rootFolderId: document.getElementById('rootFolderId').value.trim()
       };
 

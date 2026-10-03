@@ -1,97 +1,82 @@
-# Learning Library Engine
+# LearningLibraryPal
 
-[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/inquiredu/LearningLibraryPal?quickstart=1)
+Turn a facilitator's materials into a shareable learning library: create a session, add sources, review AI synthesis, and share a participant page with resources, an agenda, inquiry questions, and optional AI learning companions.
 
-A Google Apps Script web application that manages the full content lifecycle for collaborative learning sessions — from intake through synthesis, AI-powered Gems, a shareable learning library, and pre-session email.
+Google Apps Script hosts the application. Google Sheets stores session data; Drive stores source materials. Gemini generates drafts that facilitators review. Google account permissions, Apps Script quotas, and Gemini billing/quotas apply.
 
-This project is open-source and ready for you to deploy and customize for your own organization or community.
+## Current status
 
-## How to Deploy Your Own Instance
+This branch prepares a **private pilot**. Automated checks cover authorization, public-resource filtering, interrupted synthesis, AI error handling, and installation. A live Google Workspace pilot is still required before a public release. See [the pilot checklist](docs/PILOT.md) and [revival decisions](docs/REVIVAL.md).
 
-Since this is a Google Apps Script project, you don't need a traditional server to run it. Google hosts it entirely for free within your Google Workspace or Gmail account.
+## Install a separate pilot instance
 
-The easiest way to build and manage this project is by using `clasp` (Command Line Apps Script Projects), a tool provided by Google.
+Use Node.js 22 or newer and a Google account that can create Apps Script projects.
 
-### Method 1: The Easiest Way (GitHub Codespaces)
-If you have a GitHub account, you can deploy this entirely in your browser without installing anything on your computer.
-1. Click the green **Code** button at the top of this repository.
-2. Select the **Codespaces** tab and click **Create codespace on main** (or `open-source-ready`).
-3. Wait for the cloud editor to load (it takes about a minute).
-4. Once it's loaded, a terminal will open at the bottom. Type the following command and press Enter:
-   ```bash
-   npm run setup
-   ```
-5. Follow the interactive prompts to log into Google, create your project, and push the code!
-6. Once finished, type `npm run open` to open your new Google Sheet and follow **Step 7** below.
-
-### Method 2: Local Installation
-If you prefer to work locally on your own machine:
-
-#### Prerequisites
-1. A Google Account (Workspace/GSuite is recommended, but a standard Gmail works).
-2. [Node.js](https://nodejs.org/) installed on your computer.
-3. Your own Gemini API Key. You can get a free one from [Google AI Studio](https://aistudio.google.com/).
-
-#### Step 1: Clone the Repository
-Open your terminal and clone this repository:
 ```bash
-git clone https://github.com/inquiredu/LearningLibrary.git
-cd LearningLibrary
-```
-
-#### Step 2: Run the Setup Script
-We've included an automated setup script that will handle installing `clasp`, authenticating you, creating the project, and pushing the code.
-```bash
+git clone https://github.com/inquiredu/LearningLibraryPal.git
+cd LearningLibraryPal
+npm ci --ignore-scripts
 npm run setup
 ```
-*(If the script doesn't run automatically, ensure you have permissions by typing `chmod +x setup.sh` first).*
 
-### Step 6: Configure the App
-Before you start using the app, you need to configure your domain and branding.
-1. Open `Config.js` in your editor.
-2. Update the `ALLOWED_DOMAIN` to your organization's Google Workspace domain (e.g., `'yourdomain.org'`). If you are using a standard Gmail account or want it open to any signed-in Google user, set it to `''`.
-3. Update `APP_NAME` and `DISPLAY_TIMEZONE` to match your needs.
-4. If you made changes, save the file and run `clasp push` again.
+The setup script:
 
-### Step 7: Initial Setup & Authorization
-1. Open the newly created Google Sheet. You can open it directly from the terminal with:
-   ```bash
-   clasp open
-   ```
-   *(Select the "Spreadsheet" option if prompted).*
-2. In the Google Sheet, wait a few seconds. A new custom menu called **"Learning Library Engine"** will appear next to "Help".
-3. Click **Learning Library Engine → ⚙️ Initial Setup**.
-4. A prompt will appear asking for Authorization. Follow the steps to grant the script permission to run. *(Note: You may see a "Google hasn't verified this app" warning. This is normal for scripts you build yourself. Click "Advanced" and "Go to Learning Library Engine (unsafe)" to continue).*
-5. The Setup Wizard will open. Paste your **Gemini API Key**. You can optionally provide a Google Drive Folder ID where you want all session folders to be stored. Click **Save Configuration**.
+1. Uses the pinned local clasp dependency.
+2. Asks you to enable the Apps Script API and sign in to Google.
+3. Creates a new spreadsheet-bound project by default. If you deliberately choose an existing destination, it requires that project's Script ID.
+4. Uploads application source and its manifest. It does **not** publish or update a web-app deployment.
 
-### Step 8: Deploy the Web App
-To make the dashboard, wizard, and public library pages accessible, you must deploy the script as a Web App.
-1. From the Apps Script editor (which you can open with `clasp open`), look at the top right corner and click **Deploy → New deployment**.
-2. Click the gear icon ⚙️ next to "Select type" and choose **Web app**.
-3. **Configuration:**
-   - **Description:** "v1 - Initial Release" (or whatever you like)
-   - **Execute as:** `Me (your email)`
-   - **Who has access:** `Anyone` *(Note: `Config.js` controls who can actually view the dashboard; setting this to "Anyone" ensures that the public Library links work for external guests).*
-4. Click **Deploy**.
-5. Copy the **Web app URL** (it ends in `/exec`). This is the link you and your team will use to access the dashboard!
+If you use Codespaces, run the same commands in its terminal and follow clasp's login prompt. No global clasp installation is needed.
 
----
+### Finish setup in Google Sheets
 
-## Modifying and Building Upon This Project
+1. Run `npm run open` to open the new bound Sheet, then reload it.
+2. Choose **Learning Library Engine → Initial Setup**. Authorize the script when prompted.
+3. Enter your Gemini API key and an available Gemini model ID. The default is `gemini-3.8-flash`; change it if needed for your AI Studio project.
+4. Optionally supply a root Drive folder ID, then save.
 
-This project is built using standard HTML, CSS, and Vanilla JavaScript. 
+Saving records the master spreadsheet ID and installing account as the library owner. A saved API key is never returned to the browser; leave the key field blank to retain it.
 
-**Development Workflow:**
-1. Make changes to the `.js` or `.html` files in your local editor (VS Code, Cursor, etc.).
-2. Run `clasp push` to send the changes to Google Apps Script.
-3. Refresh your Web App (or run `clasp open` to test specific functions).
+### Deploy the private pilot
 
-*Note: When you make changes to HTML files or routing (`WebApp.js`), you must create a new deployment version for those changes to appear on the live `/exec` URL. You can use the `/dev` URL during development (available in the Apps Script editor under Deploy → Test deployments) to bypass creating new versions for every little change.*
+1. Run `npm run open:script`.
+2. In Apps Script choose **Deploy → New deployment → Web app**.
+3. Set **Execute as: Me**, using the same account that completed Initial Setup.
+4. Set access to **Only myself** for the first pilot.
+5. Open the deployment's `/exec` URL and complete [the pilot checklist](docs/PILOT.md).
 
-## Key Features
+Later, public participant access requires a deployment audience that permits those participants. The `library` route intentionally serves participant data without a facilitator check; the dashboard, editing, email, Calendar, Drive browsing and configuration operations enforce server-side authorization.
 
-- **Wizard:** New Session form creates Drive folders, Master Sheet row, Gemini session brief
-- **Synthesis:** Gemini analysis of each resource
-- **Gems:** AI persona prompt structures
-- **Library:** Shareable learning library page per session
-- **Email:** Gemini-drafted pre-session email
+**Facilitator access:** by default only the owner can administer the library. To add facilitators, set `ALLOWED_EMAILS` or `ALLOWED_DOMAIN` in `Config.js`. A blank domain does **not** grant access to every Google account. Google may withhold a visitor's email in owner-executed web apps, particularly across domains. Such requests fail closed; do not substitute `getEffectiveUser()` for visitor identity. Verify the intended collaborator accounts before expanding the pilot. [Google's identity limitations](https://developers.google.com/apps-script/reference/base/session#getActiveUser()).
+
+## Use the library
+
+1. **Create a session** with a theme, date and audience.
+2. **Add materials** through Drive browsing or links. Planning documents, agendas, facilitator guides and context documents default to internal visibility.
+3. **Synthesize** the materials. Review generated summaries and questions against the sources.
+4. **Manage resources** to select participant-visible materials and their order; preview the library page.
+5. **Share** the library link. Use the dashboard's email preview to inspect content and recipients before explicitly sending.
+
+Gems, NotebookLM prompts and the page designer are optional extensions. Participant-visible material on a shared library page should be treated as public. There is no session-wide draft/publish approval gate in this pilot yet.
+
+Synthesis saves each completed resource and pauses between resources after about four minutes. Click **Synthesize** again to process unfinished resources; completed rows are skipped. **Re-synthesize** resets completion markers once. If interrupted, use ordinary **Synthesize** to resume. Failed rows retain an error message in the resource sheet. Files discovered automatically in `01_Research` start internal until you choose to make them public. Avoid direct Sheet row edits while synthesis is running.
+
+## Develop and verify
+
+```bash
+npm run check   # Server/client JavaScript, shell and manifest syntax
+npm test        # Local mocked regression tests; no Google access or email sends
+npm run push   # Upload source to your configured project; does not update /exec
+```
+
+`.claspignore` allows only root application JavaScript/HTML and `appsscript.json`. Tests, dependencies, documentation and credentials are excluded. `.clasp.json` is local and ignored by Git.
+
+After an intentional upload, update the Apps Script web-app deployment to a **New version** to make changes live. Existing installations must run **Initial Setup → Save** after this upgrade to record the master spreadsheet ID and owner. Use a separate pilot project first; the historical public and private repositories pointed to the same deployment.
+
+## References
+
+- [Architecture](ARCHITECTURE.md)
+- [Pilot verification](docs/PILOT.md)
+- [Revival scope and follow-up work](docs/REVIVAL.md)
+- [Contributing](CONTRIBUTING.md)
+- [Historical handoff](HANDOFF.md) — historical feature notes, not current setup instructions

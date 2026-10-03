@@ -24,7 +24,7 @@ const SitesService = {
     const gems = session.gems || [];
 
     // Compute the library URL for this session
-    const baseUrl = typeof _getWebAppUrl === 'function' ? _getWebAppUrl() : '';
+    const baseUrl = typeof getWebAppUrl_ === 'function' ? getWebAppUrl_() : '';
     const libraryUrl = baseUrl
       ? baseUrl + '?page=library&session=' + sessionId
       : (session.libraryUrl || '');

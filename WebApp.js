@@ -20,13 +20,13 @@ function doGet(e) {
   const page = e && e.parameter && e.parameter.page ? e.parameter.page : 'dashboard';
 
   // Public pages (e.g. library) skip auth entirely so anyone with the link can access them.
-  if (CONFIG.PUBLIC_PAGES.indexOf(page) === -1 && !_isAuthorizedUser()) {
-    return _unauthorizedPage();
+  if (CONFIG.PUBLIC_PAGES.indexOf(page) === -1 && !isAuthorizedUser_()) {
+    return unauthorizedPage_();
   }
 
   if (page === 'diag') {
     try {
-      const ss = SpreadsheetApp.getActiveSpreadsheet();
+      const ss = StorageService.master();
       const sheet = ss ? ss.getSheetByName('Sessions') : null;
       const data = sheet ? sheet.getDataRange().getValues() : [];
       const info = {
@@ -49,7 +49,7 @@ function doGet(e) {
   }
 
   if (page === 'library') {
-    const sessionId = e.parameter.session || '';
+    const sessionId = validateSessionId_(e.parameter.session || '');
     const output = HtmlService.createHtmlOutputFromFile('LibraryPage')
       .setTitle('Learning Library')
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
@@ -62,7 +62,7 @@ function doGet(e) {
   }
 
   if (page === 'design') {
-    const sessionId = e.parameter.session || '';
+    const sessionId = validateSessionId_(e.parameter.session || '');
     const html = HtmlService.createHtmlOutputFromFile('PageBuilder')
       .getContent().replace('__SESSION_ID__', sessionId);
     return HtmlService.createHtmlOutput(html)
@@ -81,6 +81,7 @@ function doGet(e) {
  * Returns all sessions for the dashboard.
  */
 function getDashboardData() {
+  AuthService.requireUser();
   const cache = CacheService.getScriptCache();
   const CACHE_KEY = 'dashboard_v2';
   const hit = cache.get(CACHE_KEY);
@@ -89,7 +90,7 @@ function getDashboardData() {
   }
   SessionService.ensureMasterSheet();
   const sessions = SessionService.getAllSessions();
-  const baseUrl = _getWebAppUrl();
+  const baseUrl = getWebAppUrl_();
   const data = sessions.reverse().map(s => ({
     id:         s.id,
     name:       s.name,
@@ -118,17 +119,19 @@ function getDashboardData() {
  * @param {boolean} [force] - If true, re-analyzes already-scored resources too.
  */
 function webRunSynthesis(sessionId, force) {
-  const count = SynthesisService.synthesizeAll(sessionId, force || false);
-  invalidateLibraryCache(sessionId);
-  return { success: true, count: count };
+  AuthService.requireUser();
+  const result = SynthesisService.synthesizeAll(sessionId, force || false);
+  invalidateLibraryCache_(sessionId);
+  return Object.assign({ success: result.failed === 0 }, result);
 }
 
 /**
  * Generates Gem instruction sets for a session. Called from dashboard.
  */
 function webGenerateGems(sessionId) {
+  AuthService.requireUser();
   const gems = GemsService.generateGems(sessionId);
-  invalidateLibraryCache(sessionId);
+  invalidateLibraryCache_(sessionId);
   return { success: true, count: gems.length };
 }
 
@@ -138,8 +141,9 @@ function webGenerateGems(sessionId) {
  * @param {Object} gemLinks - { "session-primer": "https://...", ... }
  */
 function webUpdateGemLinks(sessionId, gemLinks) {
+  AuthService.requireUser();
   GemsService.updateGemLinks(sessionId, gemLinks);
-  invalidateLibraryCache(sessionId);
+  invalidateLibraryCache_(sessionId);
   return { ok: true };
 }
 
@@ -147,6 +151,7 @@ function webUpdateGemLinks(sessionId, gemLinks) {
  * Returns draft email content for review modal. Called from dashboard.
  */
 function webGetEmailDraft(sessionId) {
+  AuthService.requireUser();
   const draft = EmailService.getDraft(sessionId);
   return draft;
 }
@@ -155,6 +160,7 @@ function webGetEmailDraft(sessionId) {
  * Sends approved email draft to recipients. Called from dashboard.
  */
 function webSendEmail(sessionId, recipients, subject, htmlBody) {
+  AuthService.requireUser();
   return EmailService.sendApprovedDraft(sessionId, recipients, subject, htmlBody);
 }
 
@@ -164,6 +170,7 @@ function webSendEmail(sessionId, recipients, subject, htmlBody) {
  * @returns {{ subject, heroLine, intro, highlights, preReadingNote, sessionName, ... }}
  */
 function webGetNewsletterDraft(sessionId) {
+  AuthService.requireUser();
   return EmailService.getNewsletterDraft(sessionId);
 }
 
@@ -177,6 +184,7 @@ function webGetNewsletterDraft(sessionId) {
  * @returns {{ success: boolean, recipientCount: number }}
  */
 function webSendNewsletterEmail(sessionId, recipients, subject, fullHtml) {
+  AuthService.requireUser();
   return EmailService.sendRawEmail(sessionId, recipients, subject, fullHtml);
 }
 
@@ -186,8 +194,9 @@ function webSendNewsletterEmail(sessionId, recipients, subject, fullHtml) {
  * Returns the full library data for a session page. Called from LibraryPage.html.
  */
 function getLibraryData(sessionId) {
+  validateSessionId_(sessionId);
   // Cache for performance — library data doesn't change during a page load
-  const cacheKey = 'library_' + sessionId;
+  const cacheKey = 'library_v2_' + sessionId;
   const cache = CacheService.getScriptCache();
   const cached = cache.get(cacheKey);
   if (cached) {
@@ -207,9 +216,9 @@ function getLibraryData(sessionId) {
 /**
  * Invalidates the library cache for a session (call after synthesis or gems update).
  */
-function invalidateLibraryCache(sessionId) {
+function invalidateLibraryCache_(sessionId) {
   const c = CacheService.getScriptCache();
-  c.remove('library_' + sessionId);
+  c.remove('library_v2_' + sessionId);
   c.remove('dashboard_v2'); // invalidate dashboard cache when any session data changes
   return true;
 }
@@ -220,7 +229,10 @@ function invalidateLibraryCache(sessionId) {
  * @param {Object[]} resources - [{ fileId?, url, name, type, mimeType? }]
  */
 function webAddResources(sessionId, resources) {
-  return ResourceService.addResources(sessionId, resources);
+  AuthService.requireUser();
+  const result = withResourceWriteLock_(() => ResourceService.addResources(sessionId, resources));
+  invalidateLibraryCache_(sessionId);
+  return result;
 }
 
 /**
@@ -229,6 +241,7 @@ function webAddResources(sessionId, resources) {
  * @returns {{ docUrl: string }}
  */
 function webGenerateSiteCode(sessionId) {
+  AuthService.requireUser();
   return SitesService.generateSiteCode(sessionId);
 }
 
@@ -239,11 +252,12 @@ function webGenerateSiteCode(sessionId) {
  * @returns {{ ok: boolean }}
  */
 function webRegenerateBrief(sessionId) {
+  AuthService.requireUser();
   const session = SessionService.getSession(sessionId);
   if (!session) throw new Error('Session not found: ' + sessionId);
   const brief = GeminiService.generateSessionBrief(session.theme, session.format, session.audience);
   SessionService.updateSession(sessionId, { BRIEF_JSON: JSON.stringify(brief) });
-  invalidateLibraryCache(sessionId);
+  invalidateLibraryCache_(sessionId);
   return { ok: true };
 }
 
@@ -255,6 +269,7 @@ function webRegenerateBrief(sessionId) {
  * @returns {{ email: string, name: string }[]}
  */
 function webGetCollaborators(sessionId) {
+  AuthService.requireUser();
   return CollaboratorService.getEditors(sessionId);
 }
 
@@ -265,6 +280,7 @@ function webGetCollaborators(sessionId) {
  * @returns {{ added: number, errors: string[] }}
  */
 function webAddCollaborators(sessionId, emails) {
+  AuthService.requireUser();
   return CollaboratorService.addEditors(sessionId, emails);
 }
 
@@ -274,6 +290,7 @@ function webAddCollaborators(sessionId, emails) {
  * @param {string} email
  */
 function webRemoveCollaborator(sessionId, email) {
+  AuthService.requireUser();
   return CollaboratorService.removeEditor(sessionId, email);
 }
 
@@ -285,6 +302,7 @@ function webRemoveCollaborator(sessionId, email) {
  * @returns {{ email: string, name: string, registeredAt: string }[]}
  */
 function webGetParticipants(sessionId) {
+  AuthService.requireUser();
   return ParticipantService.getParticipants(sessionId);
 }
 
@@ -295,6 +313,7 @@ function webGetParticipants(sessionId) {
  * @returns {{ added: number, skipped: number }}
  */
 function webAddParticipants(sessionId, participants) {
+  AuthService.requireUser();
   return ParticipantService.addParticipants(sessionId, participants);
 }
 
@@ -304,6 +323,7 @@ function webAddParticipants(sessionId, participants) {
  * @param {string} email
  */
 function webRemoveParticipant(sessionId, email) {
+  AuthService.requireUser();
   return ParticipantService.removeParticipant(sessionId, email);
 }
 
@@ -316,6 +336,7 @@ function webRemoveParticipant(sessionId, email) {
  * @returns {{ name, url, embedType, access, fileId?, ok }[]}
  */
 function webCheckPermissions(sessionId) {
+  AuthService.requireUser();
   return PermissionService.checkResources(sessionId);
 }
 
@@ -325,6 +346,7 @@ function webCheckPermissions(sessionId) {
  * @returns {{ fixed: number, errors: string[] }}
  */
 function webFixPermissions(fileIds) {
+  AuthService.requireUser();
   return PermissionService.fixPermissions(fileIds);
 }
 
@@ -337,6 +359,7 @@ function webFixPermissions(fileIds) {
  * @returns {Object[]}
  */
 function webGetResources(sessionId) {
+  AuthService.requireUser();
   return SynthesisService.getResources(sessionId);
 }
 
@@ -347,8 +370,9 @@ function webGetResources(sessionId) {
  * @returns {{ ok: boolean }}
  */
 function webRemoveResource(sessionId, url) {
-  const result = ResourceService.removeResource(sessionId, url);
-  invalidateLibraryCache(sessionId);
+  AuthService.requireUser();
+  const result = withResourceWriteLock_(() => ResourceService.removeResource(sessionId, url));
+  invalidateLibraryCache_(sessionId);
   return result;
 }
 
@@ -360,8 +384,9 @@ function webRemoveResource(sessionId, url) {
  * @returns {{ removed: number }}
  */
 function webRemoveResources(sessionId, urls) {
-  const result = ResourceService.removeResources(sessionId, urls);
-  invalidateLibraryCache(sessionId);
+  AuthService.requireUser();
+  const result = withResourceWriteLock_(() => ResourceService.removeResources(sessionId, urls));
+  invalidateLibraryCache_(sessionId);
   return result;
 }
 
@@ -372,8 +397,9 @@ function webRemoveResources(sessionId, urls) {
  * @returns {{ updated: number }}
  */
 function webSaveResourceSettings(sessionId, updates) {
-  const result = ResourceService.updateResourceSettings(sessionId, updates);
-  invalidateLibraryCache(sessionId);
+  AuthService.requireUser();
+  const result = withResourceWriteLock_(() => ResourceService.updateResourceSettings(sessionId, updates));
+  invalidateLibraryCache_(sessionId);
   return result;
 }
 
@@ -386,6 +412,7 @@ function webSaveResourceSettings(sessionId, updates) {
  * @returns {{ id, title, dateLabel, timeLabel, startIso, location, meetUrl, hasMeet }[]}
  */
 function webGetCalendarEvents(daysAhead) {
+  AuthService.requireUser();
   const MEET_RE = /https:\/\/meet\.google\.com\/[a-z]{3}-[a-z]{4}-[a-z]{3}/i;
   const now    = new Date();
   const future = new Date(now.getTime() + ((daysAhead || 60) * 24 * 60 * 60 * 1000));
@@ -425,6 +452,7 @@ function webGetCalendarEvents(daysAhead) {
  * @returns {{ folderName, files: [{fileId, name, url, mimeType}] } | { error }}
  */
 function getDriveFilesInFolder(folderUrl) {
+  AuthService.requireUser();
   var m = folderUrl.match(/\/folders\/([a-zA-Z0-9_-]{25,})/);
   var folderId = m ? m[1] : null;
   if (!folderId) {
@@ -453,6 +481,7 @@ function getDriveFilesInFolder(folderUrl) {
  * Called from the Drive navigator panel in Index.html and Wizard.html.
  */
 function getDriveNavigate(folderId) {
+  AuthService.requireUser();
   try {
     var folder = folderId ? DriveApp.getFolderById(folderId) : DriveApp.getRootFolder();
     // Build breadcrumb path by walking up to root
@@ -489,6 +518,7 @@ function getDriveNavigate(folderId) {
  * @returns {Array<{id, name, color}>}
  */
 function getCalendarList() {
+  AuthService.requireUser();
   try {
     return CalendarApp.getAllCalendars().map(function(cal) {
       return { id: cal.getId(), name: cal.getName(), color: cal.getColor() };
@@ -505,6 +535,7 @@ function getCalendarList() {
  * @returns {{ events: Array<{name, url, type, eventTitle, startDate}>, total: number } | { error }}
  */
 function getCalendarEvents(calendarId, daysAhead) {
+  AuthService.requireUser();
   try {
     var cal = CalendarApp.getCalendarById(calendarId);
     if (!cal) return { error: 'Calendar not found.' };
@@ -538,30 +569,17 @@ function getCalendarEvents(calendarId, daysAhead) {
 /**
  * Returns true if the current user is allowed to access protected routes.
  * - If CONFIG.ALLOWED_DOMAIN is set, the user's email must end with @domain.
- * - If CONFIG.ALLOWED_DOMAIN is '', any authenticated Google account is allowed.
+ * - A blank domain allows only the owner and explicitly allowed accounts.
  * - Unauthenticated (anonymous) users are always rejected.
  */
-function _isAuthorizedUser() {
-  try {
-    var email = Session.getActiveUser().getEmail();
-    if (!email) return false;                                // anonymous / not signed in
-    if (!CONFIG.ALLOWED_DOMAIN) return true;                 // any Google account allowed
-    // Specific email bypass — add addresses to ALLOWED_EMAILS in Config.js for testing
-    // or external collaborators without the org domain
-    if (CONFIG.ALLOWED_EMAILS && CONFIG.ALLOWED_EMAILS.length) {
-      if (CONFIG.ALLOWED_EMAILS.map(function(e) { return e.toLowerCase(); })
-                                .indexOf(email.toLowerCase()) !== -1) return true;
-    }
-    return email.toLowerCase().endsWith('@' + CONFIG.ALLOWED_DOMAIN.toLowerCase());
-  } catch (e) {
-    return false;
-  }
+function isAuthorizedUser_() {
+  return AuthService.isAuthorized();
 }
 
 /**
  * Returns a styled "access restricted" HTML page for unauthorized requests.
  */
-function _unauthorizedPage() {
+function unauthorizedPage_() {
   var html =
     '<!DOCTYPE html><html><head><meta charset="utf-8">' +
     '<meta name="viewport" content="width=device-width,initial-scale=1">' +
@@ -593,7 +611,7 @@ function _unauthorizedPage() {
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
-function _getWebAppUrl() {
+function getWebAppUrl_() {
   try {
     return ScriptApp.getService().getUrl();
   } catch (e) {
@@ -608,7 +626,7 @@ function _getWebAppUrl() {
  * googleusercontent.com URL rather than the real exec URL.
  */
 function webGetAppBaseUrl() {
-  return _getWebAppUrl();
+  return getWebAppUrl_();
 }
 
 /**
@@ -631,10 +649,11 @@ function webGetAppConfig() {
  * @returns {{ session, resources, libraryUrl }}
  */
 function webGetPageBuilderData(sessionId) {
+  AuthService.requireUser();
   const session = SessionService.getSession(sessionId);
   if (!session) throw new Error('Session not found: ' + sessionId);
   const resources = SynthesisService.getResources(sessionId);
-  const baseUrl   = _getWebAppUrl();
+  const baseUrl   = getWebAppUrl_();
   return {
     session:    session,
     resources:  resources,
@@ -650,6 +669,7 @@ function webGetPageBuilderData(sessionId) {
  * @returns {{ docUrl: string, blockCount: number }}
  */
 function webGeneratePageCode(sessionId, blocks) {
+  AuthService.requireUser();
   return PageBuilderService.generateFromBlocks(sessionId, blocks);
 }
 
@@ -660,6 +680,7 @@ function webGeneratePageCode(sessionId, blocks) {
  * @returns {string}
  */
 function webGetDesignAssetsFolder() {
+  AuthService.requireUser();
   return PropertiesService.getScriptProperties().getProperty('DESIGN_ASSETS_FOLDER_ID') || '';
 }
 
@@ -669,6 +690,7 @@ function webGetDesignAssetsFolder() {
  * @returns {{ ok: boolean }}
  */
 function webSetDesignAssetsFolder(folderUrl) {
+  AuthService.requireUser();
   var m  = String(folderUrl || '').match(/\/folders\/([a-zA-Z0-9_-]{25,})/);
   var id = m ? m[1] : String(folderUrl || '').trim();
   if (!id) throw new Error('Could not extract folder ID from that URL.');
@@ -681,7 +703,22 @@ function webSetDesignAssetsFolder(folderUrl) {
  * @returns {{ folderName, files } | { error }}
  */
 function webGetDesignAssets() {
+  AuthService.requireUser();
   var folderId = PropertiesService.getScriptProperties().getProperty('DESIGN_ASSETS_FOLDER_ID') || '';
   if (!folderId) return { error: 'No Design Assets folder configured. Add one in Settings.' };
   return getDriveFilesInFolder('https://drive.google.com/drive/folders/' + folderId);
+}
+
+function validateSessionId_(sessionId) {
+  if (typeof sessionId !== 'string' || !/^S-[a-zA-Z0-9-]+$/.test(sessionId)) {
+    throw new Error('Invalid session link.');
+  }
+  return sessionId;
+}
+
+/** Resource mutations cannot reorder rows while synthesis checkpoints are being written. */
+function withResourceWriteLock_(action) {
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(1000)) throw new Error('Synthesis or another resource update is running. Try again shortly.');
+  try { return action(); } finally { lock.releaseLock(); }
 }

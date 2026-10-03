@@ -19,11 +19,11 @@ Browser
                webGenerateGems, webGetEmailDraft, webSendEmail)
          │
          ├── SessionService.js   (Master Sheet CRUD, Drive scaffolding)
-         ├── GeminiService.js    (Gemini 1.5 Flash REST calls)
+         ├── GeminiService.js    (Configurable Gemini REST calls)
          ├── SynthesisService.js (fetch resource content + Gemini analysis)
          ├── GemsService.js      (4 AI persona prompt structures)
          ├── ResourceService.js  (add resources, create Drive shortcuts)
-         ├── EmailService.js     (Gmail send)
+         ├── EmailService.js     (MailApp send)
          └── LibraryService.js   (assemble library payload)
 ```
 
@@ -52,18 +52,22 @@ Browser
 [Email] ─────► EmailService.draftAndSend(sessionId, recipients)
                • GeminiService.draftPreSessionEmail() → subject + HTML body
                • Shown in modal for review before sending
-               • GmailApp.sendEmail() on approval
+               • MailApp.sendEmail() on approval
 ```
 
 ## Key Design Decisions
 
-**Container-bound script** — `SpreadsheetApp.getActiveSpreadsheet()` always returns the Master Sheet, both in the Sheets menu context and in the web app context. No spreadsheet ID needed in code.
+**Container-bound setup, explicit web storage** — Initial Setup runs from the bound Sheet and records `MASTER_SPREADSHEET_ID` and `OWNER_EMAIL`. Web-app and service code use `StorageService.master()` / `SpreadsheetApp.openById()`. Missing setup fails with a clear instruction. Only Sheet-specific menu actions use the active editor.
 
 **Drive Picker removed** — GAS web app pages are sandboxed to `*.googleusercontent.com`; the Picker API validates origin against `docs.google.com`/`script.google.com` and rejects the web app origin. Replaced with:
 1. **Folder browser** — user pastes a Drive folder URL → `getDriveFilesInFolder()` (server-side `DriveApp`) returns file list → checkbox selection
 2. **URL paste** — user pastes individual Drive share links; `fileId` extracted client-side via regex; shortcut created in `01_Research` server-side
 
 **Web app vs. dialog mode detection** — `google.script.host.origin === 'https://docs.google.com'` is true only in Sheets modal dialogs; false in web app pages. Used in Wizard.html to route `Cancel` back to dashboard vs. `google.script.host.close()`.
+
+**Authorization** — `AuthService` verifies the active caller before every privileged RPC. The public library returns only participant data. Internal helpers end in `_`, making them private to Apps Script. Initial Setup is owner-only; no stored API key or OAuth token is returned to the browser.
+
+**Synthesis recovery** — Results are flushed per resource. A script lock prevents overlapping synthesis and application resource edits. Runs pause between resources after a soft four-minute deadline; ordinary Synthesize skips completed rows and resumes unfinished ones.
 
 **Deployment versioning** — `clasp push` only updates HEAD. Production deployments require a "New version" update in GAS Editor → Deploy → Manage deployments.
 
@@ -93,3 +97,5 @@ Browser
 |-----|-------------|
 | `GEMINI_API_KEY` | Google AI Studio API key |
 | `ROOT_FOLDER_ID` | Parent Drive folder for all sessions (auto-created if missing) |
+
+Additional Script Properties: `MASTER_SPREADSHEET_ID`, `OWNER_EMAIL`, `GEMINI_MODEL`, and cached `WEB_APP_URL`. See README for setup and deployment.

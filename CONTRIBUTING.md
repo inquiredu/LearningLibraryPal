@@ -17,7 +17,7 @@ Since this project runs on Google Apps Script, the development workflow is sligh
 2. Make your changes in the `.js` or `.html` files locally.
 3. Push your changes to your Google Apps Script project to test them:
    ```bash
-   npm run deploy
+   npm run push
    ```
 4. Test your changes thoroughly in your own Google Workspace environment.
 
@@ -38,3 +38,5 @@ Since this project runs on Google Apps Script, the development workflow is sligh
 - Please comment your code clearly, especially when dealing with complex Google Workspace APIs or AI prompts.
 
 Thank you for contributing!
+
+Before opening a pull request, run `npm ci --ignore-scripts`, `npm run check`, and `npm test`. Use your own pilot Apps Script project; never commit `.clasp.json` or credentials.

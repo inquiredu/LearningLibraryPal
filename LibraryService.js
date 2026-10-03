@@ -22,7 +22,7 @@ const LibraryService = {
 
     // Separate meeting links from content resources
     // Filter content resources to public-only (isPublic !== false hides Internal resources)
-    const meetings  = allResources.filter(r => this._isMeeting(r));
+    const meetings  = allResources.filter(r => this._isMeeting(r) && r.isPublic !== false);
     const resources = allResources
       .filter(r => !this._isMeeting(r))
       .filter(r => r.isPublic !== false)
@@ -55,8 +55,6 @@ const LibraryService = {
         audience:      session.audience,
         timezone:      CONFIG.DISPLAY_TIMEZONE,
         timezoneLabel: CONFIG.TIMEZONE_LABEL,
-        folderUrl: session.folderUrl,
-        dbUrl: session.dbUrl,
         generatedAt: new Date().toISOString()
       },
       brief: {

@@ -630,10 +630,18 @@
 
     // ── Pipeline actions ───────────────────────────────────────────────────────
 
+    function showSynthesisResult(res) {
+      var unfinished = res.remaining > 0 || res.paused;
+      var message = (res.count || 0) + ' resources analyzed. ';
+      if (res.failed) message += res.failed + ' failed; details are saved in the resource sheet. ';
+      message += unfinished ? (res.remaining || 0) + ' registered resources remaining. Click Synthesize to continue unfinished work.' : 'Synthesis complete.';
+      showAlert(message, res.failed ? 'error' : 'success');
+    }
+
     function runSynthesis(sessionId, btn) {
       setBtnLoading(btn, 'Synthesizing…');
       google.script.run
-        .withSuccessHandler(function(res) { resetBtn(btn, '🔬 Synthesize'); showAlert('Synthesis complete! ' + (res.count || 0) + ' resources analyzed.', 'success'); loadDashboard(); })
+        .withSuccessHandler(function(res) { resetBtn(btn, '🔬 Synthesize'); showSynthesisResult(res); loadDashboard(); })
         .withFailureHandler(function(err) { resetBtn(btn, '🔬 Synthesize'); showAlert(err.message, 'error'); })
         .webRunSynthesis(sessionId);
     }
@@ -642,7 +650,7 @@
       if (!confirm('Re-analyze all resources?\n\nThis overrides existing scores and re-runs Gemini on every resource. Continue?')) return;
       setBtnLoading(btn, '↩…');
       google.script.run
-        .withSuccessHandler(function(res) { resetBtn(btn, '↩'); showAlert('Re-synthesis complete! ' + (res.count || 0) + ' resources re-analyzed.', 'success'); loadDashboard(); })
+        .withSuccessHandler(function(res) { resetBtn(btn, '↩'); showSynthesisResult(res); loadDashboard(); })
         .withFailureHandler(function(err) { resetBtn(btn, '↩'); showAlert(err.message, 'error'); })
         .webRunSynthesis(sessionId, true);
     }

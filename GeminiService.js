@@ -1,7 +1,7 @@
 /**
  * GeminiService
  * Central AI layer — all Gemini API interactions live here.
- * Model: gemini-2.0-flash (fast, structured JSON output)
+ * Model: selected in Initial Setup; all calls request structured JSON output.
  */
 
 const GeminiService = {
@@ -9,28 +9,55 @@ const GeminiService = {
   // ─── Core API call ─────────────────────────────────────────────────────────
 
   _call: function(prompt, temperature) {
-    const apiKey = getGeminiApiKey();
-    if (!apiKey) throw new Error('GEMINI_API_KEY not found in Script Properties.');
-
+    const props = PropertiesService.getScriptProperties();
+    const apiKey = getGeminiApiKey_();
+    if (!apiKey) throw new Error('Add a Gemini API key in Initial Setup.');
+    const model = props.getProperty('GEMINI_MODEL') || CONFIG.GEMINI_MODEL;
+    if (!/^gemini-[a-zA-Z0-9.-]+$/.test(model)) throw new Error('Invalid Gemini model. Update Initial Setup.');
     const payload = {
       contents: [{ parts: [{ text: prompt }] }],
       generationConfig: {
-        temperature: temperature || 0.7,
+        temperature: temperature === undefined ? 0.7 : temperature,
         responseMimeType: 'application/json'
       }
     };
-
-    const response = UrlFetchApp.fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
-      { method: 'post', contentType: 'application/json', payload: JSON.stringify(payload), muteHttpExceptions: true }
-    );
-
-    const json = JSON.parse(response.getContentText());
-    if (json.error) throw new Error(`Gemini API Error: ${json.error.message}`);
-
-    const raw = json.candidates[0].content.parts[0].text;
-    const clean = raw.replace(/^```(json)?\s*/i, '').replace(/```\s*$/i, '').trim();
-    return JSON.parse(clean);
+    for (let attempt = 0; attempt < 3; attempt++) {
+      let response;
+      try {
+        response = UrlFetchApp.fetch(
+          'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent',
+          { method: 'post', contentType: 'application/json',
+            headers: { 'x-goog-api-key': apiKey },
+            payload: JSON.stringify(payload), muteHttpExceptions: true }
+        );
+      } catch (e) {
+        throw new Error('Could not reach Gemini. Retry shortly.');
+      }
+      const code = response.getResponseCode();
+      if ((code === 429 || code >= 500) && attempt < 2) {
+        Utilities.sleep(1000 * Math.pow(2, attempt));
+        continue;
+      }
+      if (code < 200 || code >= 300) {
+        throw new Error('Gemini request failed (HTTP ' + code + '). Check the API key, model availability and quota in Google AI Studio.');
+      }
+      let json;
+      try { json = JSON.parse(response.getContentText()); }
+      catch (e) { throw new Error('Gemini returned an unreadable response. Retry.'); }
+      const candidate = json.candidates && json.candidates[0];
+      if (!candidate || candidate.finishReason && candidate.finishReason !== 'STOP') {
+        throw new Error('Gemini did not complete the response. Review the source content or retry.');
+      }
+      const parts = candidate.content && candidate.content.parts || [];
+      const raw = parts.filter(part => !part.thought && typeof part.text === 'string').map(part => part.text).join('');
+      try {
+        const value = JSON.parse(raw.replace(/^```(json)?\s*/i, '').replace(/```\s*$/i, '').trim());
+        if (!value || typeof value !== 'object') throw new Error('Missing structured response');
+        return value;
+      } catch (e) {
+        throw new Error('Gemini returned invalid structured content. Retry.');
+      }
+    }
   },
 
   // ─── Phase 1: Session Brief ─────────────────────────────────────────────────

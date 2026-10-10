@@ -1,3 +1,5 @@
+> Historical handoff from March 2026. Some planned features below were subsequently implemented. Use README.md and docs/REVIVAL.md for current setup, security and remaining work.
+
 # Learning Library Content Engine — Handoff (March 11, 2026)
 
 ## Current Status: All features implemented and pushed — deployment version update required
@@ -287,8 +289,8 @@ A plan file exists at `/home/codespace/.claude/plans/virtual-snacking-castle.md`
 ## Repo / Deployment
 
 - **GitHub:** `https://github.com/inquiredu/LearningLibrary` — `main` branch
-- **GAS Script ID:** `1iIHgvEr_xe2RT_zgUYduI-NhYuYrZAQCbD4hHKpJiJPISMIueFxYKOdy`
-- **Bound Spreadsheet:** `1KHW7tFNmqFyf9Oi-8SfRO0eZOG_VTX9hH-T8Ub5CTbw`
+- **GAS Script ID:** (historical deployment; create your own pilot)
+- **Bound Spreadsheet:** (historical spreadsheet; create your own pilot)
 - **Deploy:** GAS Editor → Deploy → Manage deployments → New version → "Anyone" access
 - **Diagnostic URL:** `[exec-url]?page=diag`
 

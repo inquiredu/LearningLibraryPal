@@ -34,10 +34,10 @@ const SessionService = {
 
   /**
    * Ensures the Master Sheet has the Sessions and Settings tabs.
-   * Creates them if missing. Called from Code.js onOpen / setup.
+   * Creates them if missing. Called from Initial Setup and authorized session/dashboard operations.
    */
   ensureMasterSheet: function() {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const ss = StorageService.master();
     let sessionsSheet = ss.getSheetByName(this.SESSIONS_SHEET_NAME);
     if (!sessionsSheet) {
       sessionsSheet = ss.insertSheet(this.SESSIONS_SHEET_NAME);
@@ -75,7 +75,8 @@ const SessionService = {
    */
   setupSession: function(params) {
     const { name, theme, date, format, audience, brand } = params;
-    const sessionId = 'S-' + new Date().getTime();
+    const sessionId = 'S-' + Utilities.getUuid();
+    this.ensureMasterSheet();
     const rootFolderId = this._getRootFolderId();
 
     // 1. Scaffold Drive folders
@@ -99,7 +100,7 @@ const SessionService = {
     }
 
     // 4. Write session row to Master Sheet
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const ss = StorageService.master();
     const sheet = ss.getSheetByName(this.SESSIONS_SHEET_NAME);
     const row = new Array(15).fill('');
     row[this.COL.ID]         = sessionId;
@@ -111,7 +112,8 @@ const SessionService = {
     row[this.COL.BRAND]      = brand || 'Learning Library';
     row[this.COL.STATUS]     = 'Active';
     row[this.COL.FOLDER_URL] = sessionFolder.getUrl();
-    row[this.COL.LIBRARY_URL]= '';
+    const baseUrl = getWebAppUrl_();
+    row[this.COL.LIBRARY_URL]= baseUrl ? baseUrl + '?page=library&session=' + sessionId : '';
     row[this.COL.DB_URL]     = db.getUrl();
     row[this.COL.EMAIL_SENT] = 'No';
     row[this.COL.BRIEF_JSON] = JSON.stringify(brief);
@@ -132,7 +134,7 @@ const SessionService = {
    * Returns all sessions as an array of plain objects.
    */
   getAllSessions: function() {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const ss = StorageService.master();
     const sheet = ss.getSheetByName(this.SESSIONS_SHEET_NAME);
     if (!sheet) return [];
     const data = sheet.getDataRange().getValues();
@@ -170,7 +172,7 @@ const SessionService = {
    * @param {Object} updates - Keys matching COL names (e.g., { LIBRARY_URL: 'https://...' })
    */
   updateSession: function(sessionId, updates) {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const ss = StorageService.master();
     const sheet = ss.getSheetByName(this.SESSIONS_SHEET_NAME);
     const data = sheet.getDataRange().getValues();
     for (let i = 1; i < data.length; i++) {
@@ -236,7 +238,7 @@ const SessionService = {
     if (folderId) return folderId;
 
     // Fallback: check Settings sheet
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const ss = StorageService.master();
     const sheet = ss.getSheetByName(this.SETTINGS_SHEET_NAME);
     if (sheet) {
       const data = sheet.getDataRange().getValues();
@@ -249,7 +251,7 @@ const SessionService = {
     }
 
     // Last resort: create a folder next to the spreadsheet
-    const ss2 = SpreadsheetApp.getActiveSpreadsheet();
+    const ss2 = StorageService.master();
     const ssFile = DriveApp.getFileById(ss2.getId());
     const parents = ssFile.getParents();
     const parent = parents.hasNext() ? parents.next() : DriveApp.getRootFolder();

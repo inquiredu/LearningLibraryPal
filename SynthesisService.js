@@ -12,9 +12,19 @@ const SynthesisService = {
    * Main entry point. Synthesizes all un-analyzed resources for a session.
    * @param {string} sessionId
    * @param {boolean} [force] - If true, re-analyzes already-scored rows too.
-   * @returns {number} Count of resources processed
+   * @returns {{ count: number, remaining: number, failed: number, paused: boolean }}
    */
   synthesizeAll: function(sessionId, force) {
+    const lock = LockService.getScriptLock();
+    if (!lock.tryLock(1000)) throw new Error('Another synthesis is running. Try again shortly.');
+    try {
+      return this._synthesizeBatch(sessionId, force, Date.now() + 240000);
+    } finally {
+      lock.releaseLock();
+    }
+  },
+
+  _synthesizeBatch: function(sessionId, force, deadline) {
     const session = SessionService.getSession(sessionId);
     if (!session) throw new Error('Session not found: ' + sessionId);
     if (!session.dbUrl) throw new Error('No Project Database URL for session: ' + sessionId);
@@ -32,17 +42,28 @@ const SynthesisService = {
     const resourcesSheet = db.getSheetByName('Resources');
     if (!resourcesSheet) throw new Error('No Resources sheet found in Project DB.');
 
+    // Register discovered files before analysis so every completed result has a durable row.
+    const discoveryPaused = this._registerResearchFolder(session, resourcesSheet, deadline);
     const rows = resourcesSheet.getDataRange().getValues();
-    if (rows.length <= 1) return 0;
+    if (rows.length <= 1) return { count: 0, remaining: 0, failed: 0, paused: discoveryPaused };
+    if (force) {
+      // Reset only completion markers once; ordinary Synthesize resumes an interrupted re-run.
+      resourcesSheet.getRange(2, 4, rows.length - 1, 1).clearContent();
+      rows.slice(1).forEach(row => { row[3] = ''; });
+      SpreadsheetApp.flush();
+    }
 
     let processedCount = 0;
+    let failed = 0;
+    let paused = discoveryPaused;
 
     for (let i = 1; i < rows.length; i++) {
+      if (Date.now() >= deadline) { paused = true; break; }
       const url = String(rows[i][0] || '').trim();
       if (!url) continue;
 
       // Skip already-synthesized rows (relevanceScore filled means done) — unless force=true
-      if (!force && rows[i][3] && String(rows[i][3]).trim() !== '') continue;
+      if (String(rows[i][3] === undefined ? '' : rows[i][3]).trim() !== '') continue;
 
       // Read the user-set resource type — this drives the Gemini prompt and special handling
       const resourceType = String(rows[i][2] || '').trim();
@@ -54,6 +75,7 @@ const SynthesisService = {
         rows[i][4] = 'Accessible'; // engagementLevel
         rows[i][7] = 'No';         // notebookLMReady
         rows[i][9] = 'Session logistics link — no content to analyze.';
+        this._saveAnalysis(resourcesSheet, i + 1, rows[i]);
         processedCount++;
         continue;
       }
@@ -100,6 +122,11 @@ const SynthesisService = {
           session.audience,
           sessionContext
         );
+
+        if (!meta || !Number.isFinite(meta.relevanceScore) || meta.relevanceScore < 1 || meta.relevanceScore > 5
+            || typeof meta.summary !== 'string') {
+          throw new Error('AI analysis returned an invalid score or summary. Retry this resource.');
+        }
 
         // Write results — preserve user-set type; only infer type when blank
         rows[i][1] = meta.title || '';
@@ -153,29 +180,26 @@ const SynthesisService = {
           }
         }
 
+        this._saveAnalysis(resourcesSheet, i + 1, rows[i]);
         processedCount++;
         Utilities.sleep(500);
       } catch (e) {
         console.error('Failed to process row ' + (i + 1) + ': ' + e.message);
+        failed++;
+        rows[i][3] = '';
         rows[i][8] = 'Error: ' + e.message;
+        this._saveAnalysis(resourcesSheet, i + 1, rows[i]);
       }
     }
 
-    // Batch write all updates to the Resources sheet
-    if (rows.length > 1) {
-      resourcesSheet.getRange(1, 1, rows.length, rows[0].length).setValues(rows);
-    }
-
-    // Also scan the 01_Research folder for any Docs/text files not yet in the DB
-    const folderCount = this._processResearchFolder(session, resourcesSheet, sessionContext);
-    processedCount += folderCount;
+    const remaining = rows.slice(1).filter(row => row[0] && String(row[3] === undefined ? '' : row[3]).trim() === '').length;
 
     // ── Post-synthesis: enrich inquiry questions from actual resource content ──
     // Only runs when at least one resource was processed this cycle.
     // Reads the in-memory rows (already written to sheet) to build a digest of
     // resource titles, key concept tags, and summaries, then asks Gemini to
     // rewrite the inquiry questions grounded in the specific materials curated.
-    if (processedCount > 0) {
+    if (processedCount > 0 && remaining === 0 && Date.now() < deadline - 45000) {
       try {
         const contentRows = rows.slice(1).filter(function(r) {
           return String(r[2] || '').trim() !== 'Meeting Link' &&
@@ -205,7 +229,7 @@ const SynthesisService = {
       }
     }
 
-    return processedCount;
+    return { count: processedCount, remaining: remaining, failed: failed, paused: paused };
   },
 
   /**
@@ -305,80 +329,33 @@ const SynthesisService = {
     }
   },
 
-  /**
-   * Processes Google Docs and text files found directly in 01_Research
-   * (not yet registered in the Project DB via the resources form).
-   */
-  _processResearchFolder: function(session, resourcesSheet, sessionContext) {
-    if (!session.folderUrl) return 0;
-    let count = 0;
-    try {
-      const folderId = this._extractId(session.folderUrl);
-      const sessionFolder = DriveApp.getFolderById(folderId);
-      const researchIter = sessionFolder.getFoldersByName('01_Research');
-      if (!researchIter.hasNext()) return 0;
-      const researchFolder = researchIter.next();
+  /** Save only analysis columns; preserve concurrent visibility, ordering and meeting edits. */
+  _saveAnalysis: function(sheet, rowNumber, row) {
+    sheet.getRange(rowNumber, 2, 1, 9).setValues([row.slice(1, 10)]);
+    SpreadsheetApp.flush();
+  },
 
-      // Build set of URLs already in the sheet (to avoid dupes)
-      const allRows = resourcesSheet.getDataRange().getValues();
-      const existingUrls = new Set(allRows.slice(1).map(r => String(r[0]).trim()));
-
-      const files = researchFolder.getFiles();
-      const newRows = [];
-      while (files.hasNext()) {
-        const file = files.next();
-        const mime = file.getMimeType();
-
-        // Only process shortcut targets and native text files
-        if (mime === MimeType.GOOGLE_APPS_SCRIPT) continue;
-
-        let text = '';
-        if (mime === MimeType.GOOGLE_DOCS) {
-          text = DocumentApp.openById(file.getId()).getBody().getText();
-        } else if (mime === MimeType.PLAIN_TEXT) {
-          text = file.getBlob().getDataAsString();
-        } else {
-          continue;
-        }
-
-        if (!text.trim()) continue;
-        const url = file.getUrl();
-        if (existingUrls.has(url)) continue;
-
-        try {
-          const meta = GeminiService.analyzeResource(
-            text.substring(0, 12000),
-            session.theme,
-            session.audience,
-            sessionContext
-          );
-          newRows.push([
-            url,
-            meta.title || file.getName(),
-            'Document',
-            meta.relevanceScore || '',
-            meta.engagementLevel || '',
-            Array.isArray(meta.keyConceptTags) ? meta.keyConceptTags.join(', ') : '',
-            meta.relevanceScore >= 4 ? 'Yes' : 'No',
-            meta.notebookLMReady ? 'Yes' : 'No',
-            meta.relevanceStatement || '',
-            meta.summary || ''
-          ]);
-          existingUrls.add(url);
-          count++;
-          Utilities.sleep(500);
-        } catch (e) {
-          console.error('Failed to process file ' + file.getName() + ': ' + e.message);
-        }
-      }
-
-      if (newRows.length > 0) {
-        resourcesSheet.getRange(resourcesSheet.getLastRow() + 1, 1, newRows.length, 10).setValues(newRows);
-      }
-    } catch (e) {
-      console.error('_processResearchFolder failed: ' + e.message);
+  /** Discover source files without spending AI calls before they are registered. */
+  _registerResearchFolder: function(session, sheet, deadline) {
+    if (!session.folderUrl) return false;
+    const folder = DriveApp.getFolderById(this._extractId(session.folderUrl));
+    const research = folder.getFoldersByName('01_Research');
+    if (!research.hasNext()) return false;
+    const existing = new Set(sheet.getDataRange().getValues().slice(1).map(row => String(row[0]).trim()));
+    const files = research.next().getFiles();
+    while (files.hasNext()) {
+      if (Date.now() >= deadline) return true;
+      const file = files.next();
+      const mime = file.getMimeType();
+      if (mime !== MimeType.GOOGLE_DOCS && mime !== MimeType.PLAIN_TEXT) continue;
+      const url = file.getUrl();
+      if (existing.has(url)) continue;
+      // Discovered files remain internal until the facilitator chooses to publish them.
+      sheet.appendRow([url, file.getName(), 'Document', '', '', '', '', '', '', '', '', '', '', 'No', 9999]);
+      existing.add(url);
     }
-    return count;
+    SpreadsheetApp.flush();
+    return false;
   },
 
   _fetchContent: function(url) {

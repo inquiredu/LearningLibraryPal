@@ -6,7 +6,6 @@
 // ─── Menu ────────────────────────────────────────────────────────────────────
 
 function onOpen() {
-  SessionService.ensureMasterSheet();
   SpreadsheetApp.getUi()
     .createMenu('Learning Library Engine')
     .addItem('🚀  Launch New Session', 'showWizard')
@@ -25,6 +24,7 @@ function onOpen() {
 // ─── Wizard / Session Launch ─────────────────────────────────────────────────
 
 function showWizard() {
+  AuthService.requireUser();
   const html = HtmlService.createHtmlOutputFromFile('Wizard')
     .setWidth(500)
     .setHeight(640);
@@ -37,6 +37,7 @@ function showWizard() {
  * @returns {Object} - { sessionId, folderUrl, dbUrl, brief }
  */
 function processWizardSubmit(params) {
+  AuthService.requireUser();
   const result = SessionService.setupSession(params);
   CacheService.getScriptCache().remove('dashboard_v2');
   return result;
@@ -45,20 +46,22 @@ function processWizardSubmit(params) {
 // ─── Menu Triggers (row-selected operations) ─────────────────────────────────
 
 function menuTriggerSynthesis() {
-  const { sessionId, session } = _getSelectedSession();
+  AuthService.requireUser();
+  const { sessionId, session } = getSelectedSession_();
   if (!sessionId) return;
   const ui = SpreadsheetApp.getUi();
   try {
     ui.alert(`Starting Synthesis for: ${session.name}\nThis may take 30–60 seconds...`);
-    const count = SynthesisService.synthesizeAll(sessionId);
-    ui.alert(`✅ Synthesis complete! ${count} resource(s) analyzed.`);
+    const result = SynthesisService.synthesizeAll(sessionId);
+    ui.alert(`${result.count} resource(s) analyzed. ${result.remaining} remaining. ${result.failed} failed. Run Synthesis again to continue unfinished work.`);
   } catch (e) {
     ui.alert('❌ Synthesis failed: ' + e.message);
   }
 }
 
 function menuTriggerGems() {
-  const { sessionId, session } = _getSelectedSession();
+  AuthService.requireUser();
+  const { sessionId, session } = getSelectedSession_();
   if (!sessionId) return;
   const ui = SpreadsheetApp.getUi();
   try {
@@ -71,32 +74,14 @@ function menuTriggerGems() {
 }
 
 function menuTriggerEmail() {
-  const { sessionId, session } = _getSelectedSession();
-  if (!sessionId) return;
-  const ui = SpreadsheetApp.getUi();
-  const recipientsInput = ui.prompt(
-    'Pre-Session Email',
-    `Enter recipient emails for "${session.name}" (comma-separated):`,
-    ui.ButtonSet.OK_CANCEL
-  );
-  if (recipientsInput.getSelectedButton() !== ui.Button.OK) return;
-  const recipients = recipientsInput.getResponseText()
-    .split(',').map(e => e.trim()).filter(Boolean);
-  if (!recipients.length) {
-    ui.alert('No recipients entered.');
-    return;
-  }
-  try {
-    ui.alert('Drafting email with AI... (~15 seconds)');
-    const result = EmailService.draftAndSend(sessionId, recipients);
-    ui.alert(`✅ Email sent to ${recipients.length} recipient(s)!\nSubject: ${result.subject}`);
-  } catch (e) {
-    ui.alert('❌ Email failed: ' + e.message);
-  }
+  AuthService.requireUser();
+  SpreadsheetApp.getUi().alert('Open Email on the session card to review the draft and recipients before sending.');
+  openDashboard();
 }
 
 function menuTriggerSiteCode() {
-  const { sessionId, session } = _getSelectedSession();
+  AuthService.requireUser();
+  const { sessionId, session } = getSelectedSession_();
   if (!sessionId) return;
   const ui = SpreadsheetApp.getUi();
   try {
@@ -109,6 +94,7 @@ function menuTriggerSiteCode() {
 }
 
 function triggerCalendarAuth() {
+  AuthService.requireUser();
   var authInfo = ScriptApp.getAuthorizationInfo(ScriptApp.AuthMode.FULL);
   if (authInfo.getAuthorizationStatus() === ScriptApp.AuthorizationStatus.REQUIRED) {
     var authUrl = authInfo.getAuthorizationUrl();
@@ -134,6 +120,7 @@ function triggerCalendarAuth() {
 }
 
 function openDashboard() {
+  AuthService.requireUser();
   // Read the URL cached when doGet() first ran — that is always the live /exec URL.
   // Calling ScriptApp.getService().getUrl() from a menu trigger returns the /dev URL,
   // which only works for script editors and appears "not available" to everyone else.
@@ -174,6 +161,7 @@ function openDashboard() {
 }
 
 function showSetupWizard() {
+  AuthService.requireOwner();
   const html = HtmlService.createHtmlOutputFromFile('Setup')
     .setWidth(500)
     .setHeight(420);
@@ -181,15 +169,26 @@ function showSetupWizard() {
 }
 
 function getSetupConfig() {
+  AuthService.requireOwner();
   const props = PropertiesService.getScriptProperties();
   return {
-    geminiKey: props.getProperty('GEMINI_API_KEY') || '',
+    hasGeminiKey: !!props.getProperty('GEMINI_API_KEY'),
+    geminiModel: props.getProperty('GEMINI_MODEL') || CONFIG.GEMINI_MODEL,
     rootFolderId: props.getProperty('ROOT_FOLDER_ID') || ''
   };
 }
 
 function saveSetupConfig(config) {
+  AuthService.requireOwner();
   const props = PropertiesService.getScriptProperties();
+  const sheet = SpreadsheetApp.getActiveSpreadsheet();
+  if (!sheet) throw new Error('Save setup from the bound Google Sheet.');
+  const model = String(config.geminiModel || CONFIG.GEMINI_MODEL).trim();
+  if (!/^gemini-[a-zA-Z0-9.-]+$/.test(model)) throw new Error('Enter a valid Gemini model ID.');
+  props.setProperty('MASTER_SPREADSHEET_ID', sheet.getId());
+  props.setProperty('OWNER_EMAIL', AuthService.email());
+  props.setProperty('GEMINI_MODEL', model);
+  SessionService.ensureMasterSheet();
   if (config.geminiKey) props.setProperty('GEMINI_API_KEY', config.geminiKey);
   if (config.rootFolderId) props.setProperty('ROOT_FOLDER_ID', config.rootFolderId);
   return true;
@@ -200,7 +199,7 @@ function saveSetupConfig(config) {
 /**
  * Gets the session corresponding to the currently selected row in the Sessions sheet.
  */
-function _getSelectedSession() {
+function getSelectedSession_() {
   const ui = SpreadsheetApp.getUi();
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getActiveSheet();
@@ -226,14 +225,6 @@ function _getSelectedSession() {
  * Returns the Gemini API key from Script Properties.
  * Used by GeminiService.
  */
-function getGeminiApiKey() {
+function getGeminiApiKey_() {
   return PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY');
-}
-
-/**
- * Returns the current user's OAuth token for the Google Drive Picker.
- * Called from Wizard.html and Index.html via google.script.run.
- */
-function getOAuthToken() {
-  return ScriptApp.getOAuthToken();
 }

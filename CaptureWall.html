@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <!--CAPTURE_STYLES-->
+  <style>
+    body { background: var(--navy); color: #fff; font-size: clamp(18px, 1.6vw, 30px); min-height: 100vh; }
+    .wall { display: grid; grid-template-rows: auto 1fr auto; min-height: 100vh; padding: 2.5vh 4vw 2vh; gap: 2.5vh; }
+    .wall-head { display: flex; align-items: baseline; gap: 2vw; flex-wrap: wrap; }
+    .wall-head h1 { font-size: 2em; font-weight: 750; flex: 1; min-width: 0; }
+    .status { font-size: .8em; padding: .2em .7em; border-radius: 999px; border: 2px solid #CFE3F2; color: #CFE3F2; }
+    .status[data-open="true"] { border-color: var(--cyan); color: var(--cyan); }
+    .total { font-size: 1em; color: #CFE3F2; }
+    .total strong { font-size: 2.6em; color: #fff; font-weight: 800; margin-right: .2em; }
+    .tables { display: grid; grid-template-columns: repeat(auto-fit, minmax(7em, 1fr)); gap: 2vw; align-content: start; }
+    .table { border-top: 3px solid rgba(255,255,255,.25); padding-top: .6em; }
+    .table h2 { font-size: .9em; font-weight: 650; color: #CFE3F2; display: flex; justify-content: space-between; }
+    .dots { display: flex; flex-wrap: wrap; gap: .35em; margin-top: .6em; }
+    .dot { width: .9em; height: .9em; border-radius: 50%; background: var(--cyan); animation: pop .5s ease-out both; }
+    @keyframes pop { from { transform: scale(0); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    .levels { display: flex; gap: 2.5vw; flex-wrap: wrap; color: #CFE3F2; font-size: .9em; }
+    .levels strong { color: #fff; font-size: 1.3em; margin-left: .25em; }
+    .levels .code { display: inline-block; border: 2px solid #CFE3F2; border-radius: .3em; padding: 0 .35em; font-weight: 800; color: #fff; }
+    .levels .code[data-route="parking"] { border-style: dashed; }
+    .topics { list-style: none; margin: 0; padding: 0; display: grid; gap: 1.6vh; align-content: start; counter-reset: t; }
+    .topic { display: grid; grid-template-columns: 2.2em 1fr auto; gap: 1vw; align-items: center; padding-bottom: 1.4vh; border-bottom: 1px solid rgba(255,255,255,.15); }
+    .topic .n { font-weight: 800; color: var(--cyan); font-size: 1.3em; text-align: right; }
+    .topic .name { font-size: 1.35em; font-weight: 700; overflow-wrap: anywhere; }
+    .topic .meta { color: #CFE3F2; text-align: right; white-space: nowrap; }
+    .topic .pips { display: inline-flex; gap: .25em; margin-left: .6em; vertical-align: middle; }
+    .pip { width: .6em; height: .6em; border-radius: 50%; border: 2px solid #CFE3F2; }
+    .pip.on { background: var(--cyan); border-color: var(--cyan); }
+    .topic.parking .name { color: #CFE3F2; font-weight: 600; }
+    .two { display: grid; grid-template-columns: 1.6fr 1fr; gap: 4vw; align-items: start; }
+    .two .tables { grid-template-columns: repeat(auto-fit, minmax(5em, 1fr)); font-size: .8em; }
+    .topics.dense { gap: 1vh; }
+    .topics.dense .topic { padding-bottom: .9vh; }
+    .topics.dense .topic .name { font-size: 1.1em; }
+    .topics.dense .topic .n { font-size: 1.1em; }
+    .solo .dot { width: 1.6em; height: 1.6em; }
+    .solo .dots { gap: .5em; }
+    .solo .table h2 { font-size: 1.1em; }
+    .foot { color: #CFE3F2; font-size: .75em; }
+    .error { background: var(--bad-bg); color: var(--bad); padding: 1em; border-radius: 8px; }
+  </style>
+</head>
+<body>
+  <div class="wall">
+    <header class="wall-head">
+      <h1 id="title">Live wall</h1>
+      <span class="status" id="status"></span>
+      <span class="total num" id="total"></span>
+    </header>
+    <main id="view" aria-live="polite"></main>
+    <footer class="foot" id="foot">Tables add cards from their phones. Facilitators group them; AI only drafts.</footer>
+  </div>
+  <!--CAPTURE_CLIENT-->
+  <script>
+    var SESSION_ID = "__SESSION_ID__";
+    var CAPTURE_KEY = "__CAPTURE_KEY__";
+    var $ = function (id) { return document.getElementById(id); };
+    var esc = Capture.esc;
+    var shown = {};
+
+    function draw(w) {
+      $('title').textContent = w.title;
+      $('status').dataset.open = String(w.open);
+      $('status').textContent = w.open ? 'Entry open' : 'Entry closed';
+      $('total').innerHTML = '<strong>' + w.total + '</strong>' + (w.total === 1 ? 'card' : 'cards');
+      var tablesHtml = '<div class="tables" aria-label="Cards per table">' + w.perTable.map(function (n, i) {
+        var dots = '';
+        for (var d = 0; d < n; d++) {
+          var key = i + ':' + d;
+          dots += '<span class="dot" style="' + (shown[key] ? 'animation:none' : '') + '"></span>';
+          shown[key] = true;
+        }
+        return '<section class="table"><h2><span>Table ' + (i + 1) + '</span><span class="num">' + n + '</span></h2><div class="dots" aria-hidden="true">' + dots + '</div></section>';
+      }).join('') + '</div>';
+      var levels = '<div class="levels" aria-label="Cards by level">' + w.levelOptions.map(function (o) {
+        return '<span><span class="code" data-route="' + o.route + '">' + esc(o.code) + '</span> ' + esc(o.label) + '<strong class="num">' + (w.levels[o.code] || 0) + '</strong></span>';
+      }).join('') + '</div>';
+      if (!w.topics.length) {
+        $('view').innerHTML = '<div class="solo" style="display:grid;gap:5vh">' + tablesHtml + levels + '</div>';
+        return;
+      }
+      var tableCount = w.perTable.length;
+      var topics = '<ol class="topics' + (w.topics.length > 8 ? ' dense' : '') + '" aria-label="Topics">' + w.topics.map(function (t, i) {
+        var pips = '';
+        for (var p = 0; p < tableCount; p++) pips += '<span class="pip' + (p < t.tableCount ? ' on' : '') + '"></span>';
+        return '<li class="topic ' + t.route + '"><span class="n num">' + (i + 1) + '</span><span class="name">' + esc(t.topic) + '</span>' +
+          '<span class="meta num">' + t.tableCount + (t.tableCount === 1 ? ' table' : ' tables') +
+          (t.route === 'parking' ? ' · ' + esc(w.routes.parking) : '') + '<span class="pips" aria-hidden="true">' + pips + '</span></span></li>';
+      }).join('') + '</ol>';
+      $('view').innerHTML = '<div class="two">' + topics + '<div style="display:grid;gap:4vh">' + tablesHtml + levels + '</div></div>';
+    }
+
+    Capture.poll(function () {
+      return Capture.run('captureGetWall', SESSION_ID, CAPTURE_KEY).then(draw).catch(function (err) {
+        $('view').innerHTML = '<p class="error">' + esc(err.message) + '</p>';
+      });
+    }, 5000);
+  </script>
+</body>
+</html>

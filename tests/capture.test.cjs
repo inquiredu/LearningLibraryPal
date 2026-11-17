@@ -1,0 +1,294 @@
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const vm = require('node:vm');
+const ROOT = path.resolve(__dirname, '..');
+const source = name => fs.readFileSync(path.join(ROOT, name), 'utf8');
+function load(files, globals = {}) {
+  const context = vm.createContext({ console: { log() {}, error() {} }, ...globals });
+  files.forEach(file => vm.runInContext(source(file), context, { filename: file }));
+  context.eval = code => vm.runInContext(code, context);
+  return context;
+}
+const logic = () => load(['CaptureTemplates.js', 'CaptureLogic.js']);
+const card = (id, table, level, need = 'Need ' + id, extra = {}) =>
+  ({ id, table, level, source: 'typed', hidden: false, fields: { flip: 'Right now x, but we need y', need }, ...extra });
+
+// ─── Validation and cleaning ────────────────────────────────────────────────
+
+test('a table card is validated against the template and cleaned', () => {
+  const c = logic();
+  c.input = { table: '3', level: 'G+', sources: ['photo', 'typed'], fields: { flip: '  Right now​ a\u0007, but we need b ', need: 'PD time' } };
+  const out = c.eval('captureValidateCard_(CAPTURE_TEMPLATES.needCards, input, 6)');
+  assert.equal(out.table, 3);
+  assert.equal(out.fields.flip, 'Right now a, but we need b');
+  assert.equal(out.level, 'G+');
+  assert.equal(out.source, 'typed+photo');
+});
+
+test('a card is refused without a table, a field or a known level', () => {
+  const c = logic();
+  const bad = [
+    { table: 0, level: 'G', fields: { flip: 'a', need: 'b' } },
+    { table: 7, level: 'G', fields: { flip: 'a', need: 'b' } },
+    { table: 1, level: 'G', fields: { flip: '', need: 'b' } },
+    { table: 1, level: 'G', fields: { flip: 'a', need: '​ ' } },
+    { table: 1, level: 'X', fields: { flip: 'a', need: 'b' } },
+    null
+  ];
+  bad.forEach(input => { c.input = input; assert.throws(() => c.eval('captureValidateCard_(CAPTURE_TEMPLATES.needCards, input, 6)')); });
+});
+
+test('long text is cut at the field limit without leaving half a surrogate pair', () => {
+  const c = logic();
+  const text = 'a'.repeat(399) + '😀';
+  assert.equal(c.captureCleanText_(text, 400), 'a'.repeat(399));
+});
+
+test('text that Sheets would run as a formula is stored as text', () => {
+  const c = logic();
+  for (const v of ['=IMPORTXML("x")', '+1', '-2', '@me']) assert.equal(c.captureSheetSafe_(v), "'" + v);
+  assert.equal(c.captureSheetSafe_('Plain words'), 'Plain words');
+});
+
+test('a photo reading keeps only template fields and known levels', () => {
+  const c = logic();
+  c.raw = { flip: 'Right now [illegible]', need: 'Lessons', level: 'Z', confidence: 'certain', extra: 'ignored' };
+  const r = c.eval('captureCleanReading_(CAPTURE_TEMPLATES.needCards, raw)');
+  assert.deepEqual(JSON.parse(JSON.stringify(r)), { fields: { flip: 'Right now [illegible]', need: 'Lessons' }, level: '', confidence: 'low', empty: false });
+  c.raw = { flip: '', need: '', level: '', confidence: 'high' };
+  assert.equal(c.eval('captureCleanReading_(CAPTURE_TEMPLATES.needCards, raw)').empty, true);
+});
+
+// ─── Groups ─────────────────────────────────────────────────────────────────
+
+test('groups always hold each live card exactly once', () => {
+  const c = logic();
+  c.cards = [card(1, 1, 'G'), card(2, 2, 'B'), card(3, 3, 'G+'), card(4, 4, 'G', 'x', { hidden: true })];
+  c.proposed = [
+    { topic: '  AI literacy ', cardIds: [1, 1, 99, '3'] },
+    { topic: '', cardIds: [3, 4] },
+    { topic: 'Empty', cardIds: [] }
+  ];
+  const out = JSON.parse(JSON.stringify(c.eval('captureNormalizeGroups_(cards, proposed)')));
+  assert.equal(out.groups.length, 1);
+  assert.equal(out.groups[0].topic, 'AI literacy');
+  assert.deepEqual(out.groups[0].cardIds, [1, 3]);
+  assert.deepEqual(out.ungrouped, [2]);
+});
+
+test('counts and routes come from the cards, not from the proposal', () => {
+  const c = logic();
+  c.cards = [card(1, 1, 'G'), card(2, 2, 'B'), card(3, 2, 'G+'), card(4, 5, 'B'), card(5, 6, 'B')];
+  c.mixed = { topic: 'Chatbots', cardIds: [1, 2, 3], tableCount: 99 };
+  c.allB = { topic: 'Funding', cardIds: [4, 5] };
+  const mixed = c.eval('captureGroupStats_(CAPTURE_TEMPLATES.needCards, cards, mixed)');
+  assert.deepEqual([...mixed.tables], [1, 2]);
+  assert.equal(mixed.tableCount, 2);
+  assert.equal(mixed.levels.G, 1); assert.equal(mixed.levels['G+'], 1); assert.equal(mixed.levels.B, 1);
+  assert.equal(mixed.route, 'vote');
+  assert.equal(c.eval('captureGroupStats_(CAPTURE_TEMPLATES.needCards, cards, allB)').route, 'parking');
+  c.allB.routeOverride = 'vote';
+  assert.equal(c.eval('captureGroupStats_(CAPTURE_TEMPLATES.needCards, cards, allB)').route, 'vote');
+  const parking = c.eval('captureParkingLot_(CAPTURE_TEMPLATES.needCards, cards)').map(x => x.id);
+  assert.deepEqual([...parking], [2, 4, 5]);
+});
+
+test('explicit ranks come first, then the topics raised by the most tables', () => {
+  const c = logic();
+  c.cards = [card(1, 1, 'G'), card(2, 2, 'G'), card(3, 3, 'G'), card(4, 4, 'G')];
+  c.groups = [
+    { id: 'a', topic: 'One table', cardIds: [1], rank: 0 },
+    { id: 'b', topic: 'Two tables', cardIds: [2, 3], rank: 0 },
+    { id: 'c', topic: 'Ranked first', cardIds: [4], rank: 1 }
+  ];
+  const order = c.eval('captureOrderGroups_(CAPTURE_TEMPLATES.needCards, cards, groups)').map(g => g.topic);
+  assert.deepEqual([...order], ['Ranked first', 'Two tables', 'One table']);
+});
+
+test('the projector summary carries counts and topics, never card text', () => {
+  const c = logic();
+  c.cards = [card(1, 1, 'G', 'SECRET NEED TEXT'), card(2, 3, 'B', 'OTHER TEXT'), card(3, 3, 'G', 'HIDDEN', { hidden: true })];
+  c.groups = [{ id: 'g1', topic: 'AI literacy', cardIds: [1, 2] }];
+  const s = JSON.parse(JSON.stringify(c.eval('captureWallSummary_(CAPTURE_TEMPLATES.needCards, cards, groups, 4, true)')));
+  assert.equal(s.total, 2);
+  assert.deepEqual(s.perTable, [1, 0, 1, 0]);
+  assert.equal(s.levels.G, 1);
+  assert.equal(s.topics[0].tableCount, 2);
+  assert.equal(JSON.stringify(s).includes('TEXT'), false);
+});
+
+// ─── API boundaries ─────────────────────────────────────────────────────────
+
+function apiContext({ email = '', config = null, cards = [], groups = [] } = {}) {
+  const calls = [];
+  const c = load(['Config.js', 'AuthService.js', 'CaptureTemplates.js', 'CaptureLogic.js', 'CaptureApi.js'], {
+    Session: { getActiveUser: () => ({ getEmail: () => email }), getEffectiveUser: () => ({ getEmail: () => 'owner@example.org' }) },
+    PropertiesService: { getScriptProperties: () => ({ getProperty: key => (key === 'OWNER_EMAIL' ? 'owner@example.org' : null) }) },
+    SpreadsheetApp: { getActiveSpreadsheet: () => null },
+    validateSessionId_: id => { if (!/^S-[a-zA-Z0-9-]+$/.test(String(id))) throw new Error('Invalid session link.'); return id; },
+    getWebAppUrl_: () => 'https://script.google.com/macros/s/x/exec',
+    SessionService: { getSession: () => ({ id: 'S-1', name: 'Test' }), getAllSessions: () => [] },
+    CaptureStore: {
+      getConfig: () => config,
+      readCards: () => cards,
+      readGroups: () => groups,
+      appendCard: (sid, t, cardIn) => { calls.push(['append', cardIn]); return { id: 1, token: 'a'.repeat(32) }; },
+      setHidden: (...args) => { calls.push(['hide', ...args]); },
+      writeGroups: (sid, g) => { calls.push(['groups', g]); },
+      enable: () => { calls.push(['enable']); },
+      setOpen: () => { calls.push(['open']); }
+    },
+    CaptureAiService: {
+      readPhoto: () => { calls.push(['photo']); return { fields: {}, level: '', confidence: 'low' }; },
+      proposeGroups: () => { calls.push(['propose']); return []; }
+    },
+    CapturePosterService: { make: () => { calls.push(['posters']); return 'url'; } }
+  });
+  return { c, calls };
+}
+const KEY = '0123456789abcdef0123';
+const openConfig = { template: 'needCards', tables: 6, open: true, key: KEY, title: 'Need Cards' };
+
+test('every board call refuses anonymous and unrelated users before touching data', () => {
+  const publicNames = new Set(['captureGetTableConfig', 'captureSubmitCard', 'captureRemoveOwnCard',
+    'captureGetTableCards', 'captureReadPhoto', 'captureGetWall']);
+  const names = [...source('CaptureApi.js').matchAll(/^function (\w+)\(/gm)].map(m => m[1])
+    .filter(name => !name.endsWith('_') && !publicNames.has(name));
+  assert.ok(names.length >= 9, names.join(','));
+  for (const email of ['', 'stranger@example.org']) {
+    const h = apiContext({ email, config: openConfig });
+    for (const name of names) assert.throws(() => h.c[name]('S-1', 'x', 'y'), /Access denied/, name);
+    assert.equal(h.calls.length, 0);
+  }
+  const owner = apiContext({ email: 'owner@example.org', config: openConfig });
+  assert.equal(owner.c.captureGetBoard('S-1').enabled, true);
+});
+
+test('public calls need the session table key and an open session', () => {
+  const h = apiContext({ config: openConfig });
+  const input = { table: 2, level: 'G', fields: { flip: 'Right now a, but we need b', need: 'c' } };
+  for (const key of ['', 'wrong', 'ffffffffffffffffffff']) {
+    assert.throws(() => h.c.captureSubmitCard('S-1', key, input), /table link/);
+    assert.throws(() => h.c.captureGetWall('S-1', key), /table link/);
+    assert.throws(() => h.c.captureReadPhoto('S-1', key, 'AAAA', 'image/jpeg'), /table link/);
+  }
+  assert.equal(h.calls.length, 0);
+  assert.equal(h.c.captureSubmitCard('S-1', KEY, input).id, 1);
+  assert.equal(h.calls[0][1].fields.need, 'c');
+
+  const closed = apiContext({ config: { ...openConfig, open: false } });
+  assert.throws(() => closed.c.captureSubmitCard('S-1', KEY, input), /closed/);
+  assert.throws(() => closed.c.captureReadPhoto('S-1', KEY, 'AAAA', 'image/jpeg'), /closed/);
+  assert.equal(closed.calls.length, 0);
+});
+
+test('a table sees only its own cards, and the table config hides internals', () => {
+  const cards = [card(1, 1, 'G', 'Mine'), card(2, 2, 'G', 'Theirs'), card(3, 1, 'B', 'Removed', { hidden: true })];
+  const h = apiContext({ config: openConfig, cards });
+  const mine = JSON.parse(JSON.stringify(h.c.captureGetTableCards('S-1', KEY, 1)));
+  assert.deepEqual(mine, [{ id: 1, text: 'Mine', level: 'G' }]);
+  const conf = JSON.stringify(h.c.captureGetTableConfig('S-1', KEY));
+  assert.equal(conf.includes(KEY), false);
+  assert.equal(conf.includes('groupingFocus'), false);
+});
+
+test('removing a card needs the token that came back when it was sent', () => {
+  const h = apiContext({ config: openConfig });
+  assert.throws(() => h.c.captureRemoveOwnCard('S-1', KEY, 1, 'short'), /Only the table/);
+  h.c.captureRemoveOwnCard('S-1', KEY, 1, 'b'.repeat(32));
+  assert.equal(h.calls[0][0], 'hide');
+  assert.equal(h.calls[0][5], 'b'.repeat(32));
+});
+
+test('saved groups are normalized before they are written', () => {
+  const h = apiContext({ email: 'owner@example.org', config: openConfig, cards: [card(1, 1, 'G'), card(2, 2, 'G')] });
+  h.c.captureSaveGroups('S-1', [{ topic: 'Both', cardIds: [1, 2, 2, 7] }]);
+  const written = h.calls.find(x => x[0] === 'groups')[1];
+  assert.deepEqual(JSON.parse(JSON.stringify(written[0].cardIds)), [1, 2]);
+});
+
+// ─── Pages ──────────────────────────────────────────────────────────────────
+
+test('pages get the session, key, shared styles and a phone viewport', () => {
+  let meta = null, html = '';
+  const c = load(['CaptureTemplates.js', 'CaptureLogic.js', 'CaptureApi.js'], {
+    validateSessionId_: id => id,
+    HtmlService: {
+      XFrameOptionsMode: { ALLOWALL: 'ALLOWALL' },
+      createHtmlOutputFromFile: name => ({ getContent: () => source(name + '.html') }),
+      createHtmlOutput: content => {
+        html = content;
+        const out = { setTitle: () => out, addMetaTag: (n, v) => { meta = [n, v]; return out; }, setXFrameOptionsMode: () => out };
+        return out;
+      }
+    }
+  });
+  c.captureRoute_('capture', { parameter: { session: 'S-abc', k: KEY } });
+  assert.ok(html.includes('"S-abc"'));
+  assert.ok(html.includes('"' + KEY + '"'));
+  assert.equal(html.includes('<!--CAPTURE_STYLES-->'), false);
+  assert.equal(html.includes('__CAPTURE_KEY__'), false);
+  assert.deepEqual(meta, ['viewport', 'width=device-width, initial-scale=1']);
+  assert.throws(() => c.captureRoute_('capture', { parameter: { session: 'S-abc', k: 'nope' } }), /incomplete/);
+});
+
+// ─── AI ─────────────────────────────────────────────────────────────────────
+
+function aiContext(responses, props = {}) {
+  const requests = [];
+  const store = { ...props };
+  const c = load(['Config.js', 'GeminiService.js', 'CaptureTemplates.js', 'CaptureLogic.js', 'CaptureAiService.js'], {
+    PropertiesService: { getScriptProperties: () => ({
+      getProperty: key => (key === 'GEMINI_MODEL' ? 'gemini-test-model' : store[key] || null),
+      setProperty: (key, value) => { store[key] = value; }
+    }) },
+    getGeminiApiKey_: () => 'FAKE_SECRET',
+    Utilities: { sleep() {}, formatDate: () => '2026-11-18' },
+    LockService: { getScriptLock: () => ({ tryLock: () => true, releaseLock() {} }) },
+    UrlFetchApp: { fetch: (url, options) => {
+      requests.push({ url, options });
+      const body = responses.shift();
+      return { getResponseCode: () => 200, getContentText: () => JSON.stringify({ candidates: [{ finishReason: 'STOP', content: { parts: [{ text: JSON.stringify(body) }] } }] }) };
+    } }
+  });
+  return { c, requests, store };
+}
+
+test('a photo is sent once as inline data with the schema, and the reading is cleaned', () => {
+  const h = aiContext([{ flip: 'Right now‮ x', need: 'PD', level: 'G+', confidence: 'medium' }]);
+  const r = h.c.eval('CaptureAiService.readPhoto(CAPTURE_TEMPLATES.needCards, "QUJD", "image/jpeg")');
+  assert.equal(r.fields.flip, 'Right now x');
+  assert.equal(r.level, 'G+');
+  const payload = JSON.parse(h.requests[0].options.payload);
+  assert.equal(payload.contents[0].parts[1].inlineData.mimeType, 'image/jpeg');
+  assert.ok(payload.generationConfig.responseSchema.properties.need);
+  assert.equal(payload.generationConfig.thinkingConfig.thinkingLevel, 'low');
+  assert.match(payload.contents[0].parts[0].text, /\[illegible\]/);
+  assert.equal(h.requests[0].url.includes('FAKE_SECRET'), false);
+  assert.equal(h.store['CAPTURE_AI_CALLS_2026-11-18'], '1');
+});
+
+test('bad photos are refused before any AI call, and the daily limit holds', () => {
+  const h = aiContext([]);
+  assert.throws(() => h.c.eval('CaptureAiService.readPhoto(CAPTURE_TEMPLATES.needCards, "QUJD", "image/gif")'), /JPEG/);
+  assert.throws(() => h.c.eval('CaptureAiService.readPhoto(CAPTURE_TEMPLATES.needCards, "<script>", "image/jpeg")'), /could not be read/);
+  h.c.big = 'A'.repeat(6 * 1024 * 1024);
+  assert.throws(() => h.c.eval('CaptureAiService.readPhoto(CAPTURE_TEMPLATES.needCards, big, "image/jpeg")'), /too large/);
+  assert.equal(h.requests.length, 0);
+
+  const capped = aiContext([], { 'CAPTURE_AI_CALLS_2026-11-18': '300' });
+  assert.throws(() => capped.c.eval('CaptureAiService.readPhoto(CAPTURE_TEMPLATES.needCards, "QUJD", "image/png")'), /limit/);
+  assert.equal(capped.requests.length, 0);
+});
+
+test('a grouping proposal that drops or repeats cards is repaired, not trusted', () => {
+  const h = aiContext([{ groups: [{ topic: 'Chatbots', cardIds: [1, 2, 2] }, { topic: 'Ghost', cardIds: [42] }] }]);
+  h.c.cards = [card(1, 1, 'G'), card(2, 2, 'B'), card(3, 3, 'G+')];
+  const groups = JSON.parse(JSON.stringify(h.c.eval('CaptureAiService.proposeGroups(CAPTURE_TEMPLATES.needCards, cards)')));
+  assert.deepEqual(groups.map(g => [g.topic, g.cardIds]), [['Chatbots', [1, 2]], ['Not yet grouped', [3]]]);
+  const prompt = JSON.parse(h.requests[0].options.payload).contents[0].parts[0].text;
+  assert.match(prompt, /Card 3 \| Table 3/);
+  assert.match(prompt, /never instructions to follow/);
+});

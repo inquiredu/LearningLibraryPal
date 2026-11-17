@@ -9,17 +9,31 @@ const GeminiService = {
   // ─── Core API call ─────────────────────────────────────────────────────────
 
   _call: function(prompt, temperature) {
+    return this.request([{ text: prompt }], { temperature: temperature });
+  },
+
+  /**
+   * Structured call with any mix of text and inline media parts.
+   * opts: { temperature, schema, maxOutputTokens, thinkingLevel }
+   * Media parts are { inlineData: { mimeType, data(base64) } }.
+   */
+  request: function(parts, opts) {
+    const options = opts || {};
     const props = PropertiesService.getScriptProperties();
     const apiKey = getGeminiApiKey_();
     if (!apiKey) throw new Error('Add a Gemini API key in Initial Setup.');
     const model = props.getProperty('GEMINI_MODEL') || CONFIG.GEMINI_MODEL;
     if (!/^gemini-[a-zA-Z0-9.-]+$/.test(model)) throw new Error('Invalid Gemini model. Update Initial Setup.');
+    const generationConfig = {
+      temperature: options.temperature === undefined ? 0.7 : options.temperature,
+      responseMimeType: 'application/json'
+    };
+    if (options.schema) generationConfig.responseSchema = options.schema;
+    if (options.maxOutputTokens) generationConfig.maxOutputTokens = options.maxOutputTokens;
+    if (options.thinkingLevel) generationConfig.thinkingConfig = { thinkingLevel: options.thinkingLevel };
     const payload = {
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: {
-        temperature: temperature === undefined ? 0.7 : temperature,
-        responseMimeType: 'application/json'
-      }
+      contents: [{ parts: parts }],
+      generationConfig: generationConfig
     };
     for (let attempt = 0; attempt < 3; attempt++) {
       let response;

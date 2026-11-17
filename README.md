@@ -78,5 +78,6 @@ After an intentional upload, update the Apps Script web-app deployment to a **Ne
 - [Architecture](ARCHITECTURE.md)
 - [Pilot verification](docs/PILOT.md)
 - [Revival scope and follow-up work](docs/REVIVAL.md)
+- [Live capture](docs/LIVE_CAPTURE.md) — proof of concept: tables send cards from phones, facilitators group them with an AI draft, posters print from Slides
 - [Contributing](CONTRIBUTING.md)
 - [Historical handoff](HANDOFF.md) — historical feature notes, not current setup instructions

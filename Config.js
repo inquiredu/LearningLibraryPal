@@ -41,8 +41,10 @@ const CONFIG = {
   /**
    * Public routes that skip domain authentication entirely.
    * The 'library' page is always public so shared session links work for anyone.
+   * 'capture' (table entry) and 'wall' (projector) are public pages too, but
+   * every call they make also requires the session's live-capture table key.
    */
-  PUBLIC_PAGES: ['library'],
+  PUBLIC_PAGES: ['library', 'capture', 'wall'],
 
   // ── Display timezone ──────────────────────────────────────────────────────
 
@@ -65,5 +67,13 @@ const CONFIG = {
 
   // Override in Initial Setup without editing source.
   GEMINI_MODEL: 'gemini-3.8-flash',
+
+  // ── Live capture ──────────────────────────────────────────────────────────
+
+  /**
+   * Most AI calls live capture may make per day across all sessions (photo
+   * readings plus grouping suggestions). 0 turns live-capture AI off.
+   */
+  CAPTURE_AI_DAILY_LIMIT: 300,
 
 };

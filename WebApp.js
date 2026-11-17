@@ -42,6 +42,19 @@ function doGet(e) {
     }
   }
 
+  if (page === 'capture' || page === 'wall' || page === 'board') {
+    try {
+      return captureRoute_(page, e);
+    } catch (err) {
+      const message = String(err && err.message || 'This link is not available.').replace(/[<>&"]/g, '');
+      return HtmlService.createHtmlOutput(
+        '<main style="font:18px/1.5 system-ui,sans-serif;max-width:32rem;margin:15vh auto;padding:0 16px">' +
+        '<h1 style="font-size:1.4rem">This link isn’t working</h1><p>' + message + '</p></main>')
+        .setTitle('Link not available')
+        .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+    }
+  }
+
   if (page === 'wizard') {
     return HtmlService.createHtmlOutputFromFile('Wizard')
       .setTitle('New Session — Learning Library')

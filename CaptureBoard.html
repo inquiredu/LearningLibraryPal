@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <!--CAPTURE_STYLES-->
+  <style>
+    body { font-size: 16px; }
+    main { padding: 16px; max-width: 1600px; margin: 0 auto; }
+    .bar .actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .entry[data-open="true"] { background: var(--good-bg); color: var(--good); border-color: var(--good); }
+    .entry[data-open="false"] { background: #fff; color: var(--bad); border-color: var(--bad); }
+    .summary { display: flex; flex-wrap: wrap; gap: 8px 20px; align-items: baseline; padding: 12px 16px; margin-bottom: 16px; }
+    .summary .big { font-size: 1.6rem; font-weight: 750; color: var(--navy); }
+    .tables-strip { display: flex; flex-wrap: wrap; gap: 6px; }
+    .tables-strip span { border: 1px solid var(--line); border-radius: 6px; padding: 2px 8px; font-size: .875rem; background: var(--ground); }
+    .tables-strip span.zero { color: var(--bad); border-color: #E7B6B1; background: var(--bad-bg); }
+    .linkrow { display: flex; gap: 8px; align-items: center; flex: 1 1 360px; }
+    .linkrow input { font-size: .85rem; padding: 6px 8px; }
+    .cols { display: grid; grid-template-columns: minmax(300px, 380px) 1fr; gap: 16px; align-items: start; }
+    @media (max-width: 900px) { .cols { grid-template-columns: 1fr; } }
+    .col-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 12px 14px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+    .feed { list-style: none; margin: 0; padding: 8px; display: grid; gap: 8px; max-height: calc(100vh - 230px); overflow: auto; }
+    .feed li { border: 1px solid var(--line); border-radius: 8px; padding: 10px; background: #fff; }
+    .feed li.is-hidden { opacity: .55; background: var(--ground); }
+    .feed .meta { display: flex; gap: 8px; align-items: center; font-size: .85rem; color: var(--muted); }
+    .feed .meta .spacer { flex: 1; }
+    .feed .need { margin-top: 6px; font-weight: 600; overflow-wrap: anywhere; }
+    .feed .flip { margin-top: 4px; color: var(--muted); font-size: .9rem; overflow-wrap: anywhere; }
+    .groups-tools { display: flex; gap: 8px; flex-wrap: wrap; }
+    .groups { padding: 12px; display: grid; gap: 12px; }
+    .group { border: 1px solid var(--line-strong); border-radius: 10px; background: #fff; }
+    .group.drop { box-shadow: 0 0 0 3px var(--cyan); }
+    .group.tray { border-style: dashed; background: var(--ground); }
+    .group-head { display: grid; grid-template-columns: auto auto 1fr auto; gap: 8px; align-items: center; padding: 10px; border-bottom: 1px solid var(--line); }
+    .rank { font-weight: 800; color: var(--navy); min-width: 1.6em; text-align: center; font-size: 1.15rem; }
+    .order { display: flex; flex-direction: column; gap: 2px; }
+    .order .btn { min-height: 26px; padding: 0 8px; font-size: .8rem; }
+    .topic { font-weight: 700; font-size: 1.05rem; }
+    .route { width: auto; padding: 6px 8px; font-size: .875rem; }
+    .stats { padding: 6px 10px 0; color: var(--muted); font-size: .875rem; }
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 10px 10px; min-height: 48px; }
+    .chip { display: inline-flex; gap: 6px; align-items: baseline; max-width: 100%; text-align: left; border: 1px solid var(--line);
+      background: var(--ground); border-radius: 8px; padding: 6px 8px; font: .875rem/1.35 var(--font); color: var(--ink); cursor: grab; }
+    .chip[aria-pressed="true"] { border-color: var(--navy); box-shadow: inset 0 0 0 2px var(--navy); background: #fff; }
+    .chip .t { color: var(--muted); white-space: nowrap; }
+    .chip .x { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 34ch; }
+    .group-foot { display: flex; gap: 8px; justify-content: space-between; padding: 0 10px 10px; flex-wrap: wrap; }
+    .note { padding: 0 12px 12px; }
+    .empty { padding: 24px; text-align: center; color: var(--muted); }
+    .setup { max-width: 520px; margin: 24px auto; padding: 20px; }
+    .setup > * + * { margin-top: 14px; }
+    .sessions { list-style: none; padding: 0; margin: 12px 0 0; display: grid; gap: 8px; }
+    .sessions a { display: block; padding: 12px 14px; text-decoration: none; color: var(--ink); }
+    .posters { padding: 0 12px 12px; }
+  </style>
+</head>
+<body>
+  <header class="bar">
+    <div style="flex:1;min-width:0">
+      <div class="tag">Live board</div>
+      <h1 id="title">Loading…</h1>
+    </div>
+    <div class="actions" id="barActions" hidden>
+      <button type="button" class="btn btn-small entry" id="entryBtn"></button>
+      <a class="btn btn-small btn-on-dark" id="wallLink" target="_blank" rel="noopener">Open the wall</a>
+    </div>
+  </header>
+  <main id="main">
+    <div id="pageError" class="alert alert-bad" role="alert"></div>
+    <div id="view"></div>
+  </main>
+  <div id="toast" class="toast" role="status" hidden></div>
+  <!--CAPTURE_CLIENT-->
+  <script>
+    var SESSION_ID = "__SESSION_ID__";
+    var $ = function (id) { return document.getElementById(id); };
+    var esc = Capture.esc;
+    var S = { board: null, groups: [], selected: null, filter: 'all', dirty: 0, saving: false, saveTimer: null, base: '' };
+
+    // ── Start ────────────────────────────────────────────────────────────────
+    function start() {
+      if (!SESSION_ID) return pickSession();
+      Capture.run('captureGetBoard', SESSION_ID).then(adopt).then(function () {
+        Capture.poll(refresh, 6000);
+      }).catch(showError);
+    }
+
+    function showError(err) { $('pageError').textContent = err.message || String(err); }
+
+    function pickSession() {
+      $('title').textContent = 'Choose a session';
+      Promise.all([Capture.run('captureListSessions'), Capture.run('webGetAppBaseUrl')]).then(function (res) {
+        var sessions = res[0], base = res[1] || '';
+        $('view').innerHTML = '<section class="panel setup"><h2>Which session is this for?</h2>' +
+          '<p class="muted small">Live capture lives inside a Learning Library session. Create one from the dashboard first if you need to.</p>' +
+          (sessions.length ? '<ul class="sessions">' + sessions.map(function (s) {
+            return '<li class="panel"><a href="' + esc(base + '?page=board&session=' + encodeURIComponent(s.id)) + '">' +
+              '<strong>' + esc(s.name) + '</strong><br><span class="muted small">' + esc(s.date || '') + '</span></a></li>';
+          }).join('') + '</ul>' : '<p class="empty">No sessions yet.</p>') + '</section>';
+      }).catch(showError);
+    }
+
+    function adopt(board) {
+      S.board = board;
+      $('title').textContent = board.enabled ? board.config.title + ' · ' + board.sessionName : board.sessionName;
+      if (!board.enabled) return renderSetup();
+      if (!S.dirty && !S.saving) {
+        // Empty groups a facilitator just made live only here until a card lands in them.
+        var pending = S.groups.filter(function (g) { return g.isNew && !g.cardIds.length; });
+        S.groups = board.groups.map(function (g) {
+          return { id: g.id, topic: g.topic, cardIds: g.cardIds.slice(), rank: g.rank, routeOverride: g.routeOverride };
+        }).concat(pending);
+      }
+      renderAll();
+    }
+
+    function refresh() {
+      return Capture.run('captureGetBoard', SESSION_ID).then(function (board) {
+        var focused = document.activeElement && document.activeElement.dataset && document.activeElement.dataset.topic;
+        S.board = board;
+        if (!S.dirty && !S.saving && !focused) adopt(board);
+        else { renderSummary(); renderFeed(); if (!focused) renderGroups(); }
+      });
+    }
+
+    // ── Setup ────────────────────────────────────────────────────────────────
+    function renderSetup() {
+      $('barActions').hidden = true;
+      Capture.run('captureListTemplates').then(function (templates) {
+        $('view').innerHTML = '<form class="panel setup" id="setupForm"><h2>Turn on live capture</h2>' +
+          '<p class="muted small">Tables add cards from their phones. You group them here and make gallery-walk posters.</p>' +
+          '<div><label for="tpl">What are tables writing?</label><select id="tpl">' +
+          templates.map(function (t) { return '<option value="' + esc(t.id) + '">' + esc(t.name) + '</option>'; }).join('') + '</select></div>' +
+          '<div><label for="ttl">Title tables will see</label><input type="text" id="ttl" maxlength="80" value="' + esc(templates[0] ? templates[0].name : '') + '"></div>' +
+          '<div><label for="tbl">Number of tables</label><input type="number" id="tbl" min="1" max="40" value="6" style="max-width:8rem"></div>' +
+          '<button class="btn btn-primary" type="submit">Turn on</button></form>';
+        $('setupForm').onsubmit = function (e) {
+          e.preventDefault();
+          Capture.run('captureEnable', SESSION_ID, $('tpl').value, Number($('tbl').value), $('ttl').value)
+            .then(function (board) { adopt(board); Capture.poll(refresh, 6000); })
+            .catch(showError);
+        };
+      }).catch(showError);
+    }
+
+    // ── Layout ───────────────────────────────────────────────────────────────
+    function renderAll() {
+      var b = S.board;
+      $('barActions').hidden = false;
+      $('entryBtn').dataset.open = String(b.config.open);
+      $('entryBtn').textContent = b.config.open ? 'Entry open · close it' : 'Entry closed · open it';
+      if (b.links) { $('wallLink').href = b.links.wall; $('wallLink').hidden = false; } else { $('wallLink').hidden = true; }
+      $('view').innerHTML =
+        '<section class="panel summary" id="summary" aria-label="Summary"></section>' +
+        '<div class="cols">' +
+        '<section class="panel" aria-labelledby="feedTitle"><div class="col-head"><h2 id="feedTitle">Cards, word for word</h2>' +
+        '<label class="sr-only" for="filter">Show</label><select id="filter" style="width:auto"></select></div>' +
+        '<ol class="feed" id="feed" aria-live="polite"></ol></section>' +
+        '<section class="panel" aria-labelledby="groupsTitle"><div class="col-head"><h2 id="groupsTitle">Groups</h2>' +
+        '<div class="groups-tools"><button type="button" class="btn btn-primary btn-small" id="suggestBtn">Suggest groups</button>' +
+        '<button type="button" class="btn btn-small" id="newGroupBtn">New group</button>' +
+        '<button type="button" class="btn btn-small" id="postersBtn">Make posters</button></div></div>' +
+        '<p class="muted small" style="padding:10px 12px 0">AI drafts the groups. You rename them, move cards and set the order. Counts always come from the cards.</p>' +
+        '<div class="posters" id="posters" aria-live="polite"></div>' +
+        '<div class="groups" id="groups"></div>' +
+        '<div class="note" id="parking"></div></section></div>';
+      $('filter').onchange = function () { S.filter = this.value; renderFeed(); };
+      $('suggestBtn').onclick = suggest;
+      $('newGroupBtn').onclick = newGroup;
+      $('postersBtn').onclick = posters;
+      renderSummary(); renderFeed(); renderGroups();
+    }
+
+    function liveCards() { return S.board.cards.filter(function (c) { return !c.hidden; }); }
+    function cardById(id) { return S.board.cards.find(function (c) { return c.id === id; }); }
+    function primaryKey() { var t = S.board.template; var p = t.fields.find(function (f) { return f.primary; }) || t.fields[0]; return p.key; }
+    function routeOf(code) { var o = S.board.template.level.options.find(function (x) { return x.code === code; }); return o ? o.route : 'vote'; }
+
+    function renderSummary() {
+      var b = S.board, live = liveCards();
+      var per = [];
+      for (var t = 1; t <= b.config.tables; t++) per.push(live.filter(function (c) { return c.table === t; }).length);
+      var levels = b.template.level.options.map(function (o) {
+        return '<span><span class="level" data-route="' + o.route + '">' + esc(o.code) + '</span> <span class="num">' +
+          live.filter(function (c) { return c.level === o.code; }).length + '</span></span>';
+      }).join(' ');
+      var link = b.links ? '<div class="linkrow"><label class="small" for="tableLink" style="margin:0;white-space:nowrap">Table link</label>' +
+        '<input id="tableLink" type="text" readonly value="' + esc(b.links.table) + '">' +
+        '<button type="button" class="btn btn-small" id="copyLink">Copy</button></div>'
+        : '<p class="small muted">Deploy the web app to get the table link.</p>';
+      $('summary').innerHTML = '<span><span class="big num">' + live.length + '</span> cards</span>' +
+        '<div class="tables-strip" aria-label="Cards per table">' + per.map(function (n, i) {
+          return '<span class="num' + (n ? '' : ' zero') + '">T' + (i + 1) + ' · ' + n + '</span>';
+        }).join('') + '</div><div style="display:flex;gap:10px">' + levels + '</div>' + link;
+      if ($('copyLink')) $('copyLink').onclick = function () {
+        var input = $('tableLink');
+        input.select();
+        var done = function () { Capture.toast('Table link copied.'); };
+        if (navigator.clipboard) navigator.clipboard.writeText(input.value).then(done, function () { document.execCommand('copy'); done(); });
+        else { document.execCommand('copy'); done(); }
+      };
+      var f = $('filter');
+      if (f && f.options.length !== b.config.tables + 2) {
+        var opts = '<option value="all">All tables</option><option value="hidden">Hidden cards</option>';
+        for (var i = 1; i <= b.config.tables; i++) opts += '<option value="' + i + '">Table ' + i + '</option>';
+        f.innerHTML = opts;
+        f.value = S.filter;
+      }
+    }
+
+    function renderFeed() {
+      var key = primaryKey(), others = S.board.template.fields.filter(function (f) { return f.key !== key; });
+      var list = S.board.cards.slice().reverse().filter(function (c) {
+        if (S.filter === 'all') return !c.hidden;
+        if (S.filter === 'hidden') return c.hidden;
+        return !c.hidden && c.table === Number(S.filter);
+      });
+      $('feed').innerHTML = list.length ? list.map(function (c) {
+        return '<li class="' + (c.hidden ? 'is-hidden' : '') + '"><div class="meta"><strong class="num">#' + c.id + '</strong>' +
+          '<span>Table ' + c.table + '</span><span class="level" data-route="' + routeOf(c.level) + '">' + esc(c.level) + '</span>' +
+          '<span>' + esc(c.source.replace('+', ' + ')) + '</span><span class="spacer"></span>' +
+          '<button type="button" class="btn btn-quiet btn-small" data-hide="' + c.id + '" data-hidden="' + c.hidden + '">' + (c.hidden ? 'Show' : 'Hide') + '</button></div>' +
+          '<p class="need">' + esc(c.fields[key]) + '</p>' +
+          others.map(function (f) { return '<p class="flip">' + esc(c.fields[f.key]) + '</p>'; }).join('') + '</li>';
+      }).join('') : '<li class="empty">' + (S.filter === 'hidden' ? 'No hidden cards.' : 'Cards appear here as tables send them.') + '</li>';
+    }
+
+    // ── Groups ───────────────────────────────────────────────────────────────
+    function grouped() { var s = {}; S.groups.forEach(function (g) { g.cardIds.forEach(function (id) { s[id] = true; }); }); return s; }
+    function ungrouped() { var s = grouped(); return liveCards().filter(function (c) { return !s[c.id]; }).map(function (c) { return c.id; }); }
+
+    function stats(g) {
+      var tables = {}, levels = {}, anyVote = false;
+      S.board.template.level.options.forEach(function (o) { levels[o.code] = 0; });
+      g.cardIds.forEach(function (id) {
+        var c = cardById(id);
+        if (!c || c.hidden) return;
+        tables[c.table] = true;
+        if (levels[c.level] !== undefined) levels[c.level]++;
+        if (routeOf(c.level) === 'vote') anyVote = true;
+      });
+      var n = Object.keys(tables).length;
+      return { tableCount: n, levels: levels, route: g.routeOverride || (anyVote ? 'vote' : 'parking'), auto: anyVote ? 'vote' : 'parking' };
+    }
+
+    function chip(id) {
+      var c = cardById(id);
+      if (!c || c.hidden) return '';
+      var text = c.fields[primaryKey()];
+      return '<button type="button" class="chip" draggable="true" data-card="' + id + '" aria-pressed="' + (S.selected === id) + '" title="' + esc(text) + '">' +
+        '<span class="t num">#' + id + ' T' + c.table + ' ' + esc(c.level) + '</span><span class="x">' + esc(text) + '</span></button>';
+    }
+
+    function renderGroups() {
+      var routes = S.board.template.routes, rest = ungrouped();
+      var moveHere = S.selected != null ? function (target) {
+        return '<button type="button" class="btn btn-small" data-move="' + target + '">Move #' + S.selected + ' here</button>';
+      } : function () { return ''; };
+      var html = '';
+      if (rest.length) {
+        html += '<article class="group tray" data-drop="tray"><div class="group-head" style="grid-template-columns:1fr auto">' +
+          '<h3 class="topic">Not in a group yet <span class="num muted">(' + rest.length + ')</span></h3>' + moveHere('tray') + '</div>' +
+          '<div class="chips">' + rest.map(chip).join('') + '</div></article>';
+      }
+      if (!S.groups.length) {
+        html += '<p class="empty">No groups yet. Use <strong>Suggest groups</strong> for an AI draft, or make them by hand with <strong>New group</strong>.</p>';
+      }
+      html += S.groups.map(function (g, i) {
+        var s = stats(g);
+        var lv = S.board.template.level.options.map(function (o) { return esc(o.code) + ' ' + s.levels[o.code]; }).join(' · ');
+        return '<article class="group" data-drop="' + esc(g.id) + '" aria-label="Group ' + (i + 1) + ': ' + esc(g.topic) + '">' +
+          '<div class="group-head"><span class="rank num">' + (i + 1) + '</span>' +
+          '<span class="order"><button type="button" class="btn" data-up="' + i + '" aria-label="Move group up"' + (i ? '' : ' disabled') + '>▲</button>' +
+          '<button type="button" class="btn" data-down="' + i + '" aria-label="Move group down"' + (i < S.groups.length - 1 ? '' : ' disabled') + '>▼</button></span>' +
+          '<input type="text" class="topic" data-topic="' + esc(g.id) + '" value="' + esc(g.topic) + '" maxlength="80" aria-label="Topic name">' +
+          '<select class="route" data-route-for="' + esc(g.id) + '" aria-label="Where this group goes">' +
+          '<option value=""' + (g.routeOverride ? '' : ' selected') + '>' + esc(routes[s.auto]) + ' (automatic)</option>' +
+          '<option value="vote"' + (g.routeOverride === 'vote' ? ' selected' : '') + '>' + esc(routes.vote) + '</option>' +
+          '<option value="parking"' + (g.routeOverride === 'parking' ? ' selected' : '') + '>' + esc(routes.parking) + '</option></select></div>' +
+          '<p class="stats num">' + s.tableCount + (s.tableCount === 1 ? ' table' : ' tables') + ' · ' + lv + ' · ' + esc(routes[s.route]) + '</p>' +
+          '<div class="chips">' + g.cardIds.map(chip).join('') + '</div>' +
+          '<div class="group-foot">' + moveHere(esc(g.id)) + '<span></span><button type="button" class="btn btn-quiet btn-small" data-delete="' + esc(g.id) + '">Remove group</button></div></article>';
+      }).join('');
+      $('groups').innerHTML = html;
+      var parking = S.board.cards.filter(function (c) { return !c.hidden && routeOf(c.level) === 'parking'; });
+      $('parking').innerHTML = parking.length ? '<h3 style="font-size:1rem;margin:4px 0 6px">' + esc(routes.parking) + ' <span class="muted num">(' + parking.length + ')</span></h3>' +
+        '<p class="small muted">Every card marked ' + S.board.template.level.options.filter(function (o) { return o.route === 'parking'; }).map(function (o) { return esc(o.code); }).join(', ') +
+        ' goes here on the posters, word for word, whatever group it is in.</p>' : '';
+    }
+
+    function changed() {
+      S.dirty++;
+      clearTimeout(S.saveTimer);
+      S.saveTimer = setTimeout(save, 700);
+    }
+
+    function save() {
+      if (S.saving) { S.saveTimer = setTimeout(save, 400); return Promise.resolve(); }
+      var version = S.dirty;
+      S.saving = true;
+      var payload = S.groups.map(function (g, i) {
+        return { id: g.id, topic: g.topic, cardIds: g.cardIds, rank: i + 1, routeOverride: g.routeOverride || '' };
+      });
+      return Capture.run('captureSaveGroups', SESSION_ID, payload).then(function (board) {
+        S.board = board;
+        S.saving = false;
+        if (S.dirty === version) { S.dirty = 0; }
+        renderSummary();
+      }).catch(function (err) {
+        S.saving = false;
+        Capture.toast('Not saved: ' + err.message);
+      });
+    }
+
+    function move(cardId, target) {
+      S.groups.forEach(function (g) { g.cardIds = g.cardIds.filter(function (id) { return id !== cardId; }); });
+      if (target !== 'tray') {
+        var g = S.groups.find(function (x) { return x.id === target; });
+        if (g) g.cardIds.push(cardId);
+      }
+      S.groups.forEach(function (g) { if (g.cardIds.length) delete g.isNew; });
+      S.groups = S.groups.filter(function (g) { return g.cardIds.length || g.isNew; });
+      S.selected = null;
+      renderGroups(); changed();
+    }
+
+    function newGroup() {
+      var id = 'n' + Date.now().toString(36);
+      S.groups.push({ id: id, topic: 'New group', cardIds: [], rank: 0, routeOverride: '', isNew: true });
+      if (S.selected != null) move(S.selected, id); else renderGroups();
+      var input = document.querySelector('[data-topic="' + id + '"]');
+      if (input) { input.focus(); input.select(); }
+    }
+
+    function suggest() {
+      if (S.groups.length && !confirm('Replace the current groups with a new AI draft?')) return;
+      var btn = $('suggestBtn');
+      btn.disabled = true; btn.innerHTML = '<span class="spinner" aria-hidden="true"></span> Drafting…';
+      Capture.run('captureSuggestGroups', SESSION_ID).then(function (board) {
+        S.dirty = 0; adopt(board); Capture.toast('AI draft ready. Rename, move and reorder as you like.');
+      }).catch(function (err) { Capture.toast(err.message); })
+        .then(function () { var b = $('suggestBtn'); if (b) { b.disabled = false; b.textContent = 'Suggest groups'; } });
+    }
+
+    function posters() {
+      var btn = $('postersBtn');
+      btn.disabled = true; btn.textContent = 'Making posters…';
+      clearTimeout(S.saveTimer);
+      (S.dirty ? save() : Promise.resolve()).then(function () {
+        return Capture.run('captureMakePosters', SESSION_ID);
+      }).then(function (res) {
+        $('posters').innerHTML = '<div class="alert alert-good">Posters are ready. <a href="' + esc(res.url) + '" target="_blank" rel="noopener">Open the slides</a> to print.</div>';
+      }).catch(function (err) {
+        $('posters').innerHTML = '<div class="alert alert-bad">' + esc(err.message) + '</div>';
+      }).then(function () { btn.disabled = false; btn.textContent = 'Make posters'; });
+    }
+
+    // ── Events ───────────────────────────────────────────────────────────────
+    document.addEventListener('click', function (e) {
+      var t = e.target.closest('button');
+      if (!t || !S.board || !S.board.enabled) return;
+      if (t.id === 'entryBtn') {
+        t.disabled = true;
+        return Capture.run('captureSetOpen', SESSION_ID, !S.board.config.open).then(adopt).catch(showError).then(function () { t.disabled = false; });
+      }
+      if (t.dataset.card) {
+        var id = Number(t.dataset.card);
+        S.selected = S.selected === id ? null : id;
+        renderGroups();
+        var again = document.querySelector('[data-card="' + id + '"]');
+        if (again) again.focus();
+        return;
+      }
+      if (t.dataset.move) return move(S.selected, t.dataset.move);
+      if (t.dataset.up || t.dataset.down) {
+        var i = Number(t.dataset.up || t.dataset.down), j = t.dataset.up ? i - 1 : i + 1;
+        var tmp = S.groups[i]; S.groups[i] = S.groups[j]; S.groups[j] = tmp;
+        renderGroups(); changed();
+        var btn = document.querySelector('[data-' + (t.dataset.up ? 'up' : 'down') + '="' + j + '"]');
+        if (btn && !btn.disabled) btn.focus();
+        return;
+      }
+      if (t.dataset.delete) {
+        S.groups = S.groups.filter(function (g) { return g.id !== t.dataset.delete; });
+        renderGroups(); changed(); return;
+      }
+      if (t.dataset.hide) {
+        Capture.run('captureSetHidden', SESSION_ID, Number(t.dataset.hide), t.dataset.hidden !== 'true').then(function (board) {
+          S.board = board; renderSummary(); renderFeed(); renderGroups();
+        }).catch(function (err) { Capture.toast(err.message); });
+      }
+    });
+
+    document.addEventListener('input', function (e) {
+      var id = e.target.dataset && e.target.dataset.topic;
+      if (!id) return;
+      var g = S.groups.find(function (x) { return x.id === id; });
+      if (g) { g.topic = e.target.value; changed(); }
+    });
+
+    document.addEventListener('change', function (e) {
+      var id = e.target.dataset && e.target.dataset.routeFor;
+      if (!id) return;
+      var g = S.groups.find(function (x) { return x.id === id; });
+      if (g) { g.routeOverride = e.target.value; renderGroups(); changed(); }
+    });
+
+    document.addEventListener('dragstart', function (e) {
+      var c = e.target.closest && e.target.closest('[data-card]');
+      if (c) e.dataTransfer.setData('text/plain', c.dataset.card);
+    });
+    document.addEventListener('dragover', function (e) {
+      var zone = e.target.closest && e.target.closest('[data-drop]');
+      if (!zone) return;
+      e.preventDefault();
+      document.querySelectorAll('.drop').forEach(function (z) { if (z !== zone) z.classList.remove('drop'); });
+      zone.classList.add('drop');
+    });
+    document.addEventListener('drop', function (e) {
+      var zone = e.target.closest && e.target.closest('[data-drop]');
+      if (!zone) return;
+      e.preventDefault();
+      var id = Number(e.dataTransfer.getData('text/plain'));
+      if (id) move(id, zone.dataset.drop);
+    });
+    document.addEventListener('dragend', function () { document.querySelectorAll('.drop').forEach(function (z) { z.classList.remove('drop'); }); });
+
+    start();
+  </script>
+</body>
+</html>

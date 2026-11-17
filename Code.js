@@ -11,7 +11,7 @@ function onOpen() {
     .addItem('🚀  Launch New Session', 'showWizard')
     .addSeparator()
     .addItem('🔬  Synthesize Research', 'menuTriggerSynthesis')
-    .addItem('💎  Generate Gems', 'menuTriggerGems')
+    .addItem('🧰  Generate Skills', 'menuTriggerGems')
     .addItem('📧  Draft & Send Pre-Session Email', 'menuTriggerEmail')
     .addItem('🌐  Generate Site Code', 'menuTriggerSiteCode')
     .addSeparator()
@@ -80,11 +80,11 @@ function menuTriggerGems() {
   if (!sessionId) return;
   const ui = SpreadsheetApp.getUi();
   try {
-    ui.alert(`Generating Gems for: ${session.name}\nThis may take 20–40 seconds...`);
+    ui.alert(`Writing AI skills for: ${session.name}\nThis may take 20–40 seconds...`);
     GemsService.generateGems(sessionId);
-    ui.alert('✅ Gems generated! View them in the Dashboard or Learning Library.');
+    ui.alert('✅ Skills ready. Find them on the Learning Library page, and as SKILL.md files in the session folder.');
   } catch (e) {
-    ui.alert('❌ Gems generation failed: ' + e.message);
+    ui.alert('❌ Skills were not written: ' + e.message);
   }
 }
 

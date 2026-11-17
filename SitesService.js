@@ -21,7 +21,7 @@ const SitesService = {
     if (!session) throw new Error('Session not found: ' + sessionId);
 
     const resources = SynthesisService.getResources(sessionId);
-    const gems = session.gems || [];
+    const gems = (Array.isArray(session.gems) ? session.gems : []).map(skillsNormalize_).filter(Boolean);
 
     // Compute the library URL for this session
     const baseUrl = typeof getWebAppUrl_ === 'function' ? getWebAppUrl_() : '';
@@ -38,7 +38,7 @@ const SitesService = {
       { label: 'SESSION OVERVIEW',               html: this._buildOverviewSection(session) },
       { label: 'INQUIRY QUESTIONS',              html: this._buildQuestionsSection(session) },
       { label: 'RESOURCES',                      html: this._buildResourcesSection(resources) },
-      { label: 'AI LEARNING GEMS',               html: this._buildGemsSection(gems, libraryUrl) },
+      { label: 'AI SKILLS',                      html: this._buildGemsSection(gems, libraryUrl) },
       { label: 'LEARNING LIBRARY (FULL PAGE)',   html: this._buildLibraryEmbedSection(libraryUrl), embedUrl: libraryUrl }
     ].filter(s => s.html); // skip empty sections
 
@@ -137,17 +137,16 @@ ${items}
 
     const cards = gems.map(gem => {
       const linkBtn = gem.link
-        ? `<a href="${this._esc(gem.link)}" target="_blank" style="display:inline-block;background:#5DCDF5;color:#0B2B46;padding:8px 16px;border-radius:5px;font-size:13px;font-weight:700;text-decoration:none;margin-top:10px;">Open Gem →</a>`
-        : `<p style="font-size:12px;color:#7F8FA4;margin:10px 0 0;font-style:italic;">Link coming soon — check the Learning Library.</p>`;
+        ? `<a href="${this._esc(gem.link)}" target="_blank" style="display:inline-block;background:#5DCDF5;color:#0B2B46;padding:8px 16px;border-radius:5px;font-size:13px;font-weight:700;text-decoration:none;margin-top:10px;">Open →</a>`
+        : `<p style="font-size:12px;color:#7F8FA4;margin:10px 0 0;font-style:italic;">Instructions to copy are in the Learning Library.</p>`;
       return `  <div style="background:#F0F4F8;border:1px solid #DDE4ED;border-radius:10px;padding:20px;margin-bottom:14px;">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
-      <span style="font-size:1.5rem;">${gem.emoji || '💎'}</span>
       <div>
         <p style="font-size:15px;font-weight:700;color:#0B2B46;margin:0;">${this._esc(gem.name || gem.id)}</p>
-        <p style="font-size:12px;color:#7F8FA4;margin:2px 0 0;">${this._esc(gem.role || '')}</p>
+        <p style="font-size:12px;color:#7F8FA4;margin:2px 0 0;">${this._esc(gem.description || '')}</p>
       </div>
     </div>
-    ${gem.persona ? `<p style="font-size:13px;color:#555;line-height:1.6;font-style:italic;margin:0;">${this._esc(gem.persona)}</p>` : ''}
+    ${gem.purpose ? `<p style="font-size:13px;color:#555;line-height:1.6;margin:0;">${this._esc(gem.purpose)}</p>` : ''}
     ${linkBtn}
   </div>`;
     }).join('\n');
@@ -157,8 +156,8 @@ ${items}
       : '';
 
     return `<div style="font-family:Arial,Helvetica,sans-serif;padding:32px;background:#FFFFFF;border-radius:8px;">
-  <h2 style="font-size:13px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#7F8FA4;margin:0 0 8px;">AI Learning Gems</h2>
-  <p style="font-size:13px;color:#7F8FA4;margin:0 0 20px;">Custom AI guides built for this session. Click to open and start exploring.</p>
+  <h2 style="font-size:13px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#7F8FA4;margin:0 0 8px;">AI Skills</h2>
+  <p style="font-size:13px;color:#7F8FA4;margin:0 0 20px;">Instructions written for this session that work in Claude, Gemini, ChatGPT or another AI assistant.</p>
 ${cards}${libraryNote}
 </div>`;
   },

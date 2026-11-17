@@ -72,7 +72,7 @@ test('master spreadsheet access uses configured ID without an active editor', ()
 });
 
 test('public library excludes internal meetings, internal materials and admin URLs', () => {
-  const c = load(['LibraryService.js'], {
+  const c = load(['CaptureLogic.js', 'Skills.js', 'LibraryService.js'], {
     CONFIG: {}, SessionService: { getSession: () => ({ id: 'S-1', brief: {}, folderUrl: 'private-folder', dbUrl: 'private-db' }) },
     SynthesisService: { getResources: () => [
       { url: 'https://meet.google.com/private', type: 'Meeting Link', isPublic: false },

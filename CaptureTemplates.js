@@ -46,7 +46,20 @@ const CAPTURE_TEMPLATES = {
       parking: 'Parking lot'
     },
     groupingFocus: 'the topic of the need (for example "AI literacy" or "Chatbots")',
-    posterPrompt: 'Place a dot on the needs that matter most'
+    posterPrompt: 'Place a dot on the needs that matter most',
+    // What the session's AI skills should know about the activity, and which skills to write.
+    activity: 'Tables of students and adults read signals about AI in K-12 education, choose one flip statement ' +
+      '("Right now…, but we need…"), and write need cards: "To address this gap, schools and educators need…", ' +
+      'each marked G (guidance), G+ (guidance plus a resource, PD or support) or B (beyond guidance). Facilitators group the needs ' +
+      'by topic; G and G+ topics go to a dot-voting gallery walk and B items to a parking lot.',
+    skills: [
+      { id: 'need-card-coach', name: 'Need Card Coach',
+        role: 'For a table: helps turn a signal into one clear flip statement and specific need cards. Asks questions and offers sentence starters; the table writes the words.' },
+      { id: 'guidance-sorter', name: 'Guidance Sorter',
+        role: 'For a table: helps decide whether a need calls for G, G+ or B by explaining the difference with examples. Leaves the choice to the table.' },
+      { id: 'next-steps-planner', name: 'Next Steps Planner',
+        role: 'For facilitators after the gallery walk: turns the top G and G+ needs into concrete guidance, resources and PD next steps, and names who could act on the B items.' }
+    ]
   }
 };
 

@@ -1,146 +1,103 @@
 /**
  * GemsService
- * Phase 3: Generates Gem instruction sets for the session.
- * Each Gem is a ready-to-paste system instruction for Google AI Studio,
- * personalized to the session name, theme, brief, and synthesized resources.
- * Facilitators create Gems manually in AI Studio then paste the links back
- * via the dashboard "Set Gem Links" action.
+ * Phase 3: AI skills for the session. (The name stays for compatibility: the
+ * dashboard, menu and library page call these methods.)
+ *
+ * Skills replace Gemini Gems. Each is a platform-neutral instruction pack:
+ * instructions, starter prompts and the session materials to attach, saved as a
+ * SKILL.md file that works as a Claude skill and pastes into Gemini, ChatGPT or
+ * any other assistant. See Skills.js. A session with live capture gets skills
+ * written for its activity (the template's `skills`); others get the four
+ * library companions.
  */
 
 const GemsService = {
 
   /**
-   * Generates 4 Gem instruction sets for a session.
-   * Requires synthesis to have run first (resources used for context).
+   * Writes the session's skills, stores them in the Gems JSON column and saves
+   * one SKILL.md per skill to the session's skills folder.
    * @param {string} sessionId
-   * @returns {Object[]} Array of 4 Gem objects
+   * @returns {Object[]} skills
    */
   generateGems: function(sessionId) {
     const session = SessionService.getSession(sessionId);
     if (!session) throw new Error('Session not found: ' + sessionId);
-
     const brief = session.brief;
     if (!brief) throw new Error('No session brief found. Run the Wizard first.');
 
-    // Use synthesized resources as context for richer instruction sets
-    const resources = SynthesisService.getResources(sessionId).slice(0, 6);
+    const resources = SynthesisService.getResources(sessionId).filter(r => r.isPublic !== false).slice(0, 8);
+    const template = this._activityTemplate(sessionId);
+    const roles = skillsRoles_(template);
+    const raw = GeminiService.generateSkills(session.name, brief, resources, roles, template ? template.activity : '');
+    const skills = skillsFromGenerated_(roles, raw, resources.map(r => r.title).filter(Boolean));
+    if (!skills.length) throw new Error('Gemini did not return usable skills. Try again.');
 
-    // Generate instruction sets via Gemini
-    const gems = GeminiService.generateGemInstructions(session.name, brief, resources);
-    if (!Array.isArray(gems) || !gems.length) {
-      throw new Error('Gemini did not return valid Gem instructions.');
-    }
-
-    // Ensure each gem has a null link (will be filled by facilitator later)
-    gems.forEach(function(g) { g.link = g.link || null; });
-
-    // Persist to session row
-    SessionService.updateSession(sessionId, {
-      GEMS_JSON: JSON.stringify(gems),
-      STATUS: 'Gems Ready'
+    // Keep any shared links a facilitator already set for skills with the same id.
+    const previous = this.getGems(sessionId);
+    skills.forEach(s => {
+      const old = previous.find(p => p.id === s.id);
+      s.link = old && old.link ? old.link : null;
     });
 
-    // Save a human-readable instruction file per Gem to 03_Gems/
-    this._saveGemFiles(session, gems);
-
-    return gems;
+    SessionService.updateSession(sessionId, { GEMS_JSON: JSON.stringify(skills), STATUS: 'Skills Ready' });
+    this._saveSkillFiles(session, skills);
+    return skills;
   },
 
-  /**
-   * Returns the gems for a session (from stored JSON).
-   */
+  /** The session's skills, with old Gems read as skills. */
   getGems: function(sessionId) {
     const session = SessionService.getSession(sessionId);
-    if (!session || !session.gems) return [];
-    return Array.isArray(session.gems) ? session.gems : [];
+    if (!session || !Array.isArray(session.gems)) return [];
+    return session.gems.map(skillsNormalize_).filter(Boolean);
   },
 
   /**
-   * Updates the shareable link for one or more Gems.
-   * gemLinks: { "session-primer": "https://...", "critical-lens": "https://..." }
+   * Sets an optional shared link per skill (a shared Claude project, Gemini
+   * Gem, ChatGPT project or any https link). gemLinks: { "skill-id": "https://..." }
    */
   updateGemLinks: function(sessionId, gemLinks) {
-    const session = SessionService.getSession(sessionId);
-    if (!session) throw new Error('Session not found: ' + sessionId);
-
-    const gems = Array.isArray(session.gems) ? session.gems : [];
-    if (!gems.length) throw new Error('No gems found. Generate gems first.');
-
-    Object.keys(gemLinks).forEach(function(gemId) {
-      const gem = gems.find(function(g) { return g.id === gemId; });
-      if (gem) gem.link = gemLinks[gemId] || null;
+    const skills = this.getGems(sessionId);
+    if (!skills.length) throw new Error('No skills yet. Generate skills first.');
+    Object.keys(gemLinks || {}).forEach(id => {
+      const skill = skills.find(s => s.id === id);
+      const link = String(gemLinks[id] || '').trim();
+      if (skill) skill.link = /^https:\/\//.test(link) ? link : null;
     });
-
-    SessionService.updateSession(sessionId, { GEMS_JSON: JSON.stringify(gems) });
-    return gems;
+    SessionService.updateSession(sessionId, { GEMS_JSON: JSON.stringify(skills) });
+    return skills;
   },
 
   // ─── Private ────────────────────────────────────────────────────────────────
 
-  /**
-   * Saves a human-readable .txt instruction file for each Gem to 03_Gems/.
-   * Facilitators can open these directly from Drive to copy-paste into AI Studio.
-   */
-  _saveGemFiles: function(session, gems) {
+  _activityTemplate: function(sessionId) {
+    try {
+      const config = CaptureStore.getConfig(sessionId);
+      return config ? captureTemplate_(config.template) : null;
+    } catch (e) {
+      return null;
+    }
+  },
+
+  /** One SKILL.md per skill, plus skills.json, in 03_Skills (or an older session's 03_Gems). */
+  _saveSkillFiles: function(session, skills) {
     if (!session.folderUrl) return;
     try {
-      const folderId = this._extractId(session.folderUrl);
-      const sessionFolder = DriveApp.getFolderById(folderId);
-      const gemsIter = sessionFolder.getFoldersByName('03_Gems');
-      if (!gemsIter.hasNext()) return;
-      const gemsFolder = gemsIter.next();
-
-      // Remove old gem files
-      const oldFiles = gemsFolder.getFiles();
-      while (oldFiles.hasNext()) { oldFiles.next().setTrashed(true); }
-
-      // Write one .txt file per Gem
-      gems.forEach(function(gem) {
-        const setupText = (gem.setupSteps || [])
-          .map(function(s, i) { return (i + 1) + '. ' + s; })
-          .join('\n');
-        const startersText = (gem.starterQueries || [])
-          .map(function(q) { return '  • ' + q; })
-          .join('\n');
-
-        const content = [
-          '═══════════════════════════════════════════════════════════════',
-          gem.name + (gem.emoji ? ' ' + gem.emoji : ''),
-          '═══════════════════════════════════════════════════════════════',
-          '',
-          'PERSONA',
-          gem.persona || '',
-          '',
-          '──────────────────────────────────────────────────────────────',
-          'SYSTEM INSTRUCTION (paste into Google AI Studio → Instructions)',
-          '──────────────────────────────────────────────────────────────',
-          gem.systemInstruction || '',
-          '',
-          '──────────────────────────────────────────────────────────────',
-          'SETUP STEPS',
-          '──────────────────────────────────────────────────────────────',
-          setupText,
-          '',
-          '──────────────────────────────────────────────────────────────',
-          'CONVERSATION STARTERS',
-          '──────────────────────────────────────────────────────────────',
-          startersText
-        ].join('\n');
-
-        const filename = 'gem-' + (gem.id || gem.name.toLowerCase().replace(/\s+/g, '-')) + '.txt';
-        const blob = Utilities.newBlob(content, MimeType.PLAIN_TEXT, filename);
-        gemsFolder.createFile(blob);
+      const sessionFolder = DriveApp.getFolderById(this._extractId(session.folderUrl));
+      let folder = null;
+      ['03_Skills', '03_Gems'].some(name => {
+        const it = sessionFolder.getFoldersByName(name);
+        if (it.hasNext()) { folder = it.next(); return true; }
+        return false;
       });
-
-      // Also save full gems.json for programmatic use
-      const jsonBlob = Utilities.newBlob(
-        JSON.stringify(gems, null, 2),
-        'application/json',
-        'gems.json'
-      );
-      gemsFolder.createFile(jsonBlob);
+      if (!folder) folder = sessionFolder.createFolder('03_Skills');
+      const old = folder.getFiles();
+      while (old.hasNext()) old.next().setTrashed(true);
+      skills.forEach(skill => {
+        folder.createFile(Utilities.newBlob(skillsToMarkdown_(skill, session.name), 'text/markdown', skill.id + '.SKILL.md'));
+      });
+      folder.createFile(Utilities.newBlob(JSON.stringify(skills, null, 2), 'application/json', 'skills.json'));
     } catch (e) {
-      console.error('_saveGemFiles failed: ' + e.message);
+      console.error('_saveSkillFiles failed: ' + e.message);
     }
   },
 

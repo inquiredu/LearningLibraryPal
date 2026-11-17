@@ -99,6 +99,18 @@
         <textarea id="w_theme" placeholder="What is this session really exploring? 1-3 sentences. The more specific, the better Gemini can build your brief, Gems, and inquiry questions."></textarea>
       </div>
       <div class="form-group">
+        <label for="w_eventType">Event type</label>
+        <select id="w_eventType" onchange="document.getElementById('w_tablesGroup').hidden = !this.value">
+          <option value="">Learning library session</option>
+          <option value="needCards">Live capture: Need Cards (tables send cards from phones)</option>
+        </select>
+        <div class="hint">Live capture turns on the table phone page, facilitator board, projector wall and printable table cards for this session.</div>
+      </div>
+      <div class="form-group" id="w_tablesGroup" hidden>
+        <label for="w_tables">Number of tables</label>
+        <input type="number" id="w_tables" min="1" max="40" value="6" style="max-width:8rem">
+      </div>
+      <div class="form-group">
         <label>Session Date</label>
         <input type="date" id="w_date">
       </div>
@@ -288,7 +300,9 @@
           date:     document.getElementById('w_date').value,
           format:   document.getElementById('w_format').value,
           audience: document.getElementById('w_audience').value,
-          brand:    document.getElementById('w_brand').value
+          brand:    document.getElementById('w_brand').value,
+          captureTemplate: document.getElementById('w_eventType').value,
+          captureTables:   Number(document.getElementById('w_tables').value)
         });
     }
 
@@ -631,9 +645,24 @@
         links.innerHTML += '<li><a href="' + _sessionResult.dbUrl + '" target="_blank">🗄️ Project Database</a></li>';
       if (addResult && addResult.added)
         links.innerHTML += '<li style="font-size:0.8rem;color:var(--muted);margin-top:4px;">' + addResult.added + ' resource(s) added · ' + (addResult.shortcuts || 0) + ' Drive shortcut(s) created</li>';
+      var capture = _sessionResult && _sessionResult.capture;
+      if (capture) {
+        [['Live board', capture.board], ['Printable table cards', capture.tableCards], ['Projector wall', capture.wall]].forEach(function (l) {
+          if (!l[1]) return;
+          var a = document.createElement('a');
+          a.href = l[1]; a.target = '_blank'; a.rel = 'noopener'; a.textContent = l[0];
+          var li = document.createElement('li'); li.appendChild(a); links.appendChild(li);
+        });
+      }
 
-      // Auto-redirect to dashboard after 3 seconds in web app mode
-      if (_isWebApp) {
+      // Auto-redirect to dashboard after 3 seconds in web app mode (live capture events go to the board instead)
+      if (_isWebApp && capture && capture.board) {
+        var note = document.createElement('p');
+        note.style.cssText = 'font-size:0.75rem;color:var(--muted);margin-top:16px;';
+        note.textContent = 'Live capture is on. Opening the board in 3 seconds...';
+        document.querySelector('.success-wrap').appendChild(note);
+        setTimeout(function() { window.location.href = capture.board; }, 3000);
+      } else if (_isWebApp) {
         var countdown = document.createElement('p');
         countdown.style.cssText = 'font-size:0.75rem;color:var(--muted);margin-top:16px;';
         countdown.textContent = 'Returning to dashboard in 3 seconds...';

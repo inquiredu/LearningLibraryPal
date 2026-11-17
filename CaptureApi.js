@@ -10,27 +10,56 @@
 
 // ─── Pages ──────────────────────────────────────────────────────────────────
 
+// keyed: the page's links carry the table key (public pages); the others are
+// facilitator pages that doGet only serves to authorized users.
 const CAPTURE_PAGES_ = {
-  capture: { file: 'Capture', title: 'Add a card' },
-  wall: { file: 'CaptureWall', title: 'Live wall' },
-  board: { file: 'CaptureBoard', title: 'Live board' }
+  capture: { file: 'Capture', title: 'Add a card', keyed: true },
+  wall: { file: 'CaptureWall', title: 'Live wall', keyed: true },
+  board: { file: 'CaptureBoard', title: 'Live board', keyed: false },
+  tablecards: { file: 'CaptureTableCards', title: 'Table cards', keyed: false }
 };
 
-/** Called from doGet for capture, wall and board. */
+/** Called from doGet for the live-capture pages. */
 function captureRoute_(page, e) {
   const spec = CAPTURE_PAGES_[page];
   const params = (e && e.parameter) || {};
   const sessionId = params.session ? validateSessionId_(String(params.session)) : '';
-  const key = page === 'board' ? '' : captureValidateKeyFormat_(String(params.k || ''));
+  const key = spec.keyed ? captureValidateKeyFormat_(String(params.k || '')) : '';
+  // A table card's QR code names its table, so the phone skips the table picker.
+  const table = page === 'capture' && /^[1-9][0-9]?$/.test(String(params.t || '')) ? String(params.t) : '';
   let html = HtmlService.createHtmlOutputFromFile(spec.file).getContent()
     .replace('<!--CAPTURE_STYLES-->', HtmlService.createHtmlOutputFromFile('CaptureStyles').getContent())
     .replace('<!--CAPTURE_CLIENT-->', HtmlService.createHtmlOutputFromFile('CaptureClient').getContent())
     .replace('__SESSION_ID__', sessionId)
-    .replace('__CAPTURE_KEY__', key);
+    .replace('__CAPTURE_KEY__', key)
+    .replace('__TABLE__', table);
   return HtmlService.createHtmlOutput(html)
     .setTitle(spec.title)
     .addMetaTag('viewport', 'width=device-width, initial-scale=1')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+/**
+ * The facilitator deployment's address (board, dashboard, table cards).
+ * scripts/poc.sh writes CAPTURE_BOARD_URL; otherwise the address doGet cached.
+ */
+function captureBoardBase_() {
+  if (typeof CAPTURE_BOARD_URL === 'string' && /^https:\/\/script\.google\.com\//.test(CAPTURE_BOARD_URL)) return CAPTURE_BOARD_URL;
+  const cached = PropertiesService.getScriptProperties().getProperty('WEB_APP_URL');
+  return cached || getWebAppUrl_();
+}
+
+/** Every link a facilitator hands out or opens for one session. */
+function captureLinks_(sessionId, config) {
+  const pub = capturePublicBase_();
+  const board = captureBoardBase_();
+  const s = '?session=' + encodeURIComponent(sessionId);
+  return {
+    table: pub ? pub + s + '&k=' + config.key + '&page=capture' : '',
+    wall: pub ? pub + s + '&k=' + config.key + '&page=wall' : '',
+    board: board ? board + '?page=board&session=' + encodeURIComponent(sessionId) : '',
+    tableCards: board ? board + '?page=tablecards&session=' + encodeURIComponent(sessionId) : ''
+  };
 }
 
 /**
@@ -194,15 +223,14 @@ function captureGetBoard(sessionId) {
   const template = captureTemplate_(config.template);
   const cards = CaptureStore.readCards(sessionId, template);
   const normalized = captureNormalizeGroups_(cards, CaptureStore.readGroups(sessionId));
-  const base = capturePublicBase_();
-  const query = '?session=' + encodeURIComponent(sessionId) + '&k=' + config.key;
+  const links = captureLinks_(sessionId, config);
   return {
     sessionId: sessionId,
     sessionName: session.name,
     enabled: true,
     config: { title: config.title, tables: config.tables, open: config.open },
     template: capturePublicTemplate_(template),
-    links: base ? { table: base + query + '&page=capture', wall: base + query + '&page=wall' } : null,
+    links: links.table ? links : null,
     cards: cards.map(c => ({ id: c.id, table: c.table, level: c.level, source: c.source, hidden: c.hidden, submittedAt: c.submittedAt, fields: c.fields })),
     groups: captureOrderGroups_(template, cards.filter(c => !c.hidden), normalized.groups),
     ungrouped: normalized.ungrouped,
@@ -252,4 +280,96 @@ function captureMakePosters(sessionId) {
   const cards = CaptureStore.readCards(sessionId, template);
   const groups = captureNormalizeGroups_(cards, CaptureStore.readGroups(sessionId)).groups;
   return { url: CapturePosterService.make(sessionId, template, config, cards, groups) };
+}
+
+// ─── Table cards and Sheet menu (facilitators only) ─────────────────────────
+
+/** What the printable table cards need: one QR link per table. */
+function captureGetTableCardsData(sessionId) {
+  AuthService.requireUser();
+  validateSessionId_(sessionId);
+  const session = SessionService.getSession(sessionId);
+  if (!session) throw new Error('Session not found.');
+  const config = CaptureStore.getConfig(sessionId);
+  if (!config) throw new Error('Turn on live capture for this session first.');
+  const template = captureTemplate_(config.template);
+  const links = captureLinks_(sessionId, config);
+  if (!links.table) throw new Error('Deploy the web app first, so the table link exists.');
+  return { title: config.title, sessionName: session.name, tables: config.tables, noun: template.noun, tableLink: links.table };
+}
+
+/** Sheet menu: turn live capture on for the session selected in the Sessions tab. */
+function captureMenuTurnOn() {
+  AuthService.requireUser();
+  const picked = getSelectedSession_();
+  if (!picked.sessionId) return;
+  const ui = SpreadsheetApp.getUi();
+  const existing = CaptureStore.getConfig(picked.sessionId);
+  const answer = ui.prompt('Live capture: ' + picked.session.name,
+    'How many tables? (1–' + CAPTURE_DEFAULTS.MAX_TABLES + ')' + (existing ? '\nCurrently ' + existing.tables + '.' : ''),
+    ui.ButtonSet.OK_CANCEL);
+  if (answer.getSelectedButton() !== ui.Button.OK) return;
+  try {
+    const title = existing ? existing.title : picked.session.name;
+    CaptureStore.enable(picked.sessionId, existing ? existing.template : 'needCards', Number(answer.getResponseText()), title);
+    captureMenuShowLinks_(picked.sessionId, 'Live capture is on');
+  } catch (e) {
+    ui.alert('Live capture was not turned on: ' + e.message);
+  }
+}
+
+/** Sheet menu: the board, wall, table-card and table links for the selected session. */
+function captureMenuLinks() {
+  AuthService.requireUser();
+  const picked = getSelectedSession_();
+  if (!picked.sessionId) return;
+  if (!CaptureStore.getConfig(picked.sessionId)) {
+    SpreadsheetApp.getUi().alert('Live capture is not on for this session yet. Choose Live Capture > Turn on for selected session.');
+    return;
+  }
+  captureMenuShowLinks_(picked.sessionId, 'Live capture links');
+}
+
+/** Sheet menu: build the gallery-walk posters for the selected session. */
+function captureMenuPosters() {
+  AuthService.requireUser();
+  const picked = getSelectedSession_();
+  if (!picked.sessionId) return;
+  try {
+    const res = captureMakePosters(picked.sessionId);
+    captureMenuDialog_('Posters are ready', [{ label: 'Open the poster slides', url: res.url, note: 'Print from Slides: File > Print.' }]);
+  } catch (e) {
+    SpreadsheetApp.getUi().alert('Posters were not made: ' + e.message);
+  }
+}
+
+/** Sheet menu: the board's session picker. */
+function captureMenuBoard() {
+  AuthService.requireUser();
+  const base = captureBoardBase_();
+  if (!base) { SpreadsheetApp.getUi().alert('Open the web app once in your browser, then try again.'); return; }
+  captureMenuDialog_('Live board', [{ label: 'Open the live board', url: base + '?page=board', note: 'Pick the session there.' }]);
+}
+
+function captureMenuShowLinks_(sessionId, heading) {
+  const links = captureLinks_(sessionId, CaptureStore.getConfig(sessionId));
+  captureMenuDialog_(heading, [
+    { label: 'Live board', url: links.board, note: 'Facilitators. Signed in with Google.' },
+    { label: 'Printable table cards', url: links.tableCards, note: 'One page per table with a QR code that opens that table.' },
+    { label: 'Projector wall', url: links.wall, note: 'Counts and topics only. No sign-in.' },
+    { label: 'Table link', url: links.table, note: 'Any table can use this and pick its number. No sign-in.' }
+  ]);
+}
+
+function captureMenuDialog_(heading, items) {
+  const esc = s => String(s || '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+  const rows = items.filter(i => i.url).map(i =>
+    '<li style="margin:0 0 14px"><a href="' + esc(i.url) + '" target="_blank" rel="noopener" style="font-weight:600;color:#0B2B46">' +
+    esc(i.label) + '</a><br><span style="color:#4F5D6B;font-size:13px">' + esc(i.note) + '</span></li>').join('');
+  const html = HtmlService.createHtmlOutput(
+    '<div style="font:15px/1.5 system-ui,sans-serif;color:#17212B;padding:4px 6px">' +
+    (rows ? '<ul style="list-style:none;padding:0;margin:0">' + rows + '</ul>'
+      : '<p>Open the web app once in your browser so its address is known, then try again.</p>') +
+    '</div>').setWidth(460).setHeight(Math.min(120 + items.length * 64, 420));
+  SpreadsheetApp.getUi().showModalDialog(html, heading);
 }

@@ -19,6 +19,15 @@ function onOpen() {
     .addItem('🌐  Open Dashboard', 'openDashboard')
     .addItem('⚙️   Initial Setup', 'showSetupWizard')
     .addToUi();
+  // Live capture events (CaptureApi.js). Select a session row in the Sessions tab first.
+  SpreadsheetApp.getUi()
+    .createMenu('Live Capture')
+    .addItem('Turn on for selected session…', 'captureMenuTurnOn')
+    .addItem('Links: board, table cards, wall', 'captureMenuLinks')
+    .addItem('Make posters for selected session', 'captureMenuPosters')
+    .addSeparator()
+    .addItem('Open the live board', 'captureMenuBoard')
+    .addToUi();
 }
 
 // ─── Wizard / Session Launch ─────────────────────────────────────────────────
@@ -40,6 +49,12 @@ function processWizardSubmit(params) {
   AuthService.requireUser();
   const result = SessionService.setupSession(params);
   CacheService.getScriptCache().remove('dashboard_v2');
+  // A live-capture event turns capture on for the new session right away.
+  const template = params && params.captureTemplate;
+  if (template && CAPTURE_TEMPLATES[template]) {
+    const config = CaptureStore.enable(result.sessionId, template, params.captureTables, params.name);
+    result.capture = captureLinks_(result.sessionId, config);
+  }
   return result;
 }
 
@@ -125,7 +140,9 @@ function openDashboard() {
   // Calling ScriptApp.getService().getUrl() from a menu trigger returns the /dev URL,
   // which only works for script editors and appears "not available" to everyone else.
   var url = '';
-  try { url = PropertiesService.getScriptProperties().getProperty('WEB_APP_URL') || ''; } catch(e) {}
+  // With live capture's two deployments, the sign-in one serves the dashboard (CaptureDeploy.js).
+  if (typeof CAPTURE_BOARD_URL === 'string' && /^https:\/\/script\.google\.com\//.test(CAPTURE_BOARD_URL)) url = CAPTURE_BOARD_URL;
+  if (!url) try { url = PropertiesService.getScriptProperties().getProperty('WEB_APP_URL') || ''; } catch(e) {}
   if (!url) {
     // Fallback if the web app hasn't been opened yet since last deploy
     try { url = ScriptApp.getService().getUrl() || ''; } catch(e) {}

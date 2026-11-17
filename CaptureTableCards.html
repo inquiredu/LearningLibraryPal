@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <!--CAPTURE_STYLES-->
+  <style>
+    main { max-width: 1100px; margin: 0 auto; padding: 16px; }
+    .tools { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
+    .tools p { flex: 1; min-width: 240px; }
+    .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+    .tcard { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 24px; text-align: center; display: grid; gap: 12px; justify-items: center; }
+    .tcard .event { font-size: 1rem; color: var(--muted); letter-spacing: .04em; text-transform: uppercase; }
+    .tcard .num { font-size: 4.5rem; font-weight: 800; line-height: 1; color: var(--navy); }
+    .tcard .qr { width: 220px; max-width: 100%; aspect-ratio: 1; display: grid; place-items: center; }
+    .tcard .qr svg { width: 100%; height: auto; display: block; }
+    .tcard .qr-missing { font-size: .85rem; color: var(--warn); background: var(--warn-bg); border-radius: 8px; padding: 10px; overflow-wrap: anywhere; text-align: left; }
+    .tcard ol { text-align: left; margin: 0; padding-left: 1.3em; display: grid; gap: 4px; font-size: 1.05rem; }
+    .tcard .scan { font-weight: 700; font-size: 1.2rem; }
+    @media print {
+      @page { size: letter portrait; margin: 0.6in; }
+      main { padding: 0; max-width: none; }
+      .tools, .bar, #pageError { display: none !important; }
+      .cards { display: block; }
+      .tcard { border: 0; border-radius: 0; padding: 0; break-after: page; page-break-after: always; min-height: 9.4in; align-content: center; gap: .3in; }
+      .tcard:last-child { break-after: auto; page-break-after: auto; }
+      .tcard .event { font-size: 18pt; }
+      .tcard .num { font-size: 96pt; }
+      .tcard .qr { width: 3.6in; }
+      .tcard .scan { font-size: 22pt; }
+      .tcard ol { font-size: 16pt; }
+    }
+  </style>
+  <!-- QR codes are drawn in the browser by qrcode-generator (MIT). If it can't load, each card shows its link instead. -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+</head>
+<body>
+  <header class="bar">
+    <div style="flex:1;min-width:0">
+      <div class="tag">Table cards</div>
+      <h1 id="title">Loading…</h1>
+    </div>
+  </header>
+  <main>
+    <div id="pageError" class="alert alert-bad" role="alert"></div>
+    <div class="tools" id="tools" hidden>
+      <p class="muted">One page per table. Each QR code opens the phone page with that table already chosen. Scan one to check it before you print.</p>
+      <button type="button" class="btn btn-primary" id="printBtn">Print table cards</button>
+    </div>
+    <div class="cards" id="cards"></div>
+  </main>
+  <!--CAPTURE_CLIENT-->
+  <script>
+    var SESSION_ID = "__SESSION_ID__";
+    var $ = function (id) { return document.getElementById(id); };
+
+    function qrSvg(text) {
+      if (typeof qrcode !== 'function') return '';
+      try {
+        var qr = qrcode(0, 'M');
+        qr.addData(text);
+        qr.make();
+        return qr.createSvgTag(8, 4);
+      } catch (e) { return ''; }
+    }
+
+    Capture.run('captureGetTableCardsData', SESSION_ID).then(function (d) {
+      $('title').textContent = d.title + ' · ' + d.sessionName;
+      var html = '';
+      for (var t = 1; t <= d.tables; t++) {
+        var link = d.tableLink + '&t=' + t;
+        var svg = qrSvg(link);
+        html += '<section class="tcard" aria-label="Table ' + t + '">' +
+          '<div class="event">' + Capture.esc(d.title) + '</div>' +
+          '<div class="num">Table ' + t + '</div>' +
+          '<div class="qr">' + (svg || '<p class="qr-missing">The QR code couldn’t be drawn. Use this link: ' + Capture.esc(link) + '</p>') + '</div>' +
+          '<div class="scan">Scan to add your table’s ' + Capture.esc(d.noun) + 's</div>' +
+          '<ol><li>Write your table’s flip statement once.</li><li>Add each need, and choose G, G+ or B.</li><li>Check what you sent at the bottom of the page.</li></ol>' +
+          '</section>';
+      }
+      $('cards').innerHTML = html;
+      $('tools').hidden = false;
+      $('printBtn').onclick = function () { window.print(); };
+    }).catch(function (err) {
+      $('title').textContent = 'Table cards';
+      $('pageError').textContent = err.message;
+    });
+  </script>
+</body>
+</html>

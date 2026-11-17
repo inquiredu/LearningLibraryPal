@@ -60,13 +60,21 @@ test('first run makes a new project with a public deployment and a sign-in deplo
   const r = f.run();
   assert.equal(r.status, 0, r.stderr);
   const calls = f.calls();
-  assert.deepEqual(calls.map(c => c.cmd), ['create', 'push', 'deploy', 'push', 'deploy']);
+  assert.deepEqual(calls.map(c => c.cmd), ['create', 'push', 'deploy', 'push', 'deploy', 'push', 'deploy', 'push', 'deploy']);
+  assert.deepEqual(calls.filter(c => c.cmd === 'deploy').map(c => [c.id, c.redeploy]),
+    [['DEP1', false], ['DEP2', false], ['DEP1', true], ['DEP2', true]], 'both are created, then both updated with each other\'s address');
+  for (const i of [5, 7]) {
+    assert.match(calls[i].deployFile, /CAPTURE_PUBLIC_URL = 'https:\/\/script\.google\.com\/macros\/s\/DEP1\/exec'/);
+    assert.match(calls[i].deployFile, /CAPTURE_BOARD_URL = 'https:\/\/script\.google\.com\/macros\/s\/DEP2\/exec'/);
+  }
+  assert.deepEqual([calls[5].access, calls[7].access], ['ANYONE_ANONYMOUS', 'ANYONE']);
   assert.notEqual(calls[0].cwd, f.dir, 'the new project is created in a temporary folder');
   assert.equal(calls[1].access, 'ANYONE_ANONYMOUS');
   assert.equal(calls[1].deployFile, '');
   assert.ok(calls[1].args.includes(path.join(f.dir, '.clasp.poc.json')) && calls[1].args.includes('--force'));
   assert.equal(calls[3].access, 'ANYONE');
   assert.match(calls[3].deployFile, /CAPTURE_PUBLIC_URL = 'https:\/\/script\.google\.com\/macros\/s\/DEP1\/exec'/);
+  assert.doesNotMatch(calls[3].deployFile, /CAPTURE_BOARD_URL/, 'the board address is not known until the board is deployed');
   const state = JSON.parse(f.read('.poc.json'));
   assert.equal(state.publicDeploymentId, 'DEP1');
   assert.equal(state.boardDeploymentId, 'DEP2');
@@ -88,6 +96,7 @@ test('a second run updates both deployments instead of creating new ones', t => 
   assert.deepEqual(calls.filter(c => c.cmd === 'deploy').map(c => [c.id, c.redeploy]), [['DEP1', true], ['DEP2', true]]);
   assert.equal(calls[0].access, 'ANYONE_ANONYMOUS');
   assert.match(calls[0].deployFile, /DEP1/);
+  assert.match(calls[0].deployFile, /CAPTURE_BOARD_URL = '.*DEP2/);
   assert.equal(calls[2].access, 'ANYONE');
 });
 
@@ -96,7 +105,7 @@ test('a run that stopped after creating the project reuses it instead of making 
   fs.writeFileSync(path.join(f.dir, '.clasp.poc.json'), JSON.stringify({ scriptId: 'EARLIER', parentId: 'EARLIER_SHEET', rootDir: '.' }));
   const r = f.run();
   assert.equal(r.status, 0, r.stderr);
-  assert.deepEqual(f.calls().map(c => c.cmd), ['push', 'deploy', 'push', 'deploy']);
+  assert.deepEqual(f.calls().map(c => c.cmd), ['push', 'deploy', 'push', 'deploy', 'push', 'deploy', 'push', 'deploy']);
   const state = JSON.parse(f.read('.poc.json'));
   assert.equal(state.scriptId, 'EARLIER');
   assert.equal(state.sheetId, 'EARLIER_SHEET');

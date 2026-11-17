@@ -63,6 +63,7 @@
     </div>
     <div class="actions" id="barActions" hidden>
       <button type="button" class="btn btn-small entry" id="entryBtn"></button>
+      <a class="btn btn-small btn-on-dark" id="cardsLink" target="_blank" rel="noopener">Table cards</a>
       <a class="btn btn-small btn-on-dark" id="wallLink" target="_blank" rel="noopener">Open the wall</a>
     </div>
   </header>
@@ -151,6 +152,7 @@
       $('entryBtn').dataset.open = String(b.config.open);
       $('entryBtn').textContent = b.config.open ? 'Entry open · close it' : 'Entry closed · open it';
       if (b.links) { $('wallLink').href = b.links.wall; $('wallLink').hidden = false; } else { $('wallLink').hidden = true; }
+      if (b.links && b.links.tableCards) { $('cardsLink').href = b.links.tableCards; $('cardsLink').hidden = false; } else { $('cardsLink').hidden = true; }
       $('view').innerHTML =
         '<section class="panel summary" id="summary" aria-label="Summary"></section>' +
         '<div class="cols">' +

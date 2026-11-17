@@ -360,3 +360,61 @@ test('saving a flip statement rewrites it on that table\'s cards and only theirs
   const read = JSON.parse(JSON.stringify(c.eval('CaptureStore.readTableFields("S-1", CAPTURE_TEMPLATES.needCards)')));
   assert.deepEqual(read, { 2: { flip: 'Edited' } });
 });
+
+test('a table card link preselects its table; other pages and bad values ignore it', () => {
+  let html = '';
+  const c = load(['CaptureTemplates.js', 'CaptureLogic.js', 'CaptureApi.js'], {
+    validateSessionId_: id => id,
+    HtmlService: {
+      XFrameOptionsMode: { ALLOWALL: 'ALLOWALL' },
+      createHtmlOutputFromFile: name => ({ getContent: () => source(name + '.html') }),
+      createHtmlOutput: content => { html = content; const out = { setTitle: () => out, addMetaTag: () => out, setXFrameOptionsMode: () => out }; return out; }
+    }
+  });
+  c.captureRoute_('capture', { parameter: { session: 'S-abc', k: KEY, t: '4' } });
+  assert.match(html, /PRESET_TABLE = Number\("4"\)/);
+  for (const t of ['0', '-1', '4"><script>', 'x', '100']) {
+    c.captureRoute_('capture', { parameter: { session: 'S-abc', k: KEY, t } });
+    assert.match(html, /PRESET_TABLE = Number\(""\)/, t);
+  }
+  c.captureRoute_('tablecards', { parameter: { session: 'S-abc' } });
+  assert.ok(html.includes('captureGetTableCardsData'), 'table cards render without a key');
+  assert.ok(html.includes('cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js'));
+});
+
+test('table cards and menu links use the sign-in deployment for facilitator pages and the public one for tables', () => {
+  const h = apiContext({ email: 'owner@example.org', config: openConfig });
+  h.c.CAPTURE_PUBLIC_URL = 'https://script.google.com/macros/s/PUBLIC/exec';
+  h.c.CAPTURE_BOARD_URL = 'https://script.google.com/macros/s/BOARD/exec';
+  const d = h.c.captureGetTableCardsData('S-1');
+  assert.match(d.tableLink, /\/s\/PUBLIC\/exec\?session=S-1&k=0123456789abcdef0123&page=capture$/);
+  assert.equal(d.tables, 6);
+  const links = h.c.captureGetBoard('S-1').links;
+  assert.match(links.board, /\/s\/BOARD\/exec\?page=board&session=S-1$/);
+  assert.match(links.tableCards, /\/s\/BOARD\/exec\?page=tablecards&session=S-1$/);
+  assert.match(links.wall, /\/s\/PUBLIC\//);
+  const anon = apiContext({ config: openConfig });
+  assert.throws(() => anon.c.captureGetTableCardsData('S-1'), /Access denied/);
+});
+
+test('choosing a live-capture event in the wizard turns capture on with the table count', () => {
+  const enabled = [];
+  const c = load(['Config.js', 'AuthService.js', 'StorageService.js', 'CaptureTemplates.js', 'CaptureLogic.js', 'CaptureApi.js', 'Code.js', 'WebApp.js'], {
+    Session: { getActiveUser: () => ({ getEmail: () => 'owner@example.org' }), getEffectiveUser: () => ({ getEmail: () => 'owner@example.org' }) },
+    PropertiesService: { getScriptProperties: () => ({ getProperty: key => (key === 'OWNER_EMAIL' ? 'owner@example.org' : null) }) },
+    SpreadsheetApp: { getActiveSpreadsheet: () => null },
+    CacheService: { getScriptCache: () => ({ remove() {} }) },
+    ScriptApp: { getService: () => ({ getUrl: () => 'https://script.google.com/macros/s/ONE/exec' }) },
+    SessionService: { setupSession: () => ({ sessionId: 'S-new', folderUrl: 'f', dbUrl: 'd' }) },
+    CaptureStore: { enable: (sid, tpl, tables, title) => { enabled.push([sid, tpl, tables, title]); return { key: KEY, tables, template: tpl, title }; } }
+  });
+  const plain = c.processWizardSubmit({ name: 'Library night', theme: 't' });
+  assert.equal(plain.capture, undefined);
+  assert.equal(enabled.length, 0);
+  const live = c.processWizardSubmit({ name: 'Need Cards day', theme: 't', captureTemplate: 'needCards', captureTables: 6 });
+  assert.deepEqual(enabled[0], ['S-new', 'needCards', 6, 'Need Cards day']);
+  assert.match(live.capture.board, /page=board&session=S-new$/);
+  assert.match(live.capture.table, /k=0123456789abcdef0123&page=capture$/);
+  c.processWizardSubmit({ name: 'x', theme: 't', captureTemplate: 'notATemplate' });
+  assert.equal(enabled.length, 1, 'an unknown event type is ignored');
+});

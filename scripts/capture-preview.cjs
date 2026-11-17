@@ -103,6 +103,8 @@ function mock(scenario) {
     captureSuggestGroups: function () { groups = ${JSON.stringify(DRAFT)}.map(function (d, i) { return { id: 'g' + (i + 1), topic: d[0], cardIds: d[1] }; }); return board(); },
     captureSaveGroups: function (s, g) { groups = captureNormalizeGroups_(cards, g).groups; return board(); },
     captureMakePosters: function () { return { url: '#posters' }; },
+    captureGetTableCardsData: function () { return { title: config.title, sessionName: 'K-12 needs workshop', tables: config.tables, noun: tpl.noun,
+      tableLink: 'https://script.google.com/macros/s/DEMO/exec?session=S-demo&k=${KEY}&page=capture' }; },
     captureListTemplates: function () { return [{ id: 'needCards', name: 'Need Cards' }]; },
     captureListSessions: function () { return [{ id: 'S-demo', name: 'K-12 needs workshop', date: 'Nov 18' }]; },
     webGetAppBaseUrl: function () { return '#'; }
@@ -140,4 +142,5 @@ build('CaptureBoard.html', 'board.html', { cards: 30, grouped: true });
 build('CaptureBoard.html', 'board-live.html', { cards: 17, grouped: false });
 build('CaptureWall.html', 'wall.html', { cards: 30, grouped: true });
 build('CaptureWall.html', 'wall-live.html', { cards: 17, grouped: false });
-console.log('Wrote capture.html, board.html, board-live.html, wall.html and wall-live.html to ' + out);
+build('CaptureTableCards.html', 'table-cards.html', { cards: 30 });
+console.log('Wrote capture.html, board.html, board-live.html, wall.html, wall-live.html and table-cards.html to ' + out);

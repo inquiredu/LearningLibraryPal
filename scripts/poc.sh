@@ -50,9 +50,11 @@ deploy() {
 }
 
 write_deploy_file() {
-  printf '%s\n%s\n' \
-    "/** Written by scripts/poc.sh. The deployment tables and the wall open without signing in. */" \
-    "const CAPTURE_PUBLIC_URL = '$WEBAPP_BASE/$1/exec';" > "$DEPLOY_FILE"
+  {
+    echo "/** Written by scripts/poc.sh. Public: tables and the wall, no sign-in. Board: dashboard, board and table cards. */"
+    echo "const CAPTURE_PUBLIC_URL = '$WEBAPP_BASE/$1/exec';"
+    if [ -n "${2:-}" ]; then echo "const CAPTURE_BOARD_URL = '$WEBAPP_BASE/$2/exec';"; fi
+  } > "$DEPLOY_FILE"
 }
 
 state_get() { node -p "JSON.parse(require('fs').readFileSync('$STATE','utf8')).$1"; }
@@ -99,18 +101,19 @@ JS
     fs.writeFileSync(process.argv[2], JSON.stringify({ title: process.argv[5], scriptId: p.scriptId, sheetId: p.parentId,
       publicDeploymentId: process.argv[3], boardDeploymentId: process.argv[4] }, null, 2) + "\n");
   ' "$PROJECT" "$STATE" "$PUBLIC_ID" "$BOARD_ID" "$TITLE"
-else
-  PUBLIC_ID=$(state_get publicDeploymentId)
-  BOARD_ID=$(state_get boardDeploymentId)
-  echo "Updating the existing POC ($(state_get title))..."
-  write_deploy_file "$PUBLIC_ID"
-  set_access ANYONE_ANONYMOUS
-  clasp_p push --force >/dev/null
-  deploy -i "$PUBLIC_ID" -d "Live capture: tables and wall (no sign-in)" >/dev/null
-  set_access ANYONE
-  clasp_p push --force >/dev/null
-  deploy -i "$BOARD_ID" -d "Live capture: dashboard and board (Google sign-in)" >/dev/null
 fi
+
+# Every run ends here: both deployments get the code with each other's address.
+PUBLIC_ID=$(state_get publicDeploymentId)
+BOARD_ID=$(state_get boardDeploymentId)
+echo "Updating both deployments ($(state_get title))..."
+write_deploy_file "$PUBLIC_ID" "$BOARD_ID"
+set_access ANYONE_ANONYMOUS
+clasp_p push --force >/dev/null
+deploy -i "$PUBLIC_ID" -d "Live capture: tables and wall (no sign-in)" >/dev/null
+set_access ANYONE
+clasp_p push --force >/dev/null
+deploy -i "$BOARD_ID" -d "Live capture: dashboard and board (Google sign-in)" >/dev/null
 
 SHEET_ID=$(state_get sheetId)
 cat <<EOF
@@ -125,9 +128,11 @@ Live capture POC is up.
 First time only:
   1. Open the Sheet, reload it, and choose Learning Library Engine > Initial Setup.
      Leave the Gemini key blank for now and Save. Approve the permissions Google asks for.
-  2. Open the Dashboard and create a session.
-  3. Open the Board, pick the session and turn on live capture.
-     Copy the table link into a QR code; open the wall link on a projector.
+  2. Open the Dashboard and create a session. Choose the event type "Live capture: Need Cards"
+     and the number of tables; the wizard opens the board when it's done.
+  3. From the board, open "Table cards" and print one per table (each QR code opens
+     that table), and open the wall on a projector. The Sheet's Live Capture menu has
+     the same links.
 
 Run "npm run poc" again after any code change to update both deployments.
 EOF

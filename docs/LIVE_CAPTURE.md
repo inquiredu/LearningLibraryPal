@@ -25,6 +25,13 @@ The facilitator moves the room through the agenda's stages from the **stage bar*
 
 Paper is the fallback all the way through: the tables still write on paper, and if phones fail at the vote, the team counts dots and types them into the board, which then ranks and assigns exactly as it does for phone votes.
 
+Two things to tell the room, because of how entries are stored:
+
+- **Gallery dots and votes count once per phone.** A phone gets a random voter id the first time it opens the page, so two people sharing a phone are one voter. People sharing a phone vote with paper dots.
+- **Each table has one set of test-drive notes, and each save replaces it.** If two phones at a table both type, the last save wins. Each table picks one note-taker.
+
+The attendee walkthrough and the projected phone guide (shared outside the repo) follow the stages above.
+
 ## Pages
 
 | Page | URL | Who |

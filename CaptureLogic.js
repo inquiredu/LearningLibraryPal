@@ -40,17 +40,49 @@ function captureSheetSafe_(value) {
   return /^[=+\-@]/.test(text) ? "'" + text : text;
 }
 
-/** Throws a message a table can act on; returns the cleaned card otherwise. */
-function captureValidateCard_(template, input, tableCount) {
-  if (!input || typeof input !== 'object') throw new Error('Nothing was sent. Try again.');
-  const table = Number(input.table);
+function captureTableFieldDefs_(template) {
+  return template.fields.filter(f => f.scope === 'table');
+}
+
+function captureCardFieldDefs_(template) {
+  return template.fields.filter(f => f.scope !== 'table');
+}
+
+function captureValidTable_(value, tableCount) {
+  const table = Number(value);
   if (!Number.isInteger(table) || table < 1 || table > tableCount) {
     throw new Error('Choose your table number first.');
   }
+  return table;
+}
+
+/** What a table writes once, such as its flip statement. */
+function captureValidateTableFields_(template, input) {
+  const sent = input && typeof input === 'object' ? input : {};
+  const fields = {};
+  captureTableFieldDefs_(template).forEach(field => {
+    const text = captureCleanText_(sent[field.key], field.maxLength);
+    if (!text) throw new Error('Add ' + (field.tableLabel || 'the ' + field.label).toLowerCase() + '.');
+    fields[field.key] = text;
+  });
+  return fields;
+}
+
+/**
+ * Throws a message a table can act on; returns the cleaned card otherwise.
+ * Table-scoped fields come from what the table saved once (tableFields),
+ * never from the card, so every card of a table carries the same text.
+ */
+function captureValidateCard_(template, input, tableCount, tableFields) {
+  if (!input || typeof input !== 'object') throw new Error('Nothing was sent. Try again.');
+  const table = captureValidTable_(input.table, tableCount);
   const fields = {};
   const sent = input.fields && typeof input.fields === 'object' ? input.fields : {};
+  const saved = tableFields && typeof tableFields === 'object' ? tableFields : {};
   template.fields.forEach(field => {
-    const text = captureCleanText_(sent[field.key], field.maxLength);
+    const fromTable = field.scope === 'table';
+    const text = captureCleanText_(fromTable ? saved[field.key] : sent[field.key], field.maxLength);
+    if (!text && fromTable) throw new Error('Save ' + (field.tableLabel || field.label).toLowerCase() + ' first.');
     if (!text) throw new Error('Add the ' + field.label.replace(/…$/, '').toLowerCase() + '.');
     fields[field.key] = text;
   });

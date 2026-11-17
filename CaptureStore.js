@@ -4,6 +4,8 @@
  *   Live Capture  key/value settings (template, tables, open, table key)
  *   Live Cards    one row per card, written only under the script lock
  *   Live Groups   the facilitators' current grouping, rewritten whole on save
+ *   Live Tables   what each table writes once (its flip statement), copied
+ *                 onto that table's cards whenever it changes
  * Facilitators can read every row in the Sheet; nothing here is secret except
  * the table key, which keeps a shared library link from being used to submit.
  */
@@ -14,6 +16,59 @@ const CaptureStore = {
   GROUPS_SHEET: 'Live Groups',
   CARD_BASE_HEADERS: ['Card', 'Submitted', 'Table', 'Level', 'Source', 'Hidden', 'Token'],
   GROUP_HEADERS: ['Rank', 'Topic', 'Route override', 'Card IDs', 'Group ID', 'Updated'],
+  TABLES_SHEET: 'Live Tables',
+
+  /** { 1: { flip: '…' }, … } for every table that has saved its fields. */
+  readTableFields: function(sessionId, template) {
+    const sheet = this.db(sessionId).getSheetByName(this.TABLES_SHEET);
+    if (!sheet) return {};
+    const defs = captureTableFieldDefs_(template);
+    const out = {};
+    sheet.getDataRange().getValues().slice(1).forEach(row => {
+      const table = Number(row[0]);
+      if (!Number.isInteger(table) || table < 1) return;
+      const fields = {};
+      defs.forEach((f, i) => { fields[f.key] = String(row[1 + i] || ''); });
+      out[table] = fields;
+    });
+    return out;
+  },
+
+  /** Saves a table's fields and rewrites them on that table's cards. */
+  setTableFields: function(sessionId, template, table, fields) {
+    const defs = captureTableFieldDefs_(template);
+    if (!defs.length) throw new Error('This template has nothing a table writes once.');
+    return this.withLock_(() => {
+      const db = this.db(sessionId);
+      let sheet = db.getSheetByName(this.TABLES_SHEET);
+      if (!sheet) {
+        sheet = db.insertSheet(this.TABLES_SHEET);
+        const headers = ['Table'].concat(defs.map(f => f.label), ['Updated']);
+        sheet.getRange(1, 1, 1, headers.length).setValues([headers])
+          .setBackground('#0B2B46').setFontColor('#FFFFFF').setFontWeight('bold');
+        sheet.setFrozenRows(1);
+      }
+      const row = [table].concat(defs.map(f => captureSheetSafe_(fields[f.key])), [new Date()]);
+      const values = sheet.getDataRange().getValues();
+      let target = -1;
+      for (let i = 1; i < values.length; i++) if (Number(values[i][0]) === table) { target = i + 1; break; }
+      if (target === -1) sheet.appendRow(row);
+      else sheet.getRange(target, 1, 1, row.length).setValues([row]);
+
+      const cards = db.getSheetByName(this.CARDS_SHEET);
+      if (cards) {
+        const cardValues = cards.getDataRange().getValues();
+        const base = this.CARD_BASE_HEADERS.length;
+        defs.forEach(f => {
+          const col = base + template.fields.indexOf(f) + 1;
+          for (let i = 1; i < cardValues.length; i++) {
+            if (Number(cardValues[i][2]) === table) cards.getRange(i + 1, col).setValue(captureSheetSafe_(fields[f.key]));
+          }
+        });
+      }
+      return fields;
+    });
+  },
 
   db: function(sessionId) {
     const cache = CacheService.getScriptCache();

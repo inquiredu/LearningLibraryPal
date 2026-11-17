@@ -65,7 +65,10 @@ function capturePublicTemplate_(template) {
     name: template.name,
     noun: template.noun,
     intro: template.intro,
-    fields: template.fields.map(f => ({ key: f.key, label: f.label, hint: f.hint || '', maxLength: f.maxLength, primary: !!f.primary })),
+    fields: template.fields.map(f => ({
+      key: f.key, label: f.label, hint: f.hint || '', maxLength: f.maxLength, primary: !!f.primary,
+      scope: f.scope === 'table' ? 'table' : 'card', tableLabel: f.tableLabel || '', tableHint: f.tableHint || ''
+    })),
     level: {
       label: template.level.label,
       options: template.level.options.map(o => ({ code: o.code, label: o.label, hint: o.hint, route: o.route }))
@@ -90,8 +93,32 @@ function captureGetTableConfig(sessionId, key) {
 function captureSubmitCard(sessionId, key, input) {
   const ctx = captureRequireKey_(sessionId, key);
   if (!ctx.config.open) throw new Error('Entry is closed. Thank you!');
-  const card = captureValidateCard_(ctx.template, input, ctx.config.tables);
+  const table = captureValidTable_(input && input.table, ctx.config.tables);
+  const saved = captureTableFieldDefs_(ctx.template).length
+    ? CaptureStore.readTableFields(sessionId, ctx.template)[table] || {}
+    : {};
+  const card = captureValidateCard_(ctx.template, input, ctx.config.tables, saved);
   return CaptureStore.appendCard(sessionId, ctx.template, card);
+}
+
+/** Saves what a table writes once (its flip statement); allowed while entry is open. */
+function captureSetTableFields(sessionId, key, table, fields) {
+  const ctx = captureRequireKey_(sessionId, key);
+  if (!ctx.config.open) throw new Error('Entry is closed. Thank you!');
+  const t = captureValidTable_(table, ctx.config.tables);
+  const clean = captureValidateTableFields_(ctx.template, fields);
+  CaptureStore.setTableFields(sessionId, ctx.template, t, clean);
+  return { table: t, fields: clean };
+}
+
+/** This table's saved fields and its own cards, so a returning phone picks up where it left off. */
+function captureGetTableState(sessionId, key, table) {
+  const ctx = captureRequireKey_(sessionId, key);
+  const t = captureValidTable_(table, ctx.config.tables);
+  const fields = captureTableFieldDefs_(ctx.template).length
+    ? CaptureStore.readTableFields(sessionId, ctx.template)[t] || {}
+    : {};
+  return { table: t, fields: fields, cards: captureGetTableCards(sessionId, key, t) };
 }
 
 function captureRemoveOwnCard(sessionId, key, cardId, token) {
@@ -179,7 +206,8 @@ function captureGetBoard(sessionId) {
     cards: cards.map(c => ({ id: c.id, table: c.table, level: c.level, source: c.source, hidden: c.hidden, submittedAt: c.submittedAt, fields: c.fields })),
     groups: captureOrderGroups_(template, cards.filter(c => !c.hidden), normalized.groups),
     ungrouped: normalized.ungrouped,
-    parking: captureParkingLot_(template, cards).map(c => c.id)
+    parking: captureParkingLot_(template, cards).map(c => c.id),
+    tableFields: captureTableFieldDefs_(template).length ? CaptureStore.readTableFields(sessionId, template) : {}
   };
 }
 

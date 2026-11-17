@@ -6,7 +6,7 @@
   <!--CAPTURE_STYLES-->
   <style>
     main { max-width: 560px; margin: 0 auto; padding: 16px 16px 96px; }
-    section + section, form { margin-top: 16px; }
+    section + section, section + form, form + section { margin-top: 16px; }
     .stack > * + * { margin-top: 16px; }
     .tables { display: grid; grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); gap: 10px; margin-top: 12px; }
     .tables .btn { min-height: 64px; font-size: 1.35rem; }
@@ -29,6 +29,9 @@
     .level-opt:has(input:checked) { border-color: var(--navy); box-shadow: inset 0 0 0 2px var(--navy); }
     .level-opt .code { font-weight: 800; min-width: 2.2em; color: var(--navy); }
     .level-opt .hint { margin: 0; }
+    .saved-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+    .saved-text { margin-top: 6px; font-size: 1.05rem; overflow-wrap: anywhere; }
+    .saved-list > * + * { margin-top: 12px; }
     .sent-list { list-style: none; padding: 0; margin: 8px 0 0; display: grid; gap: 8px; }
     .sent-list li { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; }
     .sent-list .text { flex: 1; min-width: 0; overflow-wrap: anywhere; }
@@ -58,6 +61,23 @@
     <section id="closed" class="panel" style="padding:16px" hidden>
       <h2>Entry is closed</h2>
       <p style="margin-top:6px">Thank you. Your table's cards are with the facilitators.</p>
+    </section>
+
+    <!-- What a table writes once, such as its flip statement -->
+    <section id="tablePanel" class="panel card-form" hidden aria-labelledby="tablePanelTitle">
+      <div id="tableSaved" class="saved-list" hidden></div>
+      <form id="tableForm" class="stack" hidden novalidate>
+        <div>
+          <h2 id="tablePanelTitle">Start with your table</h2>
+          <p class="muted small" id="tableIntro" style="margin-top:4px"></p>
+        </div>
+        <div id="tableFields" class="stack"></div>
+        <div id="tableError" class="alert alert-bad" role="alert"></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button type="submit" class="btn btn-primary" id="tableSaveBtn" style="flex:1">Save</button>
+          <button type="button" class="btn" id="tableCancelBtn" hidden>Cancel</button>
+        </div>
+      </form>
     </section>
 
     <form id="cardForm" class="panel card-form stack" hidden novalidate>
@@ -97,13 +117,18 @@
   <script>
     var SESSION_ID = "__SESSION_ID__";
     var CAPTURE_KEY = "__CAPTURE_KEY__";
-    var state = { config: null, table: null, sources: {}, busy: false };
+    var state = { config: null, table: null, tableFields: {}, sources: {}, busy: false };
     var $ = function (id) { return document.getElementById(id); };
     var tokensKey = 'capture:' + SESSION_ID + ':tokens';
     var tableKey = 'capture:' + SESSION_ID + ':table';
     var Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
 
     function show(id, on) { $(id).hidden = !on; }
+    function tableDefs() { return state.config.template.fields.filter(function (f) { return f.scope === 'table'; }); }
+    function cardDefs() { return state.config.template.fields.filter(function (f) { return f.scope !== 'table'; }); }
+    function tableReady() {
+      return tableDefs().every(function (f) { return !!(state.tableFields[f.key] || '').trim(); });
+    }
 
     function start() {
       Capture.run('captureGetTableConfig', SESSION_ID, CAPTURE_KEY).then(function (config) {
@@ -113,12 +138,17 @@
         $('intro').textContent = config.template.intro;
         $('levelLegend').textContent = config.template.level.label;
         if (!config.aiPhotos) show('photoBlock', false);
-        buildFields(config.template);
+        $('fields').innerHTML = fieldsHtml(cardDefs(), 'f_', false);
+        $('tableFields').innerHTML = fieldsHtml(tableDefs(), 't_', true);
+        $('tableIntro').textContent = tableDefs().map(function (f) { return f.tableHint; }).filter(Boolean).join(' ');
+        $('tableSaveBtn').textContent = tableDefs().length === 1 ? 'Save ' + (tableDefs()[0].tableLabel || tableDefs()[0].label).replace(/^Your table’s /i, '').toLowerCase() : 'Save';
         buildLevels(config.template);
         buildTables(config.tables);
+        $('micNote').textContent = Speech
+          ? 'Speak types what you say into that box. Your keyboard’s microphone works too.'
+          : 'Tip: your keyboard’s microphone can type for you.';
         var saved = Number(Capture.store(tableKey));
         if (saved >= 1 && saved <= config.tables) chooseTable(saved); else showPicker();
-        if (!config.open) showClosed();
       }).catch(function (err) {
         $('title').textContent = 'Link not working';
         $('pageError').textContent = err.message;
@@ -136,48 +166,105 @@
     }
 
     function showPicker() {
-      show('pickTable', true); show('cardForm', false); show('sent', false);
+      ['tablePanel', 'cardForm', 'sent', 'closed'].forEach(function (id) { show(id, false); });
+      show('pickTable', true);
       $('changeTable').hidden = true;
     }
+    $('changeTable').onclick = showPicker;
 
     function chooseTable(t) {
       state.table = t;
+      state.tableFields = {};
       Capture.store(tableKey, t);
       $('changeTable').textContent = 'Table ' + t + ' · change';
       $('changeTable').hidden = false;
       $('sentTitle').textContent = 'Table ' + t + '’s cards';
       show('pickTable', false);
-      if (state.config.open) { show('cardForm', true); }
+      Capture.run('captureGetTableState', SESSION_ID, CAPTURE_KEY, t).then(function (res) {
+        state.tableFields = res.fields || {};
+        renderSent(res.cards);
+        render();
+      }).catch(function (err) { $('pageError').textContent = err.message; });
+    }
+
+    /** Shows the right step: closed, the table's one-time fields, or the card form. */
+    function render() {
+      var open = state.config.open;
+      show('closed', !open);
       show('sent', true);
-      loadSent();
+      if (!tableDefs().length) { show('tablePanel', false); show('cardForm', open); return; }
+      show('tablePanel', true);
+      if (tableReady()) {
+        showTableSaved(open);
+        show('cardForm', open);
+      } else if (open) {
+        showTableForm(false);
+        show('cardForm', false);
+      } else {
+        show('tablePanel', false);
+        show('cardForm', false);
+      }
     }
-    $('changeTable').onclick = showPicker;
 
-    function showClosed() {
-      show('closed', true); show('cardForm', false);
+    function showTableSaved(canEdit) {
+      $('tableSaved').innerHTML = tableDefs().map(function (f) {
+        return '<div><div class="saved-head"><span class="label" style="margin:0">' + Capture.esc(f.tableLabel || f.label) + '</span>' +
+          (canEdit ? '<button type="button" class="btn btn-quiet btn-small" data-edit-table>Edit</button>' : '') + '</div>' +
+          '<p class="saved-text">' + Capture.esc(state.tableFields[f.key]) + '</p></div>';
+      }).join('');
+      show('tableSaved', true);
+      show('tableForm', false);
     }
 
-    function buildFields(template) {
-      $('fields').innerHTML = template.fields.map(function (f) {
-        var id = 'f_' + f.key;
+    function showTableForm(editing) {
+      tableDefs().forEach(function (f) { $('t_' + f.key).value = state.tableFields[f.key] || $('t_' + f.key).value || ''; });
+      $('tablePanelTitle').textContent = editing ? 'Edit your table’s ' + (tableDefs()[0].label || '').toLowerCase() : 'Start with your table';
+      show('tableCancelBtn', editing);
+      show('tableSaved', false);
+      show('tableForm', true);
+    }
+
+    document.addEventListener('click', function (e) {
+      if (e.target.closest('[data-edit-table]')) { showTableForm(true); show('cardForm', false); $('t_' + tableDefs()[0].key).focus(); }
+    });
+    $('tableCancelBtn').onclick = function () { $('tableError').textContent = ''; render(); };
+
+    $('tableForm').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var fields = {}, missing = null;
+      tableDefs().forEach(function (f) {
+        var v = $('t_' + f.key).value.trim();
+        fields[f.key] = v;
+        if (!v && !missing) missing = f;
+      });
+      if (missing) { $('tableError').textContent = 'Add ' + (missing.tableLabel || missing.label).toLowerCase() + '.'; $('t_' + missing.key).focus(); return; }
+      var btn = $('tableSaveBtn'), label = btn.textContent;
+      btn.disabled = true; btn.textContent = 'Saving…';
+      Capture.run('captureSetTableFields', SESSION_ID, CAPTURE_KEY, state.table, fields).then(function (res) {
+        state.tableFields = res.fields;
+        $('tableError').textContent = '';
+        Capture.toast('Saved for Table ' + state.table + '. Now add your need cards.');
+        render();
+        var first = cardDefs()[0];
+        if (first) $('f_' + first.key).focus();
+      }).catch(function (err) {
+        if (/closed/i.test(err.message)) { state.config.open = false; render(); }
+        $('tableError').textContent = err.message;
+      }).then(function () { btn.disabled = false; btn.textContent = label; });
+    });
+
+    function fieldsHtml(defs, prefix, forTable) {
+      return defs.map(function (f) {
+        var id = prefix + f.key;
+        var label = forTable ? (f.tableLabel || f.label) : f.label;
         return '<div>' +
-          '<div class="field-head"><label for="' + id + '">' + Capture.esc(f.label) + '</label>' +
+          '<div class="field-head"><label for="' + id + '">' + Capture.esc(label) + '</label>' +
           (Speech ? '<button type="button" class="btn mic" data-mic="' + id + '" aria-pressed="false">Speak</button>' : '') +
           '</div>' +
           (f.hint ? '<span class="hint" id="' + id + '_hint">' + Capture.esc(f.hint) + '</span>' : '') +
           '<textarea id="' + id + '" name="' + f.key + '" maxlength="' + f.maxLength + '" ' +
           (f.hint ? 'aria-describedby="' + id + '_hint" ' : '') + 'required></textarea></div>';
       }).join('');
-      $('fields').addEventListener('input', function (e) { if (e.isTrusted && e.inputType) state.sources.typed = true; });
-      if (Speech) {
-        $('fields').addEventListener('click', function (e) {
-          var b = e.target.closest('[data-mic]');
-          if (b) toggleMic(b);
-        });
-        $('micNote').textContent = 'Speak types what you say into that box. Your keyboard’s microphone works too.';
-      } else {
-        $('micNote').textContent = 'Tip: your keyboard’s microphone can type for you.';
-      }
     }
 
     function buildLevels(template) {
@@ -188,8 +275,16 @@
       }).join('');
     }
 
+    document.addEventListener('input', function (e) {
+      if (e.target.closest && e.target.closest('#fields') && e.isTrusted && e.inputType) state.sources.typed = true;
+    });
+
     // ── Dictation ────────────────────────────────────────────────────────────
     var activeRec = null;
+    document.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-mic]');
+      if (b) toggleMic(b);
+    });
     function toggleMic(button) {
       if (activeRec) { activeRec.stop(); return; }
       var box = $(button.dataset.mic);
@@ -202,7 +297,7 @@
         for (var i = e.resultIndex; i < e.results.length; i++) if (e.results[i].isFinal) said += e.results[i][0].transcript;
         if (said) {
           box.value = (box.value ? box.value.replace(/\s*$/, ' ') : '') + said.trim();
-          state.sources.voice = true;
+          if (box.closest('#fields')) state.sources.voice = true;
         }
       };
       rec.onerror = function (e) {
@@ -256,15 +351,15 @@
           status.textContent = 'No writing was found in that photo. Try again closer, or type the card.';
           return;
         }
-        state.config.template.fields.forEach(function (f) {
-          if (reading.fields[f.key]) $('f_' + f.key).value = reading.fields[f.key];
-        });
+        cardDefs().forEach(function (f) { if (reading.fields[f.key]) $('f_' + f.key).value = reading.fields[f.key]; });
         if (reading.level) {
           var radio = document.querySelector('input[name="level"][value="' + CSS.escape(reading.level) + '"]');
           if (radio) radio.checked = true;
         }
         state.sources.photo = true;
-        var unclear = JSON.stringify(reading.fields).indexOf('[illegible]') !== -1;
+        var shown = {};
+        cardDefs().forEach(function (f) { shown[f.key] = reading.fields[f.key]; });
+        var unclear = JSON.stringify(shown).indexOf('[illegible]') !== -1;
         status.className = 'alert ' + (unclear || reading.confidence === 'low' ? 'alert-warn' : 'alert-good');
         status.textContent = unclear
           ? 'Read. Some words were hard to read and are marked [illegible]. Fix them before sending.'
@@ -282,7 +377,7 @@
       var template = state.config.template;
       var fields = {};
       var missing = null;
-      template.fields.forEach(function (f) {
+      cardDefs().forEach(function (f) {
         var v = $('f_' + f.key).value.trim();
         fields[f.key] = v;
         if (!v && !missing) missing = f;
@@ -306,10 +401,11 @@
           $('photoStatus').textContent = '';
           Capture.toast('Card ' + res.id + ' sent. Add the next one.');
           loadSent();
-          $('f_' + template.fields[0].key).focus();
+          var first = cardDefs()[0];
+          if (first) $('f_' + first.key).focus();
         })
         .catch(function (err) {
-          if (/closed/i.test(err.message)) { state.config.open = false; showClosed(); }
+          if (/closed/i.test(err.message)) { state.config.open = false; render(); }
           fail(err.message);
         })
         .then(function () {
@@ -325,18 +421,20 @@
     }
 
     function loadSent() {
-      return Capture.run('captureGetTableCards', SESSION_ID, CAPTURE_KEY, state.table).then(function (cards) {
-        var tokens = Capture.store(tokensKey) || {};
-        var routes = {};
-        state.config.template.level.options.forEach(function (o) { routes[o.code] = o.route; });
-        $('sentList').innerHTML = cards.length ? cards.map(function (c) {
-          return '<li class="panel"><span class="level" data-route="' + Capture.esc(routes[c.level]) + '">' + Capture.esc(c.level) + '</span>' +
-            '<span class="text">' + Capture.esc(c.text) + '</span>' +
-            '<span class="id num">#' + c.id + '</span>' +
-            (tokens[c.id] && state.config.open ? '<button type="button" class="btn btn-quiet btn-small" data-remove="' + c.id + '">Remove</button>' : '') +
-            '</li>';
-        }).join('') : '<li class="muted">No cards yet. The first one you send shows up here.</li>';
-      }).catch(function () {});
+      return Capture.run('captureGetTableCards', SESSION_ID, CAPTURE_KEY, state.table).then(renderSent).catch(function () {});
+    }
+
+    function renderSent(cards) {
+      var tokens = Capture.store(tokensKey) || {};
+      var routes = {};
+      state.config.template.level.options.forEach(function (o) { routes[o.code] = o.route; });
+      $('sentList').innerHTML = cards.length ? cards.map(function (c) {
+        return '<li class="panel"><span class="level" data-route="' + Capture.esc(routes[c.level]) + '">' + Capture.esc(c.level) + '</span>' +
+          '<span class="text">' + Capture.esc(c.text) + '</span>' +
+          '<span class="id num">#' + c.id + '</span>' +
+          (tokens[c.id] && state.config.open ? '<button type="button" class="btn btn-quiet btn-small" data-remove="' + c.id + '">Remove</button>' : '') +
+          '</li>';
+      }).join('') : '<li class="muted">No cards yet. The first one you send shows up here.</li>';
     }
 
     $('sentList').addEventListener('click', function (e) {

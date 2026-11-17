@@ -192,7 +192,7 @@
       $('summary').innerHTML = '<span><span class="big num">' + live.length + '</span> cards</span>' +
         '<div class="tables-strip" aria-label="Cards per table">' + per.map(function (n, i) {
           return '<span class="num' + (n ? '' : ' zero') + '">T' + (i + 1) + ' · ' + n + '</span>';
-        }).join('') + '</div><div style="display:flex;gap:10px">' + levels + '</div>' + link;
+        }).join('') + '</div><div style="display:flex;gap:10px">' + levels + '</div>' + link + tableFieldsHtml();
       if ($('copyLink')) $('copyLink').onclick = function () {
         var input = $('tableLink');
         input.select();
@@ -208,6 +208,26 @@
         f.value = S.filter;
       }
     }
+
+    /** What each table wrote once (its flip statement), in table order. */
+    function tableFieldsHtml() {
+      var defs = S.board.template.fields.filter(function (f) { return f.scope === 'table'; });
+      if (!defs.length) return '';
+      var saved = S.board.tableFields || {}, rows = '', count = 0;
+      for (var t = 1; t <= S.board.config.tables; t++) {
+        var f = saved[t] || {};
+        var text = defs.map(function (d) { return f[d.key] || ''; }).filter(Boolean).join(' · ');
+        if (text) count++;
+        rows += '<li><strong class="num">T' + t + '</strong> ' + (text ? esc(text) : '<span class="muted">Not written yet</span>') + '</li>';
+      }
+      var label = defs.length === 1 ? defs[0].label + 's' : 'Table answers';
+      return '<details class="table-fields"' + (S.tableFieldsOpen ? ' open' : '') + ' style="flex-basis:100%">' +
+        '<summary><strong>' + esc(label) + '</strong> <span class="muted num">(' + count + ' of ' + S.board.config.tables + ')</span></summary>' +
+        '<ol style="list-style:none;padding:0;margin:8px 0 0;display:grid;gap:6px">' + rows + '</ol></details>';
+    }
+    document.addEventListener('toggle', function (e) {
+      if (e.target.classList && e.target.classList.contains('table-fields')) S.tableFieldsOpen = e.target.open;
+    }, true);
 
     function renderFeed() {
       var key = primaryKey(), others = S.board.template.fields.filter(function (f) { return f.key !== key; });

@@ -12,12 +12,17 @@ const CAPTURE_TEMPLATES = {
     name: 'Need Cards',
     noun: 'need card',
     intro: 'One entry per need card your table wrote. Please don’t include anyone’s name.',
+    // A field with scope 'table' is written once per table and copied onto
+    // each of that table's cards. Other fields are written on every card.
     fields: [
       {
         key: 'flip',
         label: 'Flip statement',
         hint: 'Right now…, but we need…',
-        maxLength: 400
+        tableLabel: 'Your table’s flip statement',
+        tableHint: 'The one flip statement your table chose. Every need card you add goes under it.',
+        maxLength: 400,
+        scope: 'table'
       },
       {
         key: 'need',

@@ -66,23 +66,32 @@ function mock(scenario) {
   var tpl = CAPTURE_TEMPLATES.needCards;
   var config = { template: 'needCards', tables: 6, open: true, key: '${KEY}', title: 'Need Cards' };
   var count = scenario.cards == null ? ${NEEDS.length} : scenario.cards;
+  // One flip statement per table: each table's first card's statement stands for the table.
+  var tableFields = {};
   var cards = ${JSON.stringify(NEEDS)}.slice(0, count).map(function (n, i) {
+    tableFields[n[0]] = tableFields[n[0]] || { flip: n[2] };
     return { id: i + 1, table: n[0], level: n[3], source: i % 4 === 0 ? 'photo' : (i % 5 === 0 ? 'typed+voice' : 'typed'), hidden: false,
-      submittedAt: '2026-11-18T18:0' + (i % 10) + ':00Z', token: 't' + i, fields: { flip: n[2], need: n[1] } };
+      submittedAt: '2026-11-18T18:0' + (i % 10) + ':00Z', token: 't' + i, fields: { flip: tableFields[n[0]].flip, need: n[1] } };
   });
+  if (scenario.freshTable) delete tableFields[scenario.freshTable];
   var groups = scenario.grouped ? ${JSON.stringify(DRAFT)}.map(function (d, i) { return { id: 'g' + (i + 1), topic: d[0], cardIds: d[1], rank: 0, routeOverride: '' }; }) : [];
   function board() {
     var n = captureNormalizeGroups_(cards, groups);
     return { sessionId: 'S-demo', sessionName: 'K-12 needs workshop', enabled: true, config: { title: config.title, tables: config.tables, open: config.open },
       template: pub(), links: { table: 'https://script.google.com/macros/s/DEMO/exec?session=S-demo&k=${KEY}&page=capture', wall: 'wall.html' },
       cards: cards, groups: captureOrderGroups_(tpl, cards.filter(function (c) { return !c.hidden; }), n.groups), ungrouped: n.ungrouped,
-      parking: captureParkingLot_(tpl, cards).map(function (c) { return c.id; }) };
+      parking: captureParkingLot_(tpl, cards).map(function (c) { return c.id; }), tableFields: tableFields };
   }
-  function pub() { return JSON.parse(JSON.stringify({ name: tpl.name, noun: tpl.noun, intro: tpl.intro, fields: tpl.fields, level: tpl.level, routes: tpl.routes })); }
+  function pub() { return JSON.parse(JSON.stringify({ name: tpl.name, noun: tpl.noun, intro: tpl.intro,
+    fields: tpl.fields.map(function (f) { return Object.assign({}, f, { scope: f.scope === 'table' ? 'table' : 'card' }); }), level: tpl.level, routes: tpl.routes })); }
+  function tableCards(t) { return cards.filter(function (c) { return c.table === t && !c.hidden; }).map(function (c) { return { id: c.id, text: c.fields.need, level: c.level }; }); }
   var api = {
     captureGetTableConfig: function () { return { title: config.title, tables: config.tables, open: config.open, aiPhotos: true, template: pub() }; },
-    captureGetTableCards: function (s, k, t) { return cards.filter(function (c) { return c.table === t && !c.hidden; }).map(function (c) { return { id: c.id, text: c.fields.need, level: c.level }; }); },
-    captureSubmitCard: function (s, k, input) { var c = captureValidateCard_(tpl, input, config.tables); var id = cards.length + 1;
+    captureGetTableCards: function (s, k, t) { return tableCards(t); },
+    captureGetTableState: function (s, k, t) { return { table: t, fields: tableFields[t] || {}, cards: tableCards(t) }; },
+    captureSetTableFields: function (s, k, t, f) { var clean = captureValidateTableFields_(tpl, f); tableFields[t] = clean;
+      cards.forEach(function (c) { if (c.table === t) c.fields.flip = clean.flip; }); return { table: t, fields: clean }; },
+    captureSubmitCard: function (s, k, input) { var c = captureValidateCard_(tpl, input, config.tables, tableFields[Number(input.table)] || {}); var id = cards.length + 1;
       cards.push({ id: id, table: c.table, level: c.level, source: c.source, hidden: false, fields: c.fields, submittedAt: new Date().toISOString() }); return { id: id, token: 'f'.repeat(32) }; },
     captureRemoveOwnCard: function (s, k, id) { cards.forEach(function (c) { if (c.id === id) c.hidden = true; }); return { removed: true }; },
     captureReadPhoto: function () { return captureCleanReading_(tpl, { flip: 'Right now students use chatbots for homework, but we need them to [illegible] answers.', need: 'Lessons on checking chatbot answers', level: 'G+', confidence: 'medium' }); },
@@ -126,7 +135,7 @@ function build(file, outName, scenario, sessionId = 'S-demo') {
   fs.writeFileSync(path.join(out, outName), html);
 }
 
-build('Capture.html', 'capture.html', { cards: 30 });
+build('Capture.html', 'capture.html', { cards: 30, freshTable: 3 });
 build('CaptureBoard.html', 'board.html', { cards: 30, grouped: true });
 build('CaptureBoard.html', 'board-live.html', { cards: 17, grouped: false });
 build('CaptureWall.html', 'wall.html', { cards: 30, grouped: true });

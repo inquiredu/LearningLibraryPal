@@ -19,25 +19,29 @@ const card = (id, table, level, need = 'Need ' + id, extra = {}) =>
 
 test('a table card is validated against the template and cleaned', () => {
   const c = logic();
-  c.input = { table: '3', level: 'G+', sources: ['photo', 'typed'], fields: { flip: '  Right now​ a\u0007, but we need b ', need: 'PD time' } };
-  const out = c.eval('captureValidateCard_(CAPTURE_TEMPLATES.needCards, input, 6)');
+  c.input = { table: '3', level: 'G+', sources: ['photo', 'typed'], fields: { flip: 'IGNORED: cards cannot set it', need: '  PD​ time\u0007 ' } };
+  c.saved = { flip: '  Right now a, but we need b ' };
+  const out = c.eval('captureValidateCard_(CAPTURE_TEMPLATES.needCards, input, 6, saved)');
   assert.equal(out.table, 3);
-  assert.equal(out.fields.flip, 'Right now a, but we need b');
+  assert.equal(out.fields.flip, 'Right now a, but we need b', 'the flip statement comes from the table, not the card');
+  assert.equal(out.fields.need, 'PD time');
   assert.equal(out.level, 'G+');
   assert.equal(out.source, 'typed+photo');
 });
 
-test('a card is refused without a table, a field or a known level', () => {
+test('a card is refused without a table, a need, a known level, or its table\'s flip statement', () => {
   const c = logic();
+  c.saved = { flip: 'Right now a, but we need b' };
   const bad = [
-    { table: 0, level: 'G', fields: { flip: 'a', need: 'b' } },
-    { table: 7, level: 'G', fields: { flip: 'a', need: 'b' } },
-    { table: 1, level: 'G', fields: { flip: '', need: 'b' } },
-    { table: 1, level: 'G', fields: { flip: 'a', need: '​ ' } },
-    { table: 1, level: 'X', fields: { flip: 'a', need: 'b' } },
+    { table: 0, level: 'G', fields: { need: 'b' } },
+    { table: 7, level: 'G', fields: { need: 'b' } },
+    { table: 1, level: 'G', fields: { need: '​ ' } },
+    { table: 1, level: 'X', fields: { need: 'b' } },
     null
   ];
-  bad.forEach(input => { c.input = input; assert.throws(() => c.eval('captureValidateCard_(CAPTURE_TEMPLATES.needCards, input, 6)')); });
+  bad.forEach(input => { c.input = input; assert.throws(() => c.eval('captureValidateCard_(CAPTURE_TEMPLATES.needCards, input, 6, saved)')); });
+  c.input = { table: 1, level: 'G', fields: { flip: 'typed on the card', need: 'b' } };
+  assert.throws(() => c.eval('captureValidateCard_(CAPTURE_TEMPLATES.needCards, input, 6, {})'), /flip statement first/);
 });
 
 test('long text is cut at the field limit without leaving half a surrogate pair', () => {
@@ -121,7 +125,7 @@ test('the projector summary carries counts and topics, never card text', () => {
 
 // ─── API boundaries ─────────────────────────────────────────────────────────
 
-function apiContext({ email = '', config = null, cards = [], groups = [] } = {}) {
+function apiContext({ email = '', config = null, cards = [], groups = [], tableFields = {} } = {}) {
   const calls = [];
   const c = load(['Config.js', 'AuthService.js', 'CaptureTemplates.js', 'CaptureLogic.js', 'CaptureApi.js'], {
     Session: { getActiveUser: () => ({ getEmail: () => email }), getEffectiveUser: () => ({ getEmail: () => 'owner@example.org' }) },
@@ -134,6 +138,8 @@ function apiContext({ email = '', config = null, cards = [], groups = [] } = {})
       getConfig: () => config,
       readCards: () => cards,
       readGroups: () => groups,
+      readTableFields: () => tableFields,
+      setTableFields: (sid, t, table, fields) => { calls.push(['table', table, fields]); return fields; },
       appendCard: (sid, t, cardIn) => { calls.push(['append', cardIn]); return { id: 1, token: 'a'.repeat(32) }; },
       setHidden: (...args) => { calls.push(['hide', ...args]); },
       writeGroups: (sid, g) => { calls.push(['groups', g]); },
@@ -153,7 +159,7 @@ const openConfig = { template: 'needCards', tables: 6, open: true, key: KEY, tit
 
 test('every board call refuses anonymous and unrelated users before touching data', () => {
   const publicNames = new Set(['captureGetTableConfig', 'captureSubmitCard', 'captureRemoveOwnCard',
-    'captureGetTableCards', 'captureReadPhoto', 'captureGetWall']);
+    'captureGetTableCards', 'captureReadPhoto', 'captureGetWall', 'captureSetTableFields', 'captureGetTableState']);
   const names = [...source('CaptureApi.js').matchAll(/^function (\w+)\(/gm)].map(m => m[1])
     .filter(name => !name.endsWith('_') && !publicNames.has(name));
   assert.ok(names.length >= 9, names.join(','));
@@ -167,8 +173,8 @@ test('every board call refuses anonymous and unrelated users before touching dat
 });
 
 test('public calls need the session table key and an open session', () => {
-  const h = apiContext({ config: openConfig });
-  const input = { table: 2, level: 'G', fields: { flip: 'Right now a, but we need b', need: 'c' } };
+  const h = apiContext({ config: openConfig, tableFields: { 2: { flip: 'Right now a, but we need b' } } });
+  const input = { table: 2, level: 'G', fields: { need: 'c' } };
   for (const key of ['', 'wrong', 'ffffffffffffffffffff']) {
     assert.throws(() => h.c.captureSubmitCard('S-1', key, input), /table link/);
     assert.throws(() => h.c.captureGetWall('S-1', key), /table link/);
@@ -177,6 +183,8 @@ test('public calls need the session table key and an open session', () => {
   assert.equal(h.calls.length, 0);
   assert.equal(h.c.captureSubmitCard('S-1', KEY, input).id, 1);
   assert.equal(h.calls[0][1].fields.need, 'c');
+  assert.equal(h.calls[0][1].fields.flip, 'Right now a, but we need b');
+  assert.throws(() => h.c.captureSubmitCard('S-1', KEY, { table: 3, level: 'G', fields: { need: 'c' } }), /flip statement first/);
 
   const closed = apiContext({ config: { ...openConfig, open: false } });
   assert.throws(() => closed.c.captureSubmitCard('S-1', KEY, input), /closed/);
@@ -302,4 +310,53 @@ test('board links point at the public deployment when one is configured', () => 
   assert.match(links.wall, /\/s\/PUBLIC\/exec\?.*page=wall$/);
   h.c.CAPTURE_PUBLIC_URL = 'https://evil.example/exec';
   assert.match(h.c.captureGetBoard('S-1').links.table, /\/s\/x\/exec/);
+});
+
+test('a table saves its flip statement once, cleaned, only with the key and while entry is open', () => {
+  const h = apiContext({ config: openConfig, tableFields: { 4: { flip: 'Saved' } }, cards: [card(1, 4, 'G', 'Mine'), card(2, 5, 'G', 'Theirs')] });
+  assert.throws(() => h.c.captureSetTableFields('S-1', 'wrong', 4, { flip: 'x' }), /table link/);
+  assert.throws(() => h.c.captureSetTableFields('S-1', KEY, 9, { flip: 'x' }), /table number/);
+  assert.throws(() => h.c.captureSetTableFields('S-1', KEY, 4, { flip: '  ' }), /flip statement/);
+  const res = h.c.captureSetTableFields('S-1', KEY, 4, { flip: ' Right now‮ x, but we need y ', need: 'not a table field' });
+  assert.deepEqual(JSON.parse(JSON.stringify(res.fields)), { flip: 'Right now x, but we need y' });
+  assert.deepEqual(h.calls[0].slice(0, 2), ['table', 4]);
+  const st = JSON.parse(JSON.stringify(h.c.captureGetTableState('S-1', KEY, 4)));
+  assert.deepEqual(st, { table: 4, fields: { flip: 'Saved' }, cards: [{ id: 1, text: 'Mine', level: 'G' }] });
+  const closed = apiContext({ config: { ...openConfig, open: false } });
+  assert.throws(() => closed.c.captureSetTableFields('S-1', KEY, 4, { flip: 'x' }), /closed/);
+});
+
+test('saving a flip statement rewrites it on that table\'s cards and only theirs', () => {
+  const grid = {
+    'Live Cards': [['Card', 'Submitted', 'Table', 'Level', 'Source', 'Hidden', 'Token', 'Flip statement', 'Need'],
+      [1, '', 2, 'G', 'typed', 'no', 't', 'old', 'n1'], [2, '', 3, 'G', 'typed', 'no', 't', 'other', 'n2'], [3, '', 2, 'B', 'typed', 'no', 't', 'old', 'n3']]
+  };
+  const sheet = name => grid[name] && {
+    getDataRange: () => ({ getValues: () => grid[name].map(r => r.slice()) }),
+    getRange: (r, c, rows = 1, cols = 1) => ({
+      setValue: v => { grid[name][r - 1][c - 1] = v; },
+      setValues: vals => {
+        for (let i = 0; i < rows; i++) for (let j = 0; j < cols; j++) { (grid[name][r - 1 + i] = grid[name][r - 1 + i] || [])[c - 1 + j] = vals[i][j]; }
+        const style = { setBackground: () => style, setFontColor: () => style, setFontWeight: () => style };
+        return style;
+      }
+    }),
+    appendRow: row => grid[name].push(row),
+    setFrozenRows() {}
+  };
+  const db = { getSheetByName: sheet, insertSheet: name => { grid[name] = []; return sheet(name); } };
+  const c = load(['CaptureTemplates.js', 'CaptureLogic.js', 'CaptureStore.js'], {
+    CacheService: { getScriptCache: () => ({ get: () => 'db-id', put() {} }) },
+    SpreadsheetApp: { openById: () => db },
+    LockService: { getScriptLock: () => ({ tryLock: () => true, releaseLock() {} }) }
+  });
+  c.eval('CaptureStore.setTableFields("S-1", CAPTURE_TEMPLATES.needCards, 2, { flip: "=Right now new, but we need more" })');
+  assert.equal(grid['Live Tables'][1][0], 2);
+  assert.equal(grid['Live Tables'][1][1], "'=Right now new, but we need more");
+  assert.deepEqual(grid['Live Cards'].slice(1).map(r => r[7]), ["'=Right now new, but we need more", 'other', "'=Right now new, but we need more"]);
+  c.eval('CaptureStore.setTableFields("S-1", CAPTURE_TEMPLATES.needCards, 2, { flip: "Edited" })');
+  assert.equal(grid['Live Tables'].length, 2, 'editing updates the table row instead of adding one');
+  assert.equal(grid['Live Tables'][1][1], 'Edited');
+  const read = JSON.parse(JSON.stringify(c.eval('CaptureStore.readTableFields("S-1", CAPTURE_TEMPLATES.needCards)')));
+  assert.deepEqual(read, { 2: { flip: 'Edited' } });
 });

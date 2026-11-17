@@ -14,5 +14,6 @@ for (const file of fs.readdirSync(root)) {
   }
 }
 execFileSync('bash', ['-n', path.join(root, 'setup.sh')]);
+execFileSync('bash', ['-n', path.join(root, 'scripts', 'poc.sh')]);
 JSON.parse(fs.readFileSync(path.join(root, 'appsscript.json'), 'utf8'));
-console.log(`Checked ${count} server/client scripts, setup shell syntax, and manifest.`);
+console.log(`Checked ${count} server/client scripts, setup and POC shell syntax, and manifest.`);

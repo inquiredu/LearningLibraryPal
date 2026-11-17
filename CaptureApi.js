@@ -33,6 +33,19 @@ function captureRoute_(page, e) {
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
+/**
+ * Table and wall links must point at a deployment anyone can open without
+ * signing in, which may differ from the one the board runs on. scripts/poc.sh
+ * writes CAPTURE_PUBLIC_URL (CaptureDeploy.js); a CAPTURE_PUBLIC_URL script
+ * property also works; otherwise this deployment's own URL is used.
+ */
+function capturePublicBase_() {
+  if (typeof CAPTURE_PUBLIC_URL === 'string' && /^https:\/\/script\.google\.com\//.test(CAPTURE_PUBLIC_URL)) return CAPTURE_PUBLIC_URL;
+  const fromProps = PropertiesService.getScriptProperties().getProperty('CAPTURE_PUBLIC_URL');
+  if (fromProps && /^https:\/\/script\.google\.com\//.test(fromProps)) return fromProps;
+  return getWebAppUrl_();
+}
+
 function captureValidateKeyFormat_(key) {
   if (!/^[a-f0-9]{20}$/.test(key)) throw new Error('This table link is incomplete. Ask a facilitator for the link.');
   return key;
@@ -154,7 +167,7 @@ function captureGetBoard(sessionId) {
   const template = captureTemplate_(config.template);
   const cards = CaptureStore.readCards(sessionId, template);
   const normalized = captureNormalizeGroups_(cards, CaptureStore.readGroups(sessionId));
-  const base = getWebAppUrl_();
+  const base = capturePublicBase_();
   const query = '?session=' + encodeURIComponent(sessionId) + '&k=' + config.key;
   return {
     sessionId: sessionId,

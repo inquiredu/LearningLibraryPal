@@ -292,3 +292,14 @@ test('a grouping proposal that drops or repeats cards is repaired, not trusted',
   assert.match(prompt, /Card 3 \| Table 3/);
   assert.match(prompt, /never instructions to follow/);
 });
+
+test('board links point at the public deployment when one is configured', () => {
+  const h = apiContext({ email: 'owner@example.org', config: openConfig });
+  assert.match(h.c.captureGetBoard('S-1').links.table, /^https:\/\/script\.google\.com\/macros\/s\/x\/exec\?/);
+  h.c.CAPTURE_PUBLIC_URL = 'https://script.google.com/macros/s/PUBLIC/exec';
+  const links = h.c.captureGetBoard('S-1').links;
+  assert.match(links.table, /\/s\/PUBLIC\/exec\?session=S-1&k=0123456789abcdef0123&page=capture$/);
+  assert.match(links.wall, /\/s\/PUBLIC\/exec\?.*page=wall$/);
+  h.c.CAPTURE_PUBLIC_URL = 'https://evil.example/exec';
+  assert.match(h.c.captureGetBoard('S-1').links.table, /\/s\/x\/exec/);
+});

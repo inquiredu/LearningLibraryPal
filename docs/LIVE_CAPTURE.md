@@ -40,7 +40,8 @@ The `k` parameter is a random table key made when capture is turned on. Every ta
 | `Capture.html`, `CaptureBoard.html`, `CaptureWall.html` | The three pages. |
 | `CaptureStyles.html`, `CaptureClient.html` | Shared styles and browser helpers, inserted into each page. |
 | `scripts/capture-preview.cjs` | Builds the three pages as local files with a stand-in for Apps Script, for screenshots and review. Not uploaded. |
-| `tests/capture.test.cjs` | 18 tests for the rules, the API boundaries, page rendering and the AI calls. |
+| `tests/capture.test.cjs` | 19 tests for the rules, the API boundaries, page rendering, public links and the AI calls. |
+| `scripts/poc.sh`, `tests/poc.test.cjs` | `npm run poc`: one command for a separate proof-of-concept instance with two deployments. Tested against a fake clasp. |
 
 Changes to existing files are small: a `request` method in `GeminiService.js` that takes image parts and a response schema (`_call` now uses it; its tests pass unchanged); a route block in `doGet`; `capture` and `wall` in `CONFIG.PUBLIC_PAGES`; `CONFIG.CAPTURE_AI_DAILY_LIMIT`; and the Slides scope widened from read-only to `presentations` so posters can be created.
 
@@ -54,12 +55,36 @@ Changes to existing files are small: a `request` method in `GeminiService.js` th
 - `CONFIG.CAPTURE_AI_DAILY_LIMIT` (300) caps photo readings plus grouping calls per day across all sessions. 0 turns live-capture AI off; typing still works.
 - A table can remove only cards it sent from that device (a token returned when each card is sent). Facilitators can hide any card; hidden cards stay in the Sheet.
 
-## Try it
+## Try it: `npm run poc`
 
-You need Node 22, the Apps Script API turned on for your Google account, and a Gemini API key from Google AI Studio. Use a new key for this pilot, restricted to the Generative Language API, with a low daily quota.
+One command stands up a separate proof-of-concept instance in your Google account. It never touches another Learning Library install: it makes its own Sheet and Apps Script project and keeps its settings in `.clasp.poc.json` and `.poc.json` (both ignored by Git).
+
+It makes **two deployments of the same code**, because Apps Script only tells a script who the visitor is when the visitor has to sign in:
+
+| Deployment | Who has access | Serves |
+|---|---|---|
+| Public | Anyone, no sign-in | Table entry and the wall (both need the table key) |
+| Board | Anyone with a Google account | Dashboard and board (`AuthService` then allows only the owner and listed facilitators) |
+
+The script writes the public deployment's address into `CaptureDeploy.js`, so the table and wall links the board shows always open without sign-in.
+
+### In a Codespace (nothing to install)
+
+1. On GitHub, open the repository, switch to the `claude/need-cards-live-capture` branch, then choose **Code → Codespaces → Create codespace**. It installs dependencies by itself.
+2. In the Codespace terminal:
+
+   ```bash
+   npm run poc
+   ```
+
+3. Turn on the Apps Script API when asked (https://script.google.com/home/usersettings), then follow clasp's sign-in steps.
+
+### On your own machine
+
+You need Node 22.
 
 ```bash
-git clone https://github.com/inquiredu/LearningLibraryPal.git
+git clone -b claude/need-cards-live-capture https://github.com/inquiredu/LearningLibraryPal.git
 ```
 
 ```bash
@@ -67,25 +92,30 @@ cd LearningLibraryPal
 ```
 
 ```bash
-git checkout claude/need-cards-live-capture
-```
-
-```bash
 npm ci --ignore-scripts
 ```
 
 ```bash
-npm run setup
+npm run poc
 ```
 
-`npm run setup` creates a new Sheet-bound project and uploads the code. It does not deploy anything. Then:
+### Then, once, in Google
 
-1. `npm run open`, reload the Sheet, and run **Learning Library Engine → Initial Setup**. Enter the Gemini key and a model ID your key can use. The default is `gemini-3.8-flash`; check it exists in AI Studio. Gather uses `gemini-3.6-flash`.
-2. `npm run open:script`, then **Deploy → New deployment → Web app**, **Execute as: Me**, **Who has access: Anyone**. Tables are not signed in, so the table page needs "Anyone". The dashboard, wizard and board still check the signed-in Google account; only the library, table and wall pages are open, and the table and wall need the key.
-3. Open the `/exec` URL, create a session in the dashboard (the wizard), then open `/exec?page=board` and turn on live capture for it.
-4. Copy the table link from the board into a QR code. Open the wall link on the projector.
+The script prints the Sheet, dashboard and board addresses.
 
-After any later `npm run push`, update the deployment to a **New version** so the change goes live.
+1. Open the Sheet, reload it, and choose **Learning Library Engine → Initial Setup**. Leave the Gemini key blank for a first run and Save. Approve the permissions Google asks for. These include Slides, for posters.
+2. Open the dashboard and create a session.
+3. Open the board, pick the session and turn on live capture. Copy the table link into a QR code and open the wall link on a projector.
+
+Without a key, typing, dictation, the board, the wall and posters all work. Reading photos and **Suggest groups** say they need a key. To add AI later, run Initial Setup again with a new Gemini key restricted to the Generative Language API, with a low daily quota, and a model your key can use. The default is `gemini-3.8-flash`; check it exists in AI Studio. Gather uses `gemini-3.6-flash`.
+
+Run `npm run poc` again after any code change. It updates both deployments in place, so the links stay the same.
+
+### Sharing it
+
+- **Tables and anyone else who adds cards:** the table link (or its QR code). No sign-in.
+- **The room:** the wall link. No sign-in. It shows counts and topics only.
+- **Other facilitators:** the board needs a Google account listed in `CONFIG.ALLOWED_EMAILS`. Google may withhold the email of people outside your account's domain, in which case access fails closed (see the README). For the POC, plan to run the board yourself.
 
 To review the pages without Google:
 
@@ -99,7 +129,7 @@ Then open `capture.html`, `board.html` or `wall.html` from that folder in a brow
 
 Checked here, with mocks:
 
-- `npm run check` and `npm test`: 40 tests pass (the 22 existing and 18 new).
+- `npm run check` and `npm test`: 43 tests pass (the 22 existing and 21 new), including `scripts/poc.sh` run against a fake clasp: it creates both deployments, writes the public address, restores the manifest, and updates in place on a second run.
 - The three pages, rendered against the stand-in with 30 made-up cards, at 375 px (phone), 1366×768 (Chromebook) and 1920×1080 (projector). No script errors.
 - On the board: drafting groups, keyboard select-and-move, drag-and-drop, reordering, renaming with autosave, making posters, closing entry and filtering by table.
 
@@ -110,6 +140,7 @@ Not checked, because it needs a real Google run:
 - Gemini: whether the configured model accepts images, `responseSchema` and `thinkingConfig`, and how well it reads handwriting on real cards.
 - The camera button and **Speak** inside the Apps Script page frame on iPhone, Android and Chromebook. If the frame blocks the microphone, the page hides **Speak** and points to the keyboard's microphone.
 - Whether Google shows its "created by another user" notice on the page.
+- `npm run poc` against the real Apps Script API: the two-deployment setup, and that the board deployment sees the owner's email.
 - Facilitators other than the owner: Google may withhold their email in an owner-run web app, and access then fails closed (see the README).
 - Apps Script quotas and response times with about 36 cards.
 

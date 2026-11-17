@@ -12,3 +12,9 @@
 node_modules/
 .clasprc.json
 .clasp.backup.*.json
+
+# Live capture POC (scripts/poc.sh): per-install project, state and generated deployment URL
+.clasp.poc.json
+.poc.json
+CaptureDeploy.js
+appsscript.json.poc-original

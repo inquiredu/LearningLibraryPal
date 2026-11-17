@@ -380,6 +380,21 @@ test('each live-capture page is self-contained: one inline script that defines C
   }
 });
 
+test('nothing is timed: stages carry no clock times and no page shows one', () => {
+  const c = logic();
+  const stages = plain(c.eval(`${T}.stages`));
+  assert.equal(stages.length, 10);
+  for (const s of stages) {
+    assert.deepEqual(Object.keys(s).sort(), ['id', 'label', 'phone'], s.id + ' has no time');
+    assert.doesNotMatch(s.label + ' ' + s.phone, /\b\d{1,2}:\d{2}\b/, s.id + ' names no clock time');
+  }
+  for (const file of ['Capture', 'CaptureBoard', 'CaptureWall', 'CaptureTableCards']) {
+    const html = source(file + '.html');
+    assert.doesNotMatch(html, /\.time\b/, file + ' renders no stage time');
+    assert.doesNotMatch(html.replace(/<style>[\s\S]*?<\/style>/g, ''), /\b\d{1,2}:\d{2}\b/, file + ' names no clock time');
+  }
+});
+
 // ─── Store ──────────────────────────────────────────────────────────────────
 
 function storeContext(grid) {

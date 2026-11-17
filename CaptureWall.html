@@ -97,7 +97,6 @@
     .wall-head { display: flex; align-items: baseline; gap: 2vw; flex-wrap: wrap; }
     .wall-head h1 { font-size: 1.9em; font-weight: 750; flex: 1; min-width: 0; }
     .stage { color: var(--cyan); font-weight: 700; }
-    .stage .time { color: #CFE3F2; font-weight: 600; margin-right: .4em; font-variant-numeric: tabular-nums; }
     .big { font-size: 4.2em; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
     .sub { color: #CFE3F2; }
     .tables { display: grid; grid-template-columns: repeat(auto-fit, minmax(7em, 1fr)); gap: 2vw; align-content: start; }
@@ -224,7 +223,7 @@
     function roles(w, counts) {
       return '<div class="row">' + w.template.roles.map(function (r) { return '<span class="kv sub">' + esc(r.label) + 's<strong>' + (counts[r.code] || 0) + '</strong></span>'; }).join('') + '</div>';
     }
-    function stageInfo(w) { return w.template.stages.find(function (s) { return s.id === w.stage; }) || { label: w.stage, time: '' }; }
+    function stageInfo(w) { return w.template.stages.find(function (s) { return s.id === w.stage; }) || { label: w.stage }; }
 
     var views = {
       welcome: function (w) {
@@ -289,7 +288,7 @@
     function draw(w) {
       $('title').textContent = w.title;
       var s = stageInfo(w);
-      $('stage').innerHTML = '<span class="time">' + esc(s.time) + '</span>' + esc(s.label);
+      $('stage').textContent = s.label;
       $('view').innerHTML = (views[w.stage] || views.welcome)(w);
     }
 

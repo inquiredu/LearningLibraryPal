@@ -20,18 +20,19 @@ const CAPTURE_TEMPLATES = {
       { code: 'A', label: 'Adult' }
     ],
 
-    // The facilitator moves the room through these; phones and the wall follow.
+    // The facilitator moves the room through these when it is ready; phones and the wall
+    // follow. No clock times: a gathering keeps its own pace.
     stages: [
-      { id: 'welcome', label: 'Welcome', time: '9:00', phone: 'Pick your table and say whether you’re a student or an adult.' },
-      { id: 'signals', label: 'Signals', time: '10:00', phone: 'Jot one signal per entry.' },
-      { id: 'flips', label: 'The Flip', time: '11:12', phone: 'Write your table’s 3–4 flip statements.' },
-      { id: 'flipdots', label: 'Gallery dots', time: '11:30', phone: 'Add dots to the flip statements.' },
-      { id: 'needs', label: 'Need cards', time: '12:08', phone: 'Pick your top flip statement and write need cards.' },
-      { id: 'synthesis', label: 'Synthesis', time: '12:25', phone: 'The synthesis team is grouping the needs.' },
-      { id: 'vote', label: 'Vote', time: '12:40', phone: 'Vote for the needs to address first.' },
-      { id: 'results', label: 'Read-out', time: '12:55', phone: 'See the ranked priorities.' },
-      { id: 'testdrive', label: 'Test drive', time: '13:05', phone: 'Test current guidance against your table’s priority.' },
-      { id: 'close', label: 'Close', time: '13:47', phone: 'Thank you.' }
+      { id: 'welcome', label: 'Welcome', phone: 'Pick your table and say whether you’re a student or an adult.' },
+      { id: 'signals', label: 'Signals', phone: 'Jot one signal per entry.' },
+      { id: 'flips', label: 'The Flip', phone: 'Write your table’s 3–4 flip statements.' },
+      { id: 'flipdots', label: 'Gallery dots', phone: 'Add dots to the flip statements.' },
+      { id: 'needs', label: 'Need cards', phone: 'Pick your top flip statement and write need cards.' },
+      { id: 'synthesis', label: 'Synthesis', phone: 'The synthesis team is grouping the needs.' },
+      { id: 'vote', label: 'Vote', phone: 'Vote for the needs to address first.' },
+      { id: 'results', label: 'Read-out', phone: 'See the ranked priorities.' },
+      { id: 'testdrive', label: 'Test drive', phone: 'Test current guidance against your table’s priority.' },
+      { id: 'close', label: 'Close', phone: 'Thank you.' }
     ],
 
     signal: {
@@ -50,7 +51,7 @@ const CAPTURE_TEMPLATES = {
       perTableMax: 6
     },
 
-    // 11:30 gallery walk dots on flip statements.
+    // Gallery walk dots on flip statements.
     flipDots: [
       { code: 'green', label: 'Resonates' },
       { code: 'blue', label: 'Surprising' },

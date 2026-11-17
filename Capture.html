@@ -97,7 +97,6 @@
     .block { padding: 16px; }
     .block + .block, section + section { margin-top: 16px; }
     .stage { display: flex; gap: 10px; align-items: baseline; padding: 10px 14px; background: #E8F1F8; border-radius: 10px; color: var(--navy); }
-    .stage .time { font-weight: 800; font-variant-numeric: tabular-nums; }
     .stage .what { font-weight: 650; }
     .stage p { color: var(--muted); font-size: .95rem; margin-top: 2px; }
     .grid-buttons { display: grid; grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); gap: 10px; margin-top: 10px; }
@@ -257,7 +256,7 @@
 
     function T() { return S.state.template; }
     function roleLabel(code) { var r = T().roles.find(function (x) { return x.code === code; }); return r ? r.label : ''; }
-    function stageInfo(id) { return T().stages.find(function (s) { return s.id === id; }) || { label: id, time: '', phone: '' }; }
+    function stageInfo(id) { return T().stages.find(function (s) { return s.id === id; }) || { label: id, phone: '' }; }
 
     // ── Loading and polling ──────────────────────────────────────────────────
     function load(force) {
@@ -325,7 +324,7 @@
     function render() {
       var info = stageInfo(S.stage);
       $('stageBar').hidden = false;
-      $('stageBar').innerHTML = '<span class="time">' + esc(info.time) + '</span><div><div class="what">' + esc(info.label) + '</div><p>' + esc(info.phone) + '</p></div>';
+      $('stageBar').innerHTML = '<div><div class="what">' + esc(info.label) + '</div><p>' + esc(info.phone) + '</p></div>';
       var views = { welcome: viewWelcome, signals: viewSignals, flips: viewFlips, flipdots: viewFlipDots, needs: viewNeeds,
         synthesis: viewSynthesis, vote: viewVote, results: viewResults, testdrive: viewTestDrive, close: viewClose };
       $('view').innerHTML = '';

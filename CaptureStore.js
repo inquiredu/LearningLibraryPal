@@ -3,13 +3,13 @@
  * Live capture lives in the session's own Project Database:
  *   Live Capture    key/value settings (template, tables, table key, stage,
  *                   published groups, paper dots, tally mode, assignments, survey)
- *   Live Signals    one row per signal (10:00)
- *   Live Flips      one row per flip statement; a table marks its top ones (11:12)
- *   Live Flip Dots  one row per person: their gallery dots on flip statements (11:30)
- *   Live Cards      one row per need card (12:08)
+ *   Live Signals    one row per signal (Signals)
+ *   Live Flips      one row per flip statement; a table marks its top ones (The Flip)
+ *   Live Flip Dots  one row per person: their gallery dots on flip statements (Gallery dots)
+ *   Live Cards      one row per need card (Need cards)
  *   Live Groups     the synthesis team's working groups, rewritten whole on save
- *   Live Votes      one row per person: their priority votes (12:40)
- *   Live Test Drive one row per table: its notes on the guidance (13:05)
+ *   Live Votes      one row per person: their priority votes (Vote)
+ *   Live Test Drive one row per table: its notes on the guidance (Test drive)
  * Rows are read and written by header name, so a column added later goes at
  * the end and older sheets keep working. Writes run under the script lock.
  * Phones and the wall read one cached snapshot per session, refreshed every

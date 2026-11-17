@@ -97,10 +97,8 @@
     .bar .actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
     .stepper { display: flex; gap: 6px; overflow-x: auto; padding: 10px 16px; background: #E8F1F8; border-bottom: 1px solid var(--line); }
     .step { display: grid; text-align: left; min-width: 104px; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--line-strong); background: #fff; cursor: pointer; font: inherit; color: var(--ink); }
-    .step .t { font-size: .8rem; color: var(--muted); font-variant-numeric: tabular-nums; }
     .step .l { font-weight: 700; font-size: .9rem; }
     .step[aria-current="step"] { background: var(--navy); color: #fff; border-color: var(--navy); }
-    .step[aria-current="step"] .t { color: #CFE3F2; }
     .tabs { display: flex; gap: 4px; flex-wrap: wrap; margin: 0 0 12px; border-bottom: 1px solid var(--line); }
     .tab { border: 0; background: none; padding: 10px 12px; font: 600 .95rem var(--font); color: var(--muted); cursor: pointer; border-bottom: 3px solid transparent; }
     .tab[aria-selected="true"] { color: var(--navy); border-bottom-color: var(--navy); }
@@ -330,7 +328,7 @@
       var b = S.board;
       $('stepper').hidden = false;
       $('stepper').innerHTML = T().stages.map(function (s) {
-        return '<button type="button" class="step" data-stage="' + esc(s.id) + '"' + (b.config.stage === s.id ? ' aria-current="step"' : '') + '><span class="t">' + esc(s.time) + '</span><span class="l">' + esc(s.label) + '</span></button>';
+        return '<button type="button" class="step" data-stage="' + esc(s.id) + '"' + (b.config.stage === s.id ? ' aria-current="step"' : '') + '><span class="l">' + esc(s.label) + '</span></button>';
       }).join('');
     }
 

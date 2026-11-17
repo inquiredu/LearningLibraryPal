@@ -8,20 +8,20 @@ Status: on branch `claude/need-cards-live-capture`. A first instance ran on Goog
 
 ## Need Cards, following the retreat agenda
 
-The facilitator moves the room through the agenda's stages from the **stage bar** on the board. Every phone and the wall follow within a few seconds. Each kind of entry is only accepted during its own stage.
+The facilitator moves the room through the agenda's stages from the **stage bar** on the board, when the room is ready. Every phone and the wall follow within a few seconds. Nothing moves on a timer, and no screen shows a clock time: gatherings run early and late, and the room sets the pace. Each kind of entry is only accepted during its own stage.
 
-| Time | Stage | Phones | Board | Wall |
-|---|---|---|---|---|
-| 9:00 | Welcome | Pick table (preset by a table card's QR code) and Student or Adult, once | Links, table cards, survey link | "Scan the QR code on your table" |
-| 10:00 | Signals | Jot signals, one per entry | Every signal, by table and role; hide any | Count, by role and table |
-| 11:12 | The Flip | The table's 3–4 flip statements ("Right now…, but we want…"); anyone at the table can add or edit | Flip statements by table | Count by table |
-| 11:30 | Gallery dots | Tap Resonates, Surprising or Missing/mislabeled on any table's flip statements (up to 9) | Dot counts per flip statement, by role | Dots placed, by role |
-| 12:08 | Need cards | Mark the table's top flip statement(s), using the dot counts; each person sends need cards: which flip statement, the need, G / G+ / B, Student or Adult. Photo reading and dictation help. | Cards word for word | Cards by table, tag and role |
-| 12:25 | Synthesis | "The team is grouping" | **Suggest groups** (AI draft), then edit in G / G+ / B columns. A group's column is the tag most of its cards carry; **?** marks groups where tables tagged differently. **Doesn't fit yet** holds what no group claims. **Publish for voting** freezes the groups. | "Grouping N needs" |
-| 12:40 | Vote | 3 votes from each phone, stackable, by role; changeable until the stage moves on | Turnout by role | The question, turnout, and the published topics |
-| 12:55 | Read-out | Ranked priorities per column with the role split; the table's assigned priority | Tally from **phone votes**, **paper dots** (typed in per group, by role) or **both**; ranked columns; the top priorities go to tables 1–N, each overridable | Ranked columns with student/adult bars |
-| 13:05 | Test drive | The table's priority, and its notes: change, add, cut, beyond guidance | Every table's notes, for the share-outs | Each table's priority |
-| 13:47 | Close | Thank you and the exit survey link | Survey link setting | Thank you and the survey QR code |
+| Stage | Phones | Board | Wall |
+|---|---|---|---|
+| Welcome | Pick table (preset by a table card's QR code) and Student or Adult, once | Links, table cards, survey link | "Scan the QR code on your table" |
+| Signals | Jot signals, one per entry | Every signal, by table and role; hide any | Count, by role and table |
+| The Flip | The table's 3–4 flip statements ("Right now…, but we want…"); anyone at the table can add or edit | Flip statements by table | Count by table |
+| Gallery dots | Tap Resonates, Surprising or Missing/mislabeled on any table's flip statements (up to 9) | Dot counts per flip statement, by role | Dots placed, by role |
+| Need cards | Mark the table's top flip statement(s), using the dot counts; each person sends need cards: which flip statement, the need, G / G+ / B, Student or Adult. Photo reading and dictation help. | Cards word for word | Cards by table, tag and role |
+| Synthesis | "The team is grouping" | **Suggest groups** (AI draft), then edit in G / G+ / B columns. A group's column is the tag most of its cards carry; **?** marks groups where tables tagged differently. **Doesn't fit yet** holds what no group claims. **Publish for voting** freezes the groups. | "Grouping N needs" |
+| Vote | 3 votes from each phone, stackable, by role; changeable until the stage moves on | Turnout by role | The question, turnout, and the published topics |
+| Read-out | Ranked priorities per column with the role split; the table's assigned priority | Tally from **phone votes**, **paper dots** (typed in per group, by role) or **both**; ranked columns; the top priorities go to tables 1–N, each overridable | Ranked columns with student/adult bars |
+| Test drive | The table's priority, and its notes: change, add, cut, beyond guidance | Every table's notes, for the share-outs | Each table's priority |
+| Close | Thank you and the exit survey link | Survey link setting | Thank you and the survey QR code |
 
 Paper is the fallback all the way through: the tables still write on paper, and if phones fail at the vote, the team counts dots and types them into the board, which then ranks and assigns exactly as it does for phone votes.
 

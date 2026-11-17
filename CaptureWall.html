@@ -8,9 +8,10 @@
   :root {
     --ink: #17212B;
     --muted: #4F5D6B;
-    --navy: #0B2B46;
-    --navy-2: #163E62;
-    --cyan: #5DCDF5;
+    /* State of Minnesota brand: Minnesota Blue and Minnesota Green. */
+    --navy: #003865;
+    --navy-2: #0D4E80;
+    --cyan: #78BE21;
     --ground: #F4F6F8;
     --surface: #FFFFFF;
     --line: #D5DCE3;
@@ -78,7 +79,7 @@
   .level[data-route="parking"] { border-style: dashed; color: var(--warn); border-color: #C88A3A; }
 
   .spinner { width: 18px; height: 18px; border-radius: 50%; border: 3px solid rgba(255,255,255,.4); border-top-color: #fff; animation: spin .9s linear infinite; }
-  .spinner.dark { border-color: rgba(11,43,70,.2); border-top-color: var(--navy); }
+  .spinner.dark { border-color: rgba(0,56,101,.2); border-top-color: var(--navy); }
   @keyframes spin { to { transform: rotate(360deg); } }
 
   .toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); max-width: calc(100% - 32px);
@@ -141,7 +142,7 @@
       <span class="stage" id="stage" aria-live="polite"></span>
     </header>
     <main id="view" aria-live="polite"></main>
-    <footer class="foot">Phones add what tables write. Facilitators group it; AI only drafts. The wall never shows anyone’s card text.</footer>
+    <footer class="foot">Phones and laptops add what tables write, and paper is entered too. Facilitators group it; AI only drafts. The wall never shows anyone’s card text.</footer>
   </div>
   <script>
     /* shared:CaptureClient */
@@ -227,7 +228,7 @@
 
     var views = {
       welcome: function (w) {
-        return '<div class="welcome"><p class="big" style="font-size:2.6em">Scan the QR code on your table.</p><p class="sub">Pick your table and whether you’re a student or an adult. Keep the page open; it follows along all day.</p></div>';
+        return '<div class="welcome"><p class="big" style="font-size:2.6em">Scan the QR code on your table, or open the link you were sent.</p><p class="sub">Pick your table and whether you’re a student or an adult. Keep the page open; it follows the room.</p></div>';
       },
       signals: function (w) {
         return '<div style="display:grid;gap:4vh"><div class="row"><span class="big">' + w.signals.byRole.total + '</span><span class="sub">signals so far</span></div>' + roles(w, w.signals.byRole) + perTable(w.signals.perTable, 's') + '</div>';
@@ -236,7 +237,7 @@
         return '<div style="display:grid;gap:4vh"><div class="row"><span class="big">' + w.flips.total + '</span><span class="sub">' + esc(w.template.parent.plural) + '</span></div>' + perTable(w.flips.perTable, 'f') + '</div>';
       },
       flipdots: function (w) {
-        return '<div style="display:grid;gap:4vh"><div class="row"><span class="big">' + w.flipDots.total + '</span><span class="sub">gallery dots placed by phone</span></div>' + roles(w, w.flipDots) +
+        return '<div style="display:grid;gap:4vh"><div class="row"><span class="big">' + w.flipDots.total + '</span><span class="sub">gallery dots placed on devices</span></div>' + roles(w, w.flipDots) +
           '<div class="legend">' + w.template.flipDots.map(function (d) { return '<span>' + esc(d.label) + '</span>'; }).join(' · ') + '</div></div>';
       },
       needs: function (w) {
@@ -245,7 +246,7 @@
           roles(w, w.cards.byRole) + perTable(w.cards.perTable, 'c') + '</div>';
       },
       synthesis: function (w) {
-        return '<div class="welcome"><p class="big" style="font-size:2.4em">The synthesis team is grouping ' + w.cards.total + ' needs.</p><p class="sub">Into G, G+ and B, marking where tables disagreed. Voting opens next, on your phone.</p></div>';
+        return '<div class="welcome"><p class="big" style="font-size:2.4em">The synthesis team is grouping ' + w.cards.total + ' needs.</p><p class="sub">Into G, G+ and B, marking where tables disagreed. Voting opens on your phone or laptop when they publish.</p></div>';
       },
       vote: function (w) {
         var html = '<div style="display:grid;gap:3vh"><p class="big" style="font-size:2em">' + esc(w.template.vote.prompt) + '</p><div class="row"><span class="kv sub">Voted so far<strong>' + w.voters.total + '</strong></span>' + roles(w, w.voters) + '</div>';
@@ -281,7 +282,7 @@
           try { var q = qrcode(0, 'M'); q.addData(w.surveyUrl); q.make(); qr = '<div class="qr">' + q.createSvgTag(8, 2) + '</div>'; } catch (e) { qr = ''; }
         }
         return '<div class="welcome"><p class="big" style="font-size:2.6em">Thank you.</p>' +
-          (w.surveyUrl ? '<p class="sub">Exit survey: scan, or open it from your phone page.</p>' + (qr || '<p style="overflow-wrap:anywhere">' + esc(w.surveyUrl) + '</p>') : '') + '</div>';
+          (w.surveyUrl ? '<p class="sub">Exit survey: scan, or open it from your capture page.</p>' + (qr || '<p style="overflow-wrap:anywhere">' + esc(w.surveyUrl) + '</p>') : '') + '</div>';
       }
     };
 

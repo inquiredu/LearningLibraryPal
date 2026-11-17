@@ -71,9 +71,18 @@ const CONFIG = {
   // ── Live capture ──────────────────────────────────────────────────────────
 
   /**
-   * Most AI calls live capture may make per day across all sessions (photo
-   * readings plus grouping suggestions). 0 turns live-capture AI off.
+   * Most live capture may spend on AI per day, in US dollars, across all
+   * sessions (photo and poster readings plus grouping suggestions). Each call's
+   * cost comes from the tokens Gemini reports and the prices below. 0 turns
+   * live-capture AI off.
    */
-  CAPTURE_AI_DAILY_LIMIT: 300,
+  CAPTURE_AI_DAILY_BUDGET_USD: 100,
+
+  /**
+   * Gemini prices in US dollars per million tokens, used only to keep within
+   * the budget above. Check them against your Google AI Studio billing; these
+   * are set high on purpose, so the budget errs on the safe side.
+   */
+  CAPTURE_AI_PRICES_PER_MILLION: { input: 1.5, output: 7.5 },
 
 };

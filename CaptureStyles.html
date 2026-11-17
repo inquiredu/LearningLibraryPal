@@ -2,9 +2,10 @@
   :root {
     --ink: #17212B;
     --muted: #4F5D6B;
-    --navy: #0B2B46;
-    --navy-2: #163E62;
-    --cyan: #5DCDF5;
+    /* State of Minnesota brand: Minnesota Blue and Minnesota Green. */
+    --navy: #003865;
+    --navy-2: #0D4E80;
+    --cyan: #78BE21;
     --ground: #F4F6F8;
     --surface: #FFFFFF;
     --line: #D5DCE3;
@@ -72,7 +73,7 @@
   .level[data-route="parking"] { border-style: dashed; color: var(--warn); border-color: #C88A3A; }
 
   .spinner { width: 18px; height: 18px; border-radius: 50%; border: 3px solid rgba(255,255,255,.4); border-top-color: #fff; animation: spin .9s linear infinite; }
-  .spinner.dark { border-color: rgba(11,43,70,.2); border-top-color: var(--navy); }
+  .spinner.dark { border-color: rgba(0,56,101,.2); border-top-color: var(--navy); }
   @keyframes spin { to { transform: rotate(360deg); } }
 
   .toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); max-width: calc(100% - 32px);

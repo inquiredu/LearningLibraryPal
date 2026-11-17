@@ -72,7 +72,11 @@ function mock(sc) {
   var ids = tpl.stages.map(function (s) { return s.id; });
   var at = function (s) { return ids.indexOf(sc.stage) >= ids.indexOf(s); };
   var config = { template: 'needCards', tables: 6, key: '${KEY}', title: 'AI in K-12: Needs and Priorities', stage: sc.stage,
-    published: null, publishedAt: '', paperDots: {}, tallyMode: 'phone', assign: {}, surveyUrl: 'https://example.org/exit-survey' };
+    published: null, publishedAt: '', paperDots: {}, paperFlipDots: {}, tallyMode: 'phone', assign: {}, surveyUrl: 'https://example.org/exit-survey' };
+  var audit = [];
+  var spent = 0.37;
+  function log(who, action, ids, model, cost, photo) { audit.push({ Entry: audit.length + 1, Time: new Date().toISOString(), Actor: who, Action: action, IDs: ids || '', Model: model || '', 'Cost (USD)': cost || '', Photo: photo || '', Detail: '' }); }
+  log('owner@example.org', 'Live capture turned on'); log('Table 3 · device 4f2a9c1e', 'Signal added', '1'); log('owner@example.org', 'AI suggested groups', '12 groups', 'gemini-3.8-flash', 0.0061);
   var NEEDS = ${JSON.stringify(NEEDS)};
   var signals = at('signals') ? ${JSON.stringify(SIGNALS)}.map(function (t, i) { return { id: i + 1, table: (i % 6) + 1, role: i % 3 ? 'A' : 'S', text: t, hidden: false, token: 't' + i }; }) : [];
   var flips = [];
@@ -85,7 +89,8 @@ function mock(sc) {
     var mine = flips.filter(function (f) { return f.table === n[0]; });
     var flip = mine.find(function (f) { return f.text === n[2]; }) || mine[0];
     return { id: i + 1, table: n[0], level: n[3], role: i % 3 === 0 ? 'S' : 'A', flipId: flip.id, source: i % 4 === 0 ? 'photo' : 'typed', hidden: false,
-      submittedAt: '2026-11-18T18:0' + (i % 10) + ':00Z', token: 't' + i, fields: { flip: flip.text, need: n[1] } };
+      submittedAt: '2026-11-18T18:0' + (i % 10) + ':00Z', token: 't' + i, fields: { flip: flip.text, need: n[1] },
+      aiReading: i % 4 === 0 ? n[1].slice(0, -1) : '', photo: i % 4 === 0 ? 'https://drive.google.com/file/d/DEMO/view' : '' };
   }) : [];
   var groups = at('synthesis') ? ${JSON.stringify(DRAFT)}.map(function (d, i) { return { id: 'g' + (i + 1), topic: d[0], cardIds: d[1], rank: 0, columnOverride: '' }; }) : [];
   if (at('vote')) { config.published = capturePublish_(tpl, cards, captureNormalizeGroups_(cards, groups, tpl).groups); config.publishedAt = '2026-11-18T18:38:00Z'; }
@@ -93,19 +98,23 @@ function mock(sc) {
     var p = config.published; return { voter: 'v' + i, role: i % 3 === 0 ? 'S' : 'A', choices: [p[i % 5].id, p[(i * 3) % p.length].id, p[(i % 2) ? 0 : 1].id] };
   }) : [];
   if (at('results')) config.paperDots[config.published[0].id] = { S: 2, A: 1 };
-  var testDrive = at('testdrive') ? [{ table: 1, groupId: 'g1', topic: 'Chatbots', notes: { change: 'Say what age-appropriate access means.', add: 'Examples of classroom chatbot use.', cut: '', beyond: 'Funding for teacher training.' } }] : [];
+  var testDrive = at('testdrive') ? [
+    { table: 1, device: 'a1', groupId: 'g1', topic: 'Chatbots', source: 'typed', notes: { change: 'Say what age-appropriate access means.', add: 'Examples of classroom chatbot use.', cut: '', beyond: 'Funding for teacher training.' } },
+    { table: 3, device: 'b2', groupId: 'g3', topic: 'AI policy and guidelines', source: 'typed', notes: { change: '', add: 'A model policy districts can adopt as is.', cut: 'The long list of tool names; it dates fast.', beyond: '' } },
+    { table: 3, device: 'paper-1', groupId: 'g3', topic: 'AI policy and guidelines', source: 'paper', notes: { change: 'Plain language for families.', add: '', cut: '', beyond: 'State funding to help districts write policy.' } }] : [];
 
   function results() { var t = captureTally_(tpl, config.published || [], votes, config.paperDots, config.tallyMode); return captureResults_(tpl, config.published || [], t, config.tables, config.assign); }
   function pub() { return JSON.parse(JSON.stringify({ name: tpl.name, noun: tpl.noun, intro: tpl.intro, roles: tpl.roles, stages: tpl.stages, signal: tpl.signal, parent: tpl.parent,
-    flipDots: tpl.flipDots, flipDotsPerPerson: tpl.flipDotsPerPerson, fields: tpl.fields, level: { label: tpl.level.label, levers: tpl.level.levers, options: tpl.level.options },
+    flipDots: tpl.flipDots, fields: tpl.fields, level: { label: tpl.level.label, levers: tpl.level.levers, options: tpl.level.options },
     routes: tpl.routes, vote: tpl.vote, testDrive: tpl.testDrive })); }
   function voters() { var o = { total: votes.length }; tpl.roles.forEach(function (r) { o[r.code] = votes.filter(function (v) { return v.role === r.code; }).length; }); return o; }
-  function stageOk(list) { if (list.indexOf(config.stage) === -1) throw new Error('That’s not open right now.'); }
   function board() {
-    var live = cards.filter(function (c) { return !c.hidden; }), n = captureNormalizeGroups_(cards, groups, tpl), dots = captureTallyFlipDots_(tpl, flipDots);
-    return { sessionId: 'S-demo', sessionName: 'Retreat rehearsal', enabled: true,
-      config: { title: config.title, tables: config.tables, stage: config.stage, tallyMode: config.tallyMode, surveyUrl: config.surveyUrl, publishedAt: config.publishedAt, paperDots: config.paperDots, assign: config.assign },
-      template: pub(), links: { table: 'https://script.google.com/macros/s/DEMO/exec?session=S-demo&k=${KEY}&page=capture', wall: 'wall-' + config.stage + '.html', tableCards: 'table-cards.html', board: '#' },
+    var live = cards.filter(function (c) { return !c.hidden; }), n = captureNormalizeGroups_(cards, groups, tpl), dots = captureTallyFlipDots_(tpl, flipDots, config.paperFlipDots);
+    return { sessionId: 'S-demo', sessionName: 'Retreat rehearsal', enabled: true, sheetUrl: 'https://docs.google.com/spreadsheets/d/DEMO/edit',
+      config: { title: config.title, tables: config.tables, stage: config.stage, tallyMode: config.tallyMode, surveyUrl: config.surveyUrl, publishedAt: config.publishedAt, paperDots: config.paperDots, paperFlipDots: config.paperFlipDots, assign: config.assign },
+      template: pub(),
+      paperModes: Object.keys(CAPTURE_PAPER_MODES_).map(function (k) { return { id: k, label: CAPTURE_PAPER_MODES_[k].label, table: CAPTURE_PAPER_MODES_[k].table }; }),
+      ai: { enabled: true, spentToday: spent, budget: 100 }, links: { table: 'https://script.google.com/macros/s/DEMO/exec?session=S-demo&k=${KEY}&page=capture', wall: 'wall-' + config.stage + '.html', tableCards: 'table-cards.html', board: '#' },
       signals: signals, flips: flips.map(function (f) { return Object.assign({}, f, { dots: dots[f.id] || {} }); }), cards: cards,
       groups: captureOrderGroups_(tpl, live, n.groups), ungrouped: n.ungrouped, parking: captureParkingLot_(tpl, cards).map(function (c) { return c.id; }),
       published: config.published, voters: voters(), tally: config.published ? captureTally_(tpl, config.published, votes, config.paperDots, config.tallyMode) : {},
@@ -114,38 +123,40 @@ function mock(sc) {
   var api = {
     captureGetPhoneState: function (s, k, table, voter) {
       var st = { title: config.title, tables: config.tables, stage: config.stage, aiPhotos: true, template: pub() };
-      var dots = captureTallyFlipDots_(tpl, flipDots);
+      var dots = captureTallyFlipDots_(tpl, flipDots, config.paperFlipDots);
       if (table) {
         var a = config.published && at('results') ? results().assignments.find(function (x) { return x.table === table; }) : null;
-        var n = testDrive.find(function (x) { return x.table === table; });
+        var mineTd = testDrive.find(function (x) { return x.table === table && x.device === voter; });
         st.table = { number: table,
           flips: flips.filter(function (f) { return f.table === table && !f.hidden; }).map(function (f) { return { id: f.id, text: f.text, top: f.top, dots: dots[f.id] || {} }; }),
           cards: cards.filter(function (c) { return c.table === table && !c.hidden; }).map(function (c) { return { id: c.id, text: c.fields.need, level: c.level, role: c.role, flipId: c.flipId }; }),
           signals: signals.filter(function (x) { return x.table === table && !x.hidden; }),
-          assignment: a && a.groupId ? { groupId: a.groupId, topic: a.topic } : null, testDrive: n ? n.notes : null };
+          assignment: a && a.groupId ? { id: a.groupId, topic: a.topic } : null,
+          testDrive: { mine: mineTd ? mineTd.notes : null, others: testDrive.filter(function (x) { return x.table === table && x !== mineTd; }).map(function (x) { return x.notes; }) } };
       }
-      if (config.stage === 'flipdots') { st.gallery = flips.filter(function (f) { return !f.hidden; }); st.myDots = flipDots.filter(function (d) { return d.voter === voter; }); }
-      if (config.published && at('vote')) { st.ballot = config.published.map(function (g) { return { id: g.id, topic: g.topic, column: g.column, contested: g.contested, tableCount: g.tableCount }; });
+      st.gallery = flips.filter(function (f) { return !f.hidden; }); st.myDots = flipDots.filter(function (d) { return d.voter === voter; });
+      if (config.published) { st.ballot = config.published.map(function (g) { return { id: g.id, topic: g.topic, column: g.column, contested: g.contested, tableCount: g.tableCount }; });
         var mine = votes.find(function (v) { return v.voter === voter; }); st.myVote = mine ? { role: mine.role, choices: mine.choices } : null; }
       if (config.published && at('results')) st.results = results();
       if (config.stage === 'close') st.surveyUrl = config.surveyUrl;
       return st;
     },
-    captureAddSignal: function (s, k, input) { stageOk(['signals']); var v = captureValidateSignal_(tpl, input, config.tables); var id = signals.length + 1; signals.push(Object.assign({ id: id, hidden: false }, v)); return { id: id, token: 'a'.repeat(32) }; },
+    captureAddSignal: function (s, k, input) { var v = captureValidateSignal_(tpl, input, config.tables); var id = signals.length + 1; signals.push(Object.assign({ id: id, hidden: false }, v)); return { id: id, token: 'a'.repeat(32) }; },
     captureRemoveSignal: function (s, k, id) { signals.forEach(function (x) { if (x.id === id) x.hidden = true; }); return {}; },
-    captureSaveFlip: function (s, k, table, id, text) { stageOk(['flips', 'flipdots', 'needs']); var clean = captureValidateFlipText_(tpl, text);
+    captureSaveFlip: function (s, k, table, id, text) { var clean = captureValidateFlipText_(tpl, text);
       if (id) { flips.forEach(function (f) { if (f.id === id) f.text = clean; }); cards.forEach(function (c) { if (c.flipId === id) c.fields.flip = clean; }); return { id: id }; }
       flips.push({ id: flips.length + 1, table: table, text: clean, top: false, hidden: false }); return { id: flips.length }; },
     captureRemoveFlip: function (s, k, table, id) { flips.forEach(function (f) { if (f.id === id) f.hidden = true; }); return {}; },
     captureSetFlipTop: function (s, k, table, id, top) { flips.forEach(function (f) { if (f.id === id) f.top = top; }); return {}; },
-    captureSaveFlipDots: function (s, k, input) { stageOk(['flipdots']); var e = captureValidateFlipDots_(tpl, flips, input);
+    captureSaveFlipDots: function (s, k, input) { var e = captureValidateFlipDots_(tpl, flips, input);
       flipDots = flipDots.filter(function (d) { return d.voter !== e.voter; }).concat(e.dots.map(function (d) { return { flipId: d.flipId, color: d.color, role: e.role, voter: e.voter }; })); return {}; },
-    captureSubmitCard: function (s, k, input) { stageOk(['needs']); var c = captureValidateCard_(tpl, input, config.tables, flips); var id = cards.length + 1;
+    captureSubmitCard: function (s, k, input) { var c = captureValidateCard_(tpl, input, config.tables, flips); var id = cards.length + 1;
       cards.push(Object.assign({ id: id, hidden: false, submittedAt: new Date().toISOString() }, c)); return { id: id, token: 'f'.repeat(32) }; },
     captureRemoveOwnCard: function (s, k, id) { cards.forEach(function (c) { if (c.id === id) c.hidden = true; }); return {}; },
-    captureReadPhoto: function () { return captureCleanReading_(tpl, { need: 'Lessons on checking chatbot answers for [illegible] sources', level: 'G+', confidence: 'medium' }); },
-    captureSaveVote: function (s, k, input) { stageOk(['vote']); var v = captureValidateVote_(tpl, config.published, input); votes = votes.filter(function (x) { return x.voter !== v.voter; }).concat([v]); return {}; },
-    captureSaveTestDrive: function (s, k, table, notes) { stageOk(['testdrive']); var n = captureValidateTestDrive_(tpl, notes); testDrive = testDrive.filter(function (x) { return x.table !== table; }).concat([{ table: table, notes: n }]); return {}; },
+    captureReadPhoto: function () { spent += 0.004; log('Table 3 · device 4f2a9c1e', 'AI read a card photo', '', 'gemini-3.8-flash', 0.004, 'https://drive.google.com/file/d/DEMO/view');
+      return Object.assign({ entry: audit.length }, captureCleanReading_(tpl, { need: 'Lessons on checking chatbot answers for [illegible] sources', level: 'G+', confidence: 'medium' })); },
+    captureSaveVote: function (s, k, input) { var v = captureValidateVote_(tpl, config.published, input); votes = votes.filter(function (x) { return x.voter !== v.voter; }).concat([v]); return {}; },
+    captureSaveTestDrive: function (s, k, table, notes, device) { var n = captureValidateTestDrive_(tpl, notes); testDrive = testDrive.filter(function (x) { return !(x.table === table && x.device === device); }).concat([{ table: table, device: device, notes: n, source: 'typed' }]); return {}; },
     captureGetWall: function () {
       var live = cards.filter(function (c) { return !c.hidden; });
       var per = function (list) { var o = []; for (var i = 1; i <= config.tables; i++) o.push(list.filter(function (x) { return x.table === i; }).length); return o; };
@@ -173,6 +184,35 @@ function mock(sc) {
     captureSetAssignment: function (s, t, id) { if (id) config.assign[t] = id; else delete config.assign[t]; return board(); },
     captureSetSurveyUrl: function (s, u) { config.surveyUrl = u; return board(); },
     captureMakePosters: function () { return { url: '#posters' }; },
+    captureReadPaper: function (s, mode, table) {
+      spent += 0.012;
+      var raw = {
+        signals: { confidence: 'medium', note: 'Two notes overlap at the bottom right.', items: [{ text: 'Our robotics club uses AI to debug code', writer: 'student' }, { text: 'Teachers worry about [illegible] cheating', writer: 'adult' }, { text: 'AI in the news every day', writer: 'unknown' }] },
+        flips: { confidence: 'high', note: '', items: [{ text: 'Right now AI rules change by classroom, but we want one school-wide set' }] },
+        cards: { confidence: 'medium', note: '', items: [{ need: 'Short videos that show good AI use', flipText: 'teachers guess whether AI use is allowed', level: 'G', writer: 'student' }, { need: 'Money for training', flipText: '', level: 'B', writer: 'adult' }] },
+        flipdots: { confidence: 'low', note: 'Some yellow dots may be covered by tape.', items: flips.slice(0, 2).map(function (f, i) { return { statement: f.text.slice(0, 40), green: { student: 3 + i, adult: 2, unmarked: 1 }, blue: { student: 1, adult: 0, unmarked: 0 }, yellow: { student: 0, adult: 1, unmarked: 2 } }; }) },
+        votes: { confidence: 'medium', note: '', items: (config.published || []).slice(0, 3).map(function (g, i) { return { topic: g.topic, student: 4 - i, adult: 6 - i, unmarked: i }; }) },
+        testdrive: { confidence: 'high', note: '', change: 'Name who decides when AI is allowed.', add: 'A one-page summary for students.', cut: '', beyond: '' }
+      }[mode];
+      var r = captureCleanPaperReading_(tpl, mode, raw, { table: table, flips: flips, published: config.published || [] });
+      log('owner@example.org', 'AI read paper: ' + CAPTURE_PAPER_MODES_[mode].label, table ? 'table ' + table : '', 'gemini-3.8-flash', 0.012, 'https://drive.google.com/file/d/DEMO/view');
+      return { entry: audit.length, photo: 'https://drive.google.com/file/d/DEMO/view', rows: r.rows, confidence: r.confidence, note: r.note, cost: 0.012 };
+    },
+    captureConfirmPaper: function (s, mode, rows, entry) {
+      var clean = captureValidatePaperRows_(tpl, mode, rows, { tables: config.tables, flips: flips, published: config.published || [] });
+      clean.forEach(function (r) {
+        if (mode === 'signals') signals.push({ id: signals.length + 1, table: r.table, role: r.role, text: r.text, hidden: false, source: 'paper' });
+        if (mode === 'flips') flips.push({ id: flips.length + 1, table: r.table, text: r.text, top: false, hidden: false });
+        if (mode === 'cards') cards.push({ id: cards.length + 1, table: r.table, level: r.level, role: r.role, flipId: r.flipId, source: 'paper', hidden: false, fields: { flip: r.flipText, need: r.need } });
+        if (mode === 'flipdots') config.paperFlipDots[r.flipId] = r.counts;
+        if (mode === 'votes') config.paperDots[r.groupId] = { S: r.S, A: r.A };
+        if (mode === 'testdrive') testDrive.push({ table: r.table, device: 'paper-' + testDrive.length, notes: r, source: 'paper' });
+      });
+      log('owner@example.org', 'Added from paper: ' + CAPTURE_PAPER_MODES_[mode].label, clean.length + ' rows');
+      var b = board(); b.added = { count: clean.length, entry: audit.length }; return b;
+    },
+    captureGetAudit: function () { return { total: audit.length, rows: audit.slice().reverse().slice(0, 50), sheetUrl: 'https://docs.google.com/spreadsheets/d/DEMO/edit', ai: { spentToday: spent, budget: 100 } }; },
+    captureMakeReport: function () { log('owner@example.org', 'Results document made'); return { url: 'report.html' }; },
     captureGetTableCardsData: function () { return { title: config.title, sessionName: 'Retreat rehearsal', tables: config.tables, noun: tpl.noun,
       tableLink: 'https://script.google.com/macros/s/DEMO/exec?session=S-demo&k=${KEY}&page=capture' }; },
     captureListTemplates: function () { return [{ id: 'needCards', name: 'Need Cards' }]; },
@@ -200,9 +240,11 @@ const NOTE = '<p style="margin:0;padding:6px 16px;font:13px/1.4 system-ui,sans-s
   'Preview with made-up data. Nothing you do here is saved, and AI answers are canned.</p>';
 
 function build(file, outName, scenario) {
+  // Function replacers: the injected code contains "$'" and other patterns that a
+  // replacement string would expand.
   const html = read(file)
-    .replace('<head>', '<head>\n  <meta name="viewport" content="width=device-width, initial-scale=1">')
-    .replace('<body>', '<body>\n  ' + NOTE + mock(scenario))
+    .replace('<head>', () => '<head>\n  <meta name="viewport" content="width=device-width, initial-scale=1">')
+    .replace('<body>', () => '<body>\n  ' + NOTE + mock(scenario))
     .replace('__SESSION_ID__', 'S-demo')
     .replace('__CAPTURE_KEY__', KEY)
     .replace('__TABLE__', '');

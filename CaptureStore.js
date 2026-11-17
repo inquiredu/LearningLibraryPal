@@ -3,34 +3,46 @@
  * Live capture lives in the session's own Project Database:
  *   Live Capture    key/value settings (template, tables, table key, stage,
  *                   published groups, paper dots, tally mode, assignments, survey)
- *   Live Signals    one row per signal (Signals)
- *   Live Flips      one row per flip statement; a table marks its top ones (The Flip)
- *   Live Flip Dots  one row per person: their gallery dots on flip statements (Gallery dots)
- *   Live Cards      one row per need card (Need cards)
+ *   Live Signals    one row per signal
+ *   Live Flips      one row per flip statement, with its original wording; a table marks its top ones
+ *   Live Flip Dots  one row per person: their gallery dots on flip statements
+ *   Live Cards      one row per need card, with the AI reading when it came from a photo
  *   Live Groups     the synthesis team's working groups, rewritten whole on save
- *   Live Votes      one row per person: their priority votes (Vote)
- *   Live Test Drive one row per table: its notes on the guidance (Test drive)
- * Rows are read and written by header name, so a column added later goes at
- * the end and older sheets keep working. Writes run under the script lock.
- * Phones and the wall read one cached snapshot per session, refreshed every
- * few seconds and cleared on every write.
+ *   Live Votes      one row per person: their priority votes
+ *   Live Test Drive one row per table and device: its notes on the guidance
+ *   Live Audit      one row per change: who, when, what, before and after, and
+ *                   for AI calls the model, tokens, cost and the raw answer
+ * Nothing is deleted: removing an entry hides it, and the audit row says who
+ * hid it. Rows are read and written by header name, so a column added later
+ * goes at the end and older sheets keep working. Writes, and the audit row
+ * that describes them, run together under the script lock. Devices and the
+ * wall read one cached snapshot per session, refreshed every few seconds and
+ * cleared on every write.
  */
 
 const CaptureStore = {
   CONFIG_SHEET: 'Live Capture',
   SNAPSHOT_SECONDS: 4,
+  HEADER_COLOR: '#003865',
+  CELL_MAX: 45000,
 
   SPECS: {
-    signals: { sheet: 'Live Signals', headers: ['Signal', 'Submitted', 'Table', 'Role', 'Text', 'Hidden', 'Token'] },
-    flips: { sheet: 'Live Flips', headers: ['Flip', 'Updated', 'Table', 'Text', 'Top', 'Hidden'] },
+    signals: { sheet: 'Live Signals', headers: ['Signal', 'Submitted', 'Table', 'Role', 'Text', 'Hidden', 'Token', 'Source', 'Photo'] },
+    flips: { sheet: 'Live Flips', headers: ['Flip', 'Updated', 'Table', 'Text', 'Top', 'Hidden', 'Original text', 'Source', 'Photo'] },
     flipDots: { sheet: 'Live Flip Dots', headers: ['Voter', 'Role', 'Dots', 'Updated'] },
-    cards: { sheet: 'Live Cards', headers: ['Card', 'Submitted', 'Table', 'Level', 'Source', 'Hidden', 'Token', 'Role', 'Flip ID', 'Flip statement', 'Need'] },
+    cards: { sheet: 'Live Cards', headers: ['Card', 'Submitted', 'Table', 'Level', 'Source', 'Hidden', 'Token', 'Role', 'Flip ID', 'Flip statement', 'Need', 'AI reading', 'Photo'] },
     groups: { sheet: 'Live Groups', headers: ['Rank', 'Topic', 'Column override', 'Card IDs', 'Group ID', 'Updated'] },
     votes: { sheet: 'Live Votes', headers: ['Voter', 'Role', 'Choices', 'Updated'] },
-    testDrive: { sheet: 'Live Test Drive', headers: ['Table', 'Group ID', 'Topic', 'Change', 'Add', 'Cut', 'Beyond guidance', 'Updated'] }
+    testDrive: { sheet: 'Live Test Drive', headers: ['Table', 'Group ID', 'Topic', 'Change', 'Add', 'Cut', 'Beyond guidance', 'Updated', 'Device', 'Source', 'Photo'] },
+    audit: { sheet: 'Live Audit', headers: ['Entry', 'Time', 'Actor', 'Stage', 'Action', 'Item', 'IDs', 'Before', 'After', 'Model', 'Tokens', 'Cost (USD)', 'Photo', 'Detail'] }
   },
   // Earlier sheets named the need column after its prompt.
   ALIASES: { 'Need': ['To close this gap, students and educators need…', 'To address this gap, schools and educators need…'] },
+  NOTE_COLUMNS: { change: 'Change', add: 'Add', cut: 'Cut', beyond: 'Beyond guidance' },
+
+  // Who is acting and in which stage, set by CaptureApi for the current request.
+  context_: { actor: '', stage: '' },
+  as: function(actor, stage) { this.context_ = { actor: String(actor || ''), stage: String(stage || '') }; return this; },
 
   db: function(sessionId) {
     const cache = CacheService.getScriptCache();
@@ -49,7 +61,8 @@ const CaptureStore = {
 
   // ─── Settings ─────────────────────────────────────────────────────────────
 
-  JSON_KEYS: ['published', 'paperDots', 'assign'],
+  JSON_KEYS: ['published', 'paperDots', 'assign', 'paperFlipDots'],
+  CONFIG_KEYS: ['template', 'tables', 'key', 'title', 'stage', 'published', 'publishedAt', 'paperDots', 'tallyMode', 'assign', 'surveyUrl', 'paperFlipDots'],
 
   getConfig: function(sessionId) {
     const sheet = this.db(sessionId).getSheetByName(this.CONFIG_SHEET);
@@ -69,6 +82,7 @@ const CaptureStore = {
       published: json(map.published, null),
       publishedAt: String(map.publishedAt || ''),
       paperDots: json(map.paperDots, {}),
+      paperFlipDots: json(map.paperFlipDots, {}),
       tallyMode: ['phone', 'paper', 'both'].indexOf(String(map.tallyMode)) !== -1 ? String(map.tallyMode) : 'phone',
       assign: json(map.assign, {}),
       surveyUrl: /^https:\/\//.test(String(map.surveyUrl || '')) ? String(map.surveyUrl) : ''
@@ -79,25 +93,33 @@ const CaptureStore = {
     const db = this.db(sessionId);
     let sheet = db.getSheetByName(this.CONFIG_SHEET);
     if (!sheet) sheet = db.insertSheet(this.CONFIG_SHEET);
-    const keys = ['template', 'tables', 'key', 'title', 'stage', 'published', 'publishedAt', 'paperDots', 'tallyMode', 'assign', 'surveyUrl'];
-    const rows = [['Setting', 'Value']].concat(keys.map(k => {
+    const rows = [['Setting', 'Value']].concat(this.CONFIG_KEYS.map(k => {
       const v = config[k];
       if (this.JSON_KEYS.indexOf(k) !== -1) return [k, v ? JSON.stringify(v) : ''];
       return [k, captureSheetSafe_(v === undefined || v === null ? '' : v)];
     }));
     sheet.clearContents();
     sheet.getRange(1, 1, rows.length, 2).setValues(rows);
-    sheet.getRange(1, 1, 1, 2).setBackground('#0B2B46').setFontColor('#FFFFFF').setFontWeight('bold');
+    sheet.getRange(1, 1, 1, 2).setBackground(this.HEADER_COLOR).setFontColor('#FFFFFF').setFontWeight('bold');
     this.invalidate_(sessionId);
   },
 
-  /** Changes some settings under the lock and returns the new config. */
-  updateConfig: function(sessionId, change) {
+  /**
+   * Changes some settings under the lock and returns the new config.
+   * log: { action, item, ids, before(config), after(next) } for the audit trail.
+   */
+  updateConfig: function(sessionId, change, log) {
     return this.withLock_(() => {
       const config = this.getConfig(sessionId);
       if (!config) throw new Error('Turn on live capture for this session first.');
       const next = Object.assign({}, config, change(config) || {});
       this.writeConfig_(sessionId, next);
+      if (log) {
+        this.log_(this.db(sessionId), {
+          action: log.action, item: log.item, ids: log.ids,
+          before: log.before ? log.before(config) : '', after: log.after ? log.after(next) : '', detail: log.detail
+        });
+      }
       return next;
     });
   },
@@ -110,7 +132,7 @@ const CaptureStore = {
     }
     return this.withLock_(() => {
       const existing = this.getConfig(sessionId) || {};
-      const config = Object.assign({ stage: template.stages[0].id, tallyMode: 'phone', paperDots: {}, assign: {}, published: null, publishedAt: '', surveyUrl: '' }, existing, {
+      const config = Object.assign({ stage: template.stages[0].id, tallyMode: 'phone', paperDots: {}, paperFlipDots: {}, assign: {}, published: null, publishedAt: '', surveyUrl: '' }, existing, {
         template: template.id,
         tables: count,
         key: existing.key || Utilities.getUuid().replace(/-/g, '').slice(0, 20),
@@ -119,11 +141,18 @@ const CaptureStore = {
       this.writeConfig_(sessionId, config);
       const db = this.db(sessionId);
       Object.keys(this.SPECS).forEach(name => this.sheet_(db, name, true));
+      this.log_(db, { action: existing.template ? 'Live capture settings changed' : 'Live capture turned on', item: 'session',
+        before: existing.template ? { tables: existing.tables, title: existing.title } : '', after: { template: template.id, tables: count, title: config.title } });
       return config;
     });
   },
 
   // ─── Rows by header ───────────────────────────────────────────────────────
+
+  headers_: function(sheet) {
+    const width = sheet.getLastColumn();
+    return width ? sheet.getRange(1, 1, 1, width).getValues()[0].map(String) : [];
+  },
 
   /** The sheet for a spec, with any missing headers added at the end. */
   sheet_: function(db, name, create) {
@@ -133,15 +162,17 @@ const CaptureStore = {
       if (!create) return null;
       sheet = db.insertSheet(spec.sheet);
       sheet.getRange(1, 1, 1, spec.headers.length).setValues([spec.headers])
-        .setBackground('#0B2B46').setFontColor('#FFFFFF').setFontWeight('bold');
+        .setBackground(this.HEADER_COLOR).setFontColor('#FFFFFF').setFontWeight('bold');
       sheet.setFrozenRows(1);
       return sheet;
     }
-    const have = (sheet.getDataRange().getValues()[0] || []).map(String);
-    const missing = spec.headers.filter(h => this.columnOf_(have, h) === -1);
-    if (missing.length && create) {
-      sheet.getRange(1, have.length + 1, 1, missing.length).setValues([missing])
-        .setBackground('#0B2B46').setFontColor('#FFFFFF').setFontWeight('bold');
+    if (create) {
+      const have = this.headers_(sheet);
+      const missing = spec.headers.filter(h => this.columnOf_(have, h) === -1);
+      if (missing.length) {
+        sheet.getRange(1, have.length + 1, 1, missing.length).setValues([missing])
+          .setBackground(this.HEADER_COLOR).setFontColor('#FFFFFF').setFontWeight('bold');
+      }
     }
     return sheet;
   },
@@ -171,7 +202,7 @@ const CaptureStore = {
   /** Writes the given header values into row `rowNumber`, or appends when it is 0. */
   put_: function(db, name, rowNumber, values) {
     const sheet = this.sheet_(db, name, true);
-    const headers = (sheet.getDataRange().getValues()[0] || []).map(String);
+    const headers = this.headers_(sheet);
     if (!rowNumber) {
       const row = headers.map(h => {
         const key = Object.keys(values).find(k => this.columnOf_([h], k) === 0);
@@ -191,9 +222,62 @@ const CaptureStore = {
     return captureSheetSafe_(v === undefined || v === null ? '' : v);
   },
 
+  // ─── Audit ────────────────────────────────────────────────────────────────
+
+  text_: function(value) {
+    if (value === undefined || value === null || value === '') return '';
+    const s = typeof value === 'string' ? value : JSON.stringify(value);
+    return s.length > this.CELL_MAX ? s.slice(0, this.CELL_MAX) + ' …[cut at ' + this.CELL_MAX + ' characters]' : s;
+  },
+
+  /**
+   * Appends one audit row and returns its entry number. Called inside the
+   * same lock as the change it describes, so the two can't drift apart.
+   * e: { action, item, ids, before, after, model, tokens, cost, photo, detail }
+   */
+  log_: function(db, e) {
+    const sheet = this.sheet_(db, 'audit', true);
+    const entry = Math.max(1, sheet.getLastRow());
+    this.put_(db, 'audit', 0, {
+      Entry: entry, Time: new Date(), Actor: this.context_.actor || 'unknown', Stage: this.context_.stage,
+      Action: e.action, Item: e.item || '', IDs: Array.isArray(e.ids) ? e.ids.join(', ') : String(e.ids === undefined ? '' : e.ids),
+      Before: this.text_(e.before), After: this.text_(e.after), Model: e.model || '', Tokens: e.tokens || '',
+      'Cost (USD)': e.cost === undefined || e.cost === '' ? '' : Number(e.cost), Photo: e.photo || '', Detail: this.text_(e.detail)
+    });
+    return entry;
+  },
+
+  /** An audit entry made outside another write (AI calls, documents made). */
+  audit: function(sessionId, e) {
+    return this.write_(sessionId, db => this.log_(db, e));
+  },
+
+  /** The newest `count` audit rows, newest first. */
+  auditTail: function(sessionId, count) {
+    const sheet = this.sheet_(this.db(sessionId), 'audit', false);
+    if (!sheet || sheet.getLastRow() < 2) return { total: 0, rows: [] };
+    const last = sheet.getLastRow(), n = Math.min(count, last - 1);
+    const headers = this.headers_(sheet);
+    const values = sheet.getRange(last - n + 1, 1, n, headers.length).getValues();
+    const rows = values.map(v => { const o = {}; headers.forEach((h, i) => { o[h] = v[i] instanceof Date ? v[i].toISOString() : v[i]; }); return o; }).reverse();
+    return { total: last - 1, rows: rows };
+  },
+
+  /** One audit row by entry number, or null. */
+  auditEntry: function(sessionId, entry) {
+    const sheet = this.sheet_(this.db(sessionId), 'audit', false);
+    const n = Number(entry);
+    if (!sheet || !Number.isInteger(n) || n < 1 || n + 1 > sheet.getLastRow()) return null;
+    const headers = this.headers_(sheet);
+    const v = sheet.getRange(n + 1, 1, 1, headers.length).getValues()[0];
+    const o = {};
+    headers.forEach((h, i) => { o[h] = v[i]; });
+    return Number(o.Entry) === n ? o : null;
+  },
+
   // ─── Reading everything at once ───────────────────────────────────────────
 
-  /** Everything phones, the wall and the board read, cached for a few seconds. */
+  /** Everything devices, the wall and the board read, cached for a few seconds. */
   snapshot: function(sessionId, template) {
     const cache = CacheService.getScriptCache();
     const key = 'capture_snap_' + sessionId;
@@ -203,15 +287,18 @@ const CaptureStore = {
     const bool = v => String(v) === 'yes';
     const iso = v => (v instanceof Date ? v.toISOString() : String(v || ''));
     const snap = {
-      signals: this.rows_(db, 'signals').map(r => ({ id: Number(r.Signal), submittedAt: iso(r.Submitted), table: Number(r.Table), role: String(r.Role), text: String(r.Text), hidden: bool(r.Hidden), token: String(r.Token) })),
-      flips: this.rows_(db, 'flips').map(r => ({ id: Number(r.Flip), table: Number(r.Table), text: String(r.Text), top: bool(r.Top), hidden: bool(r.Hidden) })),
+      signals: this.rows_(db, 'signals').map(r => ({ id: Number(r.Signal), submittedAt: iso(r.Submitted), table: Number(r.Table), role: String(r.Role), text: String(r.Text),
+        hidden: bool(r.Hidden), token: String(r.Token), source: String(r.Source || 'typed'), photo: String(r.Photo || '') })),
+      flips: this.rows_(db, 'flips').map(r => ({ id: Number(r.Flip), table: Number(r.Table), text: String(r.Text), top: bool(r.Top), hidden: bool(r.Hidden),
+        originalText: String(r['Original text'] || r.Text), source: String(r.Source || 'typed') })),
       flipDots: this.rows_(db, 'flipDots').map(r => ({ voter: String(r.Voter), role: String(r.Role), dots: this.json_(r.Dots, []) })),
       cards: this.rows_(db, 'cards').map(r => {
         const fields = {};
         fields[template.parent.key] = String(r['Flip statement'] || '');
         template.fields.forEach(f => { fields[f.key] = String(r.Need || ''); });
         return { id: Number(r.Card), submittedAt: iso(r.Submitted), table: Number(r.Table), level: String(r.Level), source: String(r.Source || 'typed'),
-          hidden: bool(r.Hidden), token: String(r.Token), role: String(r.Role || ''), flipId: Number(r['Flip ID']) || 0, fields: fields };
+          hidden: bool(r.Hidden), token: String(r.Token), role: String(r.Role || ''), flipId: Number(r['Flip ID']) || 0, fields: fields,
+          aiReading: String(r['AI reading'] || ''), photo: String(r.Photo || '') };
       }),
       groups: this.rows_(db, 'groups').map(r => ({
         rank: Number(r.Rank) || 0, topic: String(r.Topic || ''), columnOverride: String(r['Column override'] || ''), id: String(r['Group ID'] || ''),
@@ -220,11 +307,12 @@ const CaptureStore = {
       votes: this.rows_(db, 'votes').map(r => ({ voter: String(r.Voter), role: String(r.Role), choices: String(r.Choices || '').split(',').map(s => s.trim()).filter(Boolean) })),
       testDrive: this.rows_(db, 'testDrive').map(r => {
         const notes = {};
-        template.testDrive.prompts.forEach(p => { notes[p.key] = String(r[{ change: 'Change', add: 'Add', cut: 'Cut', beyond: 'Beyond guidance' }[p.key]] || ''); });
-        return { table: Number(r.Table), groupId: String(r['Group ID'] || ''), topic: String(r.Topic || ''), notes: notes };
+        template.testDrive.prompts.forEach(p => { notes[p.key] = String(r[this.NOTE_COLUMNS[p.key]] || ''); });
+        return { table: Number(r.Table), device: String(r.Device || ''), groupId: String(r['Group ID'] || ''), topic: String(r.Topic || ''), notes: notes,
+          source: String(r.Source || 'typed'), updatedAt: iso(r.Updated) };
       })
     };
-    // The flip-dot tally is derived, so it is cached with the rows.
+    // The flip-dot list is derived, so it is cached with the rows.
     snap.flipDots = snap.flipDots.reduce((all, p) => all.concat((p.dots || []).map(d => ({ flipId: Number(d.flipId), color: String(d.color), role: p.role, voter: p.voter }))), []);
     try { cache.put(key, JSON.stringify(snap), this.SNAPSHOT_SECONDS); } catch (e) {}
     return snap;
@@ -242,14 +330,24 @@ const CaptureStore = {
     return rows.reduce((max, r) => Math.max(max, Number(r[header]) || 0), 0) + 1;
   },
 
+  token_: function() { return Utilities.getUuid().replace(/-/g, ''); },
+
+  /** signal: { table, role, text, source, photo } */
+  addSignal_: function(db, signal, rows) {
+    if (rows.length >= CAPTURE_DEFAULTS.MAX_SIGNALS_PER_SESSION) throw new Error('This session has reached its signal limit. Tell a facilitator.');
+    const id = this.nextId_(rows, 'Signal');
+    const token = this.token_();
+    this.put_(db, 'signals', 0, { Signal: id, Submitted: new Date(), Table: signal.table, Role: signal.role, Text: signal.text, Hidden: 'no', Token: token,
+      Source: signal.source || 'typed', Photo: signal.photo || '' });
+    rows.push({ Signal: id });
+    return { id: id, token: token };
+  },
+
   addSignal: function(sessionId, signal) {
     return this.write_(sessionId, db => {
-      const rows = this.rows_(db, 'signals');
-      if (rows.length >= CAPTURE_DEFAULTS.MAX_SIGNALS_PER_SESSION) throw new Error('This session has reached its signal limit.');
-      const id = this.nextId_(rows, 'Signal');
-      const token = Utilities.getUuid().replace(/-/g, '');
-      this.put_(db, 'signals', 0, { Signal: id, Submitted: new Date(), Table: signal.table, Role: signal.role, Text: signal.text, Hidden: 'no', Token: token });
-      return { id: id, token: token };
+      const res = this.addSignal_(db, signal, this.rows_(db, 'signals'));
+      this.log_(db, { action: 'Signal added', item: 'signal', ids: [res.id], after: { table: signal.table, role: signal.role, text: signal.text, source: signal.source || 'typed' } });
+      return res;
     });
   },
 
@@ -257,29 +355,47 @@ const CaptureStore = {
     return this.write_(sessionId, db => {
       const row = this.rows_(db, name).find(r => Number(r[idHeader]) === Number(id));
       if (!row) throw new Error('That entry was not found.');
-      if (token !== undefined && String(row.Token) !== String(token)) throw new Error('Only the phone that sent this can remove it.');
+      if (token !== undefined && String(row.Token) !== String(token)) throw new Error('Only the device that sent this can remove it.');
       this.put_(db, name, row._row, { Hidden: hidden ? 'yes' : 'no' });
+      this.log_(db, { action: (hidden ? 'Hidden' : 'Shown again') + (token !== undefined ? ' by its writer' : ''), item: idHeader.toLowerCase(), ids: [Number(id)],
+        before: { hidden: String(row.Hidden) === 'yes' }, after: { hidden: !!hidden } });
       return true;
     });
   },
 
   setSignalHidden: function(sessionId, id, hidden, token) { return this.hideRow_(sessionId, 'signals', 'Signal', id, hidden, token); },
 
-  /** Adds or edits a table's flip statement; editing rewrites it on that table's cards. */
+  addFlip_: function(db, table, text, rows, extra) {
+    const own = rows.filter(r => Number(r.Table) === table && String(r.Hidden) !== 'yes');
+    if (own.length >= CAPTURE_DEFAULTS.MAX_FLIPS_PER_TABLE) throw new Error('This table has a great many statements already. Tell a facilitator.');
+    const id = this.nextId_(rows, 'Flip');
+    const x = extra || {};
+    this.put_(db, 'flips', 0, { Flip: id, Updated: new Date(), Table: table, Text: text, Top: 'no', Hidden: 'no', 'Original text': text,
+      Source: x.source || 'typed', Photo: x.photo || '' });
+    rows.push({ Flip: id, Table: table, Hidden: 'no' });
+    return id;
+  },
+
+  /**
+   * Adds or edits a table's flip statement. Editing rewrites it on that
+   * table's cards; the original wording stays in its row and the audit trail.
+   */
   saveFlip: function(sessionId, template, table, id, text) {
     return this.write_(sessionId, db => {
       const rows = this.rows_(db, 'flips');
       if (!id) {
-        const own = rows.filter(r => Number(r.Table) === table && String(r.Hidden) !== 'yes');
-        if (own.length >= template.parent.perTableMax) throw new Error('A table can have up to ' + template.parent.perTableMax + ' ' + template.parent.plural + '.');
-        const newId = this.nextId_(rows, 'Flip');
-        this.put_(db, 'flips', 0, { Flip: newId, Updated: new Date(), Table: table, Text: text, Top: 'no', Hidden: 'no' });
+        const newId = this.addFlip_(db, table, text, rows);
+        this.log_(db, { action: template.parent.label + ' added', item: 'flip', ids: [newId], after: { table: table, text: text } });
         return { id: newId };
       }
       const row = rows.find(r => Number(r.Flip) === Number(id) && Number(r.Table) === table);
       if (!row) throw new Error('That ' + template.parent.label.toLowerCase() + ' belongs to another table.');
       this.put_(db, 'flips', row._row, { Text: text, Updated: new Date() });
-      this.rows_(db, 'cards').filter(c => Number(c['Flip ID']) === Number(id)).forEach(c => this.put_(db, 'cards', c._row, { 'Flip statement': text }));
+      if (!String(row['Original text'] || '')) this.put_(db, 'flips', row._row, { 'Original text': row.Text });
+      const cards = this.rows_(db, 'cards').filter(c => Number(c['Flip ID']) === Number(id));
+      cards.forEach(c => this.put_(db, 'cards', c._row, { 'Flip statement': text }));
+      this.log_(db, { action: template.parent.label + ' edited', item: 'flip', ids: [Number(id)], before: { text: String(row.Text) }, after: { text: text },
+        detail: cards.length ? 'Also updated on cards ' + cards.map(c => c.Card).join(', ') : '' });
       return { id: Number(id) };
     });
   },
@@ -288,10 +404,12 @@ const CaptureStore = {
     return this.write_(sessionId, db => {
       const row = this.rows_(db, 'flips').find(r => Number(r.Flip) === Number(id) && (table === null || Number(r.Table) === table));
       if (!row) throw new Error('That ' + template.parent.label.toLowerCase() + ' was not found.');
-      const values = { Updated: new Date() };
-      if (flags.top !== undefined) values.Top = flags.top ? 'yes' : 'no';
-      if (flags.hidden !== undefined) values.Hidden = flags.hidden ? 'yes' : 'no';
+      const values = { Updated: new Date() }, before = {}, after = {};
+      if (flags.top !== undefined) { values.Top = flags.top ? 'yes' : 'no'; before.top = String(row.Top) === 'yes'; after.top = !!flags.top; }
+      if (flags.hidden !== undefined) { values.Hidden = flags.hidden ? 'yes' : 'no'; before.hidden = String(row.Hidden) === 'yes'; after.hidden = !!flags.hidden; }
       this.put_(db, 'flips', row._row, values);
+      this.log_(db, { action: flags.hidden !== undefined ? (flags.hidden ? 'Hidden' : 'Shown again') : (flags.top ? 'Marked top' : 'Top mark removed'),
+        item: 'flip', ids: [Number(id)], before: before, after: after });
       return true;
     });
   },
@@ -301,29 +419,44 @@ const CaptureStore = {
     return this.write_(sessionId, db => {
       const row = this.rows_(db, 'flipDots').find(r => String(r.Voter) === entry.voter);
       this.put_(db, 'flipDots', row ? row._row : 0, { Voter: entry.voter, Role: entry.role, Dots: JSON.stringify(entry.dots), Updated: new Date() });
+      this.log_(db, { action: 'Gallery dots saved', item: 'dots', ids: [entry.voter.slice(0, 8)], before: row ? this.json_(row.Dots, []) : '', after: entry.dots });
       return true;
     });
   },
 
+  /** card: { table, level, role, flipId, fields, source, aiReading, photo } */
+  appendCard_: function(db, template, card, rows) {
+    if (rows.length >= CAPTURE_DEFAULTS.MAX_CARDS_PER_SESSION) throw new Error('This session has reached its card limit. Tell a facilitator.');
+    const id = this.nextId_(rows, 'Card');
+    const token = this.token_();
+    const primary = template.fields[0];
+    this.put_(db, 'cards', 0, {
+      Card: id, Submitted: new Date(), Table: card.table, Level: card.level, Source: card.source, Hidden: 'no', Token: token,
+      Role: card.role, 'Flip ID': card.flipId || '', 'Flip statement': card.fields[template.parent.key], Need: card.fields[primary.key],
+      'AI reading': card.aiReading || '', Photo: card.photo || ''
+    });
+    rows.push({ Card: id });
+    return { id: id, token: token };
+  },
+
   appendCard: function(sessionId, template, card) {
     return this.write_(sessionId, db => {
-      const rows = this.rows_(db, 'cards');
-      if (rows.length >= CAPTURE_DEFAULTS.MAX_CARDS_PER_SESSION) throw new Error('This session has reached its card limit. Tell a facilitator.');
-      const id = this.nextId_(rows, 'Card');
-      const token = Utilities.getUuid().replace(/-/g, '');
+      const res = this.appendCard_(db, template, card, this.rows_(db, 'cards'));
       const primary = template.fields[0];
-      this.put_(db, 'cards', 0, {
-        Card: id, Submitted: new Date(), Table: card.table, Level: card.level, Source: card.source, Hidden: 'no', Token: token,
-        Role: card.role, 'Flip ID': card.flipId, 'Flip statement': card.fields[template.parent.key], Need: card.fields[primary.key]
-      });
-      return { id: id, token: token };
+      this.log_(db, { action: 'Card sent', item: 'card', ids: [res.id],
+        after: { table: card.table, role: card.role, level: card.level, flipId: card.flipId || 0, need: card.fields[primary.key], source: card.source },
+        before: card.aiReading ? { aiReading: card.aiReading } : '',
+        detail: card.aiReading ? (card.aiReading === card.fields[primary.key] ? 'Sent as the AI read it.' : 'Edited after the AI reading.') : '' });
+      return res;
     });
   },
 
   setHidden: function(sessionId, template, id, hidden, token) { return this.hideRow_(sessionId, 'cards', 'Card', id, hidden, token); },
 
-  writeGroups: function(sessionId, groups) {
+  writeGroups: function(sessionId, groups, how) {
     return this.write_(sessionId, db => {
+      const brief = list => list.map(g => ({ id: g.id, topic: g.topic, cards: g.cardIds, column: g.columnOverride || '' }));
+      const before = this.rows_(db, 'groups').map(r => ({ id: String(r['Group ID']), topic: String(r.Topic), cards: String(r['Card IDs']), column: String(r['Column override'] || '') }));
       const sheet = this.sheet_(db, 'groups', true);
       const last = sheet.getLastRow();
       const width = this.SPECS.groups.headers.length;
@@ -331,6 +464,11 @@ const CaptureStore = {
       const now = new Date();
       const rows = groups.map(g => [g.rank || '', captureSheetSafe_(g.topic), g.columnOverride || '', g.cardIds.join(', '), captureSheetSafe_(g.id), now]);
       if (rows.length) sheet.getRange(2, 1, rows.length, width).setValues(rows);
+      const after = brief(groups);
+      if (JSON.stringify(before.map(g => [g.id, g.topic, String(g.cards), g.column])) !== JSON.stringify(after.map(g => [g.id, g.topic, g.cards.join(', '), g.column]))) {
+        this.log_(db, { action: how && how.action || 'Groups edited', item: 'groups', ids: groups.length + ' groups', before: before, after: after,
+          model: how && how.model, tokens: how && how.tokens, cost: how && how.cost, detail: how && how.detail });
+      }
       return rows.length;
     });
   },
@@ -340,27 +478,91 @@ const CaptureStore = {
     return this.write_(sessionId, db => {
       const row = this.rows_(db, 'votes').find(r => String(r.Voter) === vote.voter);
       this.put_(db, 'votes', row ? row._row : 0, { Voter: vote.voter, Role: vote.role, Choices: vote.choices.join(','), Updated: new Date() });
+      this.log_(db, { action: 'Votes saved', item: 'votes', ids: [vote.voter.slice(0, 8)], before: row ? String(row.Choices) : '', after: { role: vote.role, choices: vote.choices } });
       return true;
     });
   },
 
   clearVotes: function(sessionId) {
     return this.write_(sessionId, db => {
+      const rows = this.rows_(db, 'votes');
       const sheet = this.sheet_(db, 'votes', false);
-      if (sheet && sheet.getLastRow() > 1) sheet.getRange(2, 1, sheet.getLastRow() - 1, this.SPECS.votes.headers.length).clearContent();
+      if (sheet && sheet.getLastRow() > 1) sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn()).clearContent();
+      this.log_(db, { action: 'All device votes cleared', item: 'votes', ids: rows.length + ' voters',
+        before: rows.map(r => ({ voter: String(r.Voter).slice(0, 8), role: String(r.Role), choices: String(r.Choices) })) });
       return true;
     });
   },
 
-  /** One row per table. */
-  saveTestDrive: function(sessionId, template, table, group, notes) {
+  /** One row per table and device: everyone at a table can keep their own notes. */
+  saveTestDrive_: function(db, template, table, device, group, notes, extra) {
+    const x = extra || {};
+    const row = device ? this.rows_(db, 'testDrive').find(r => Number(r.Table) === table && String(r.Device) === device) : null;
+    const values = { Table: table, 'Group ID': group ? group.id : '', Topic: group ? group.topic : '', Updated: new Date(), Device: device || '',
+      Source: x.source || 'typed', Photo: x.photo || '' };
+    template.testDrive.prompts.forEach(p => { values[this.NOTE_COLUMNS[p.key]] = notes[p.key] || ''; });
+    this.put_(db, 'testDrive', row ? row._row : 0, values);
+    const before = {};
+    if (row) template.testDrive.prompts.forEach(p => { before[p.key] = String(row[this.NOTE_COLUMNS[p.key]] || ''); });
+    return row ? before : '';
+  },
+
+  saveTestDrive: function(sessionId, template, table, device, group, notes) {
     return this.write_(sessionId, db => {
-      const row = this.rows_(db, 'testDrive').find(r => Number(r.Table) === table);
-      this.put_(db, 'testDrive', row ? row._row : 0, {
-        Table: table, 'Group ID': group ? group.id : '', Topic: group ? group.topic : '',
-        Change: notes.change, Add: notes.add, Cut: notes.cut, 'Beyond guidance': notes.beyond, Updated: new Date()
-      });
+      const before = this.saveTestDrive_(db, template, table, device, group, notes);
+      this.log_(db, { action: 'Test-drive notes saved', item: 'testdrive', ids: ['table ' + table], before: before, after: notes });
       return true;
+    });
+  },
+
+  /**
+   * Adds rows people confirmed from paper, in one lock with one audit entry.
+   * rows are already checked by captureValidatePaperRows_. meta: { photo,
+   * readingEntry, diff, config change fn for dot counts }
+   */
+  addFromPaper: function(sessionId, template, mode, rows, meta) {
+    const m = meta || {};
+    return this.withLock_(() => {
+      const db = this.db(sessionId);
+      const ids = [];
+      try {
+        const extra = { source: 'paper', photo: m.photo || '' };
+        if (mode === 'signals') {
+          const existing = this.rows_(db, 'signals');
+          rows.forEach(r => ids.push(this.addSignal_(db, { table: r.table, role: r.role, text: r.text, source: 'paper', photo: m.photo }, existing).id));
+        } else if (mode === 'flips') {
+          const existing = this.rows_(db, 'flips');
+          rows.forEach(r => ids.push(this.addFlip_(db, r.table, r.text, existing, extra)));
+        } else if (mode === 'cards') {
+          const existing = this.rows_(db, 'cards');
+          rows.forEach(r => {
+            const fields = {};
+            fields[template.parent.key] = r.flipText;
+            fields[template.fields[0].key] = r.need;
+            ids.push(this.appendCard_(db, template, { table: r.table, level: r.level, role: r.role, flipId: r.flipId, fields: fields, source: 'paper',
+              aiReading: r.aiReading || '', photo: m.photo }, existing).id);
+          });
+        } else if (mode === 'testdrive') {
+          rows.forEach(r => { this.saveTestDrive_(db, template, r.table, 'paper-' + this.token_().slice(0, 8), r.group || null, r, extra); ids.push('table ' + r.table); });
+        } else {
+          // Dot counts live in the settings, keyed by flip statement or published group.
+          const config = this.getConfig(sessionId);
+          const key = mode === 'flipdots' ? 'paperFlipDots' : 'paperDots';
+          const next = Object.assign({}, config[key]);
+          rows.forEach(r => {
+            if (mode === 'flipdots') { next[r.flipId] = r.counts; ids.push('flip ' + r.flipId); }
+            else { const o = {}; template.roles.forEach(x => { o[x.code] = r[x.code]; }); next[r.groupId] = o; ids.push(r.groupId); }
+          });
+          const change = {}; change[key] = next;
+          this.writeConfig_(sessionId, Object.assign({}, config, change));
+        }
+        const entry = this.log_(db, { action: 'Added from paper: ' + CAPTURE_PAPER_MODES_[mode].label, item: mode, ids: ids, after: rows, photo: m.photo || '',
+          detail: m.readingEntry ? 'From AI reading in audit entry ' + m.readingEntry + '. ' + m.diff.asRead + ' rows as read, ' + m.diff.edited + ' edited, ' + m.diff.added +
+            ' added by hand, ' + m.diff.dropped + ' left out.' : 'Typed in from paper, no AI reading.' });
+        return { ids: ids, entry: entry };
+      } finally {
+        this.invalidate_(sessionId);
+      }
     });
   },
 

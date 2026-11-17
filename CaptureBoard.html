@@ -8,9 +8,10 @@
   :root {
     --ink: #17212B;
     --muted: #4F5D6B;
-    --navy: #0B2B46;
-    --navy-2: #163E62;
-    --cyan: #5DCDF5;
+    /* State of Minnesota brand: Minnesota Blue and Minnesota Green. */
+    --navy: #003865;
+    --navy-2: #0D4E80;
+    --cyan: #78BE21;
     --ground: #F4F6F8;
     --surface: #FFFFFF;
     --line: #D5DCE3;
@@ -78,7 +79,7 @@
   .level[data-route="parking"] { border-style: dashed; color: var(--warn); border-color: #C88A3A; }
 
   .spinner { width: 18px; height: 18px; border-radius: 50%; border: 3px solid rgba(255,255,255,.4); border-top-color: #fff; animation: spin .9s linear infinite; }
-  .spinner.dark { border-color: rgba(11,43,70,.2); border-top-color: var(--navy); }
+  .spinner.dark { border-color: rgba(0,56,101,.2); border-top-color: var(--navy); }
   @keyframes spin { to { transform: rotate(360deg); } }
 
   .toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); max-width: calc(100% - 32px);
@@ -155,6 +156,22 @@
     .empty { padding: 16px; text-align: center; color: var(--muted); }
     .sw { width: 10px; height: 10px; border-radius: 50%; display: inline-block; border: 1px solid rgba(0,0,0,.25); }
     .sw-green { background: #2E8B57; } .sw-blue { background: #2F6FD0; } .sw-yellow { background: #E7B416; }
+    .paper { border: 2px solid var(--navy); }
+    .paper-controls { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: flex-end; }
+    .paper-controls > div { min-width: 150px; }
+    .paper-controls select, .paper-controls input[type="text"] { width: auto; min-width: 140px; }
+    table.review { width: 100%; border-collapse: collapse; font-size: .9rem; margin-top: 10px; }
+    table.review th, table.review td { border-bottom: 1px solid var(--line); padding: 6px; text-align: left; vertical-align: top; }
+    table.review th { font-size: .8rem; color: var(--muted); font-weight: 650; }
+    table.review textarea { min-height: 52px; font-size: .9rem; }
+    table.review input[type="number"] { width: 4.2em; padding: 4px 6px; }
+    table.review select { width: auto; max-width: 22em; }
+    table.review tr.off td { opacity: .45; }
+    .read-as { font-size: .8rem; color: var(--muted); margin-top: 3px; overflow-wrap: anywhere; }
+    .dotgrid { display: grid; grid-template-columns: auto repeat(3, 4.6em); gap: 4px 6px; align-items: center; font-size: .8rem; }
+    table.audit { width: 100%; border-collapse: collapse; font-size: .85rem; }
+    table.audit th, table.audit td { border-bottom: 1px solid var(--line); padding: 6px; text-align: left; vertical-align: top; }
+    table.audit td.wrap { overflow-wrap: anywhere; max-width: 36em; }
   </style>
 </head>
 <body>
@@ -239,9 +256,11 @@
     var SESSION_ID = "__SESSION_ID__";
     var $ = function (id) { return document.getElementById(id); };
     var esc = Capture.esc;
-    var S = { board: null, groups: [], selected: null, dirty: 0, saving: false, saveTimer: null, tab: '', tabChosen: false, lastStage: '', tableFilter: 'all' };
-    var STAGE_TAB = { welcome: 'settings', signals: 'signals', flips: 'flips', flipdots: 'flips', needs: 'cards', synthesis: 'cards', vote: 'results', results: 'results', testdrive: 'testdrive', close: 'testdrive' };
-    var TABS = [['signals', 'Signals'], ['flips', 'Flip statements'], ['cards', 'Cards & groups'], ['results', 'Vote & results'], ['testdrive', 'Test drive'], ['settings', 'Settings & links']];
+    var S = { board: null, groups: [], selected: null, dirty: 0, saving: false, saveTimer: null, tab: '', tabChosen: false, lastStage: '', tableFilter: 'all', paper: null, audit: null, report: '' };
+    var STAGE_TAB = { welcome: 'settings', signals: 'signals', flips: 'flips', flipdots: 'flips', needs: 'cards', synthesis: 'cards', vote: 'results', results: 'results', testdrive: 'testdrive', close: 'record' };
+    var TABS = [['signals', 'Signals'], ['flips', 'Flip statements'], ['cards', 'Cards & groups'], ['results', 'Vote & results'], ['testdrive', 'Test drive'], ['record', 'Record & results'], ['settings', 'Settings & links']];
+    // Which kind of paper each tab adds from, first choice first.
+    var TAB_PAPER = { signals: ['signals'], flips: ['flips', 'flipdots'], cards: ['cards'], results: ['votes'], testdrive: ['testdrive'] };
 
     // ── Start ────────────────────────────────────────────────────────────────
     function start() {
@@ -275,7 +294,7 @@
     function refresh() {
       return Capture.run('captureGetBoard', SESSION_ID).then(function (board) {
         var a = document.activeElement, typing = a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA' || a.tagName === 'SELECT');
-        if (typing || S.dirty || S.saving) { S.board = board; renderStepper(); return; }
+        if (typing || S.dirty || S.saving || (S.paper && S.paper.open)) { S.board = board; renderStepper(); return; }
         adopt(board);
       });
     }
@@ -319,9 +338,10 @@
       var tabs = '<div class="tabs" role="tablist">' + TABS.map(function (t) {
         return '<button type="button" class="tab" role="tab" data-tab="' + t[0] + '" aria-selected="' + (S.tab === t[0]) + '">' + t[1] + '</button>';
       }).join('') + '</div>';
-      var body = { signals: tabSignals, flips: tabFlips, cards: tabCards, results: tabResults, testdrive: tabTestDrive, settings: tabSettings }[S.tab] || tabCards;
-      $('view').innerHTML = tabs + '<div id="tabBody"></div>';
+      var body = { signals: tabSignals, flips: tabFlips, cards: tabCards, results: tabResults, testdrive: tabTestDrive, record: tabRecord, settings: tabSettings }[S.tab] || tabCards;
+      $('view').innerHTML = tabs + '<div id="paperArea"></div><div id="tabBody"></div>';
       body();
+      renderPaper();
     }
 
     function renderStepper() {
@@ -339,9 +359,9 @@
       var sig = S.board.signals, live = sig.filter(function (s) { return !s.hidden; });
       body('<section class="panel summary"><span><span class="big num">' + live.length + '</span> signals</span>' + tablePills(live) + '<span class="small">' + roleSplit(live) + '</span></section>' +
         '<section class="panel section"><div class="head"><h2>Signals, newest first</h2></div><ol class="list feed">' + (sig.length ? sig.slice().reverse().map(function (s) {
-          return '<li class="' + (s.hidden ? 'is-hidden' : '') + '"><span class="text">' + esc(s.text) + '</span><span class="meta">T' + s.table + ' · ' + esc(roleLabel(s.role)) + '</span>' +
+          return '<li class="' + (s.hidden ? 'is-hidden' : '') + '"><span class="text">' + esc(s.text) + '</span><span class="meta">T' + s.table + ' · ' + esc(roleLabel(s.role)) + (s.source && s.source !== 'typed' ? ' · ' + esc(s.source) : '') + '</span>' +
             '<button type="button" class="btn btn-quiet btn-small" data-hide-signal="' + s.id + '" data-hidden="' + s.hidden + '">' + (s.hidden ? 'Show' : 'Hide') + '</button></li>';
-        }).join('') : '<li class="empty">Signals appear here when the stage is Signals.</li>') + '</ol></section>');
+        }).join('') : '<li class="empty">No signals yet.</li>') + '</ol></section>');
     }
 
     // Flips --------------------------------------------------------------------
@@ -394,8 +414,10 @@
         '<ol class="list feed">' + (feed.length ? feed.map(function (c) {
           return '<li class="' + (c.hidden ? 'is-hidden' : '') + '" style="display:block"><div class="meta"><strong>#' + c.id + '</strong> T' + c.table + ' · <span class="level" data-route="' + levelOpt(c.level).route + '">' + esc(c.level) + '</span> · ' + esc(roleLabel(c.role)) + ' · ' + esc(c.source) +
             ' <button type="button" class="btn btn-quiet btn-small" data-hide="' + c.id + '" data-hidden="' + c.hidden + '">' + (c.hidden ? 'Show' : 'Hide') + '</button></div>' +
-            '<div style="font-weight:600;margin-top:4px;overflow-wrap:anywhere">' + esc(c.fields[key]) + '</div><div class="muted small" style="overflow-wrap:anywhere">' + esc(c.fields[T().parent.key]) + '</div></li>';
-        }).join('') : '<li class="empty">Cards appear here during Need cards.</li>') + '</ol></section>' +
+            '<div style="font-weight:600;margin-top:4px;overflow-wrap:anywhere">' + esc(c.fields[key]) + '</div><div class="muted small" style="overflow-wrap:anywhere">' + (esc(c.fields[T().parent.key]) || '<em>Not under a statement</em>') + '</div>' +
+            (c.aiReading && c.aiReading !== c.fields[key] ? '<div class="read-as">AI read: “' + esc(c.aiReading) + '”</div>' : '') +
+            (c.photo ? '<div class="read-as"><a href="' + esc(c.photo) + '" target="_blank" rel="noopener">Photo</a></div>' : '') + '</li>';
+        }).join('') : '<li class="empty">No cards yet.</li>') + '</ol></section>' +
         '<section class="panel section"><div class="head"><h2>Groups</h2><div class="chips">' +
           '<button type="button" class="btn btn-primary btn-small" id="suggestBtn">Suggest groups</button><button type="button" class="btn btn-small" id="newGroupBtn">New group</button>' +
           '<button type="button" class="btn btn-small" id="postersBtn">Make posters</button></div></div>' +
@@ -488,8 +510,8 @@
     function tabResults() {
       var b = S.board, pub = b.published;
       if (!pub) { body('<section class="panel section"><h2>Nothing published yet</h2><p>Group the cards on <strong>Cards & groups</strong>, then publish them for voting.</p></section>'); return; }
-      var modes = [['phone', 'Phone votes'], ['paper', 'Paper dots'], ['both', 'Both added together']];
-      var html = '<section class="panel summary"><span><span class="big num">' + b.voters.total + '</span> people voted by phone</span><span class="small">' +
+      var modes = [['phone', 'Device votes'], ['paper', 'Paper dots'], ['both', 'Both added together']];
+      var html = '<section class="panel summary"><span><span class="big num">' + b.voters.total + '</span> people voted on a device</span><span class="small">' +
         T().roles.map(function (r) { return esc(r.label) + ' ' + (b.voters[r.code] || 0); }).join(' · ') + '</span>' +
         '<label class="small" for="mode" style="margin:0 0 0 auto">Count from</label><select id="mode" style="width:auto">' + modes.map(function (m) {
           return '<option value="' + m[0] + '"' + (b.config.tallyMode === m[0] ? ' selected' : '') + '>' + m[1] + '</option>'; }).join('') + '</select></section>';
@@ -497,7 +519,7 @@
         if (!col.items.length) return;
         html += '<section class="panel section"><div class="head"><h2><span class="level" data-route="' + col.route + '">' + esc(col.code) + '</span> ' + esc(col.label) +
           (col.route === 'parking' ? ' <span class="muted small">' + esc(T().routes.parking) + '</span>' : '') + '</h2></div><table class="tally"><thead><tr><th class="num">Rank</th><th>Topic</th>' +
-          T().roles.map(function (r) { return '<th class="num">Phone ' + esc(r.code) + '</th>'; }).join('') + T().roles.map(function (r) { return '<th class="num">Paper ' + esc(r.code) + '</th>'; }).join('') +
+          T().roles.map(function (r) { return '<th class="num">Device ' + esc(r.code) + '</th>'; }).join('') + T().roles.map(function (r) { return '<th class="num">Paper ' + esc(r.code) + '</th>'; }).join('') +
           '<th class="num">Total</th></tr></thead><tbody>' + col.items.map(function (i) {
             var t = b.tally[i.id] || { phone: {}, paper: {} };
             return '<tr><td class="num">' + i.rank + '</td><td>' + esc(i.topic) + (i.contested ? ' <span class="contested">?</span>' : '') + '</td>' +
@@ -523,10 +545,12 @@
       var html = '';
       var assignments = b.results ? b.results.assignments : [];
       for (var t = 1; t <= b.config.tables; t++) {
-        var a = assignments.find(function (x) { return x.table === t; }), n = notes.find(function (x) { return x.table === t; });
-        html += '<section class="panel section"><div class="head"><h2>Table ' + t + (a && a.topic ? ': ' + esc(a.topic) : '') + '</h2></div>' +
-          (n ? '<dl class="tdnote">' + T().testDrive.prompts.map(function (p) { return '<dt>' + esc(p.label) + '</dt><dd>' + (esc(n.notes[p.key]) || '<span class="muted">–</span>') + '</dd>'; }).join('') + '</dl>'
-            : '<p class="muted small">No notes yet.</p>') + '</section>';
+        var a = assignments.find(function (x) { return x.table === t; }), mine = notes.filter(function (x) { return x.table === t; });
+        html += '<section class="panel section"><div class="head"><h2>Table ' + t + (a && a.topic ? ': ' + esc(a.topic) : '') + '</h2><span class="muted small">' + mine.length + (mine.length === 1 ? ' set of notes' : ' sets of notes') + '</span></div>' +
+          (mine.length ? mine.map(function (n) {
+            return '<dl class="tdnote" style="border-top:1px solid var(--line);padding-top:6px">' + T().testDrive.prompts.map(function (p) { return '<dt>' + esc(p.label) + '</dt><dd>' + (esc(n.notes[p.key]) || '<span class="muted">–</span>') + '</dd>'; }).join('') +
+              '<dt>From</dt><dd class="muted small">' + (n.source === 'paper' ? 'paper' : 'a device') + '</dd></dl>';
+          }).join('') : '<p class="muted small">No notes yet.</p>') + '</section>';
       }
       body(html);
     }
@@ -539,8 +563,176 @@
           return x[1] ? '<div><label class="small">' + esc(x[0]) + '</label><input type="text" readonly value="' + esc(x[1]) + '"></div>' : ''; }).join('') +
         '</section><section class="panel section stack"><h2>Exit survey</h2><p class="muted small">Shown on phones and the wall during Close.</p>' +
         '<div><label for="survey">Survey link</label><input type="text" id="survey" placeholder="https://" value="' + esc(b.config.surveyUrl || '') + '"></div>' +
-        '<button type="button" class="btn btn-small" id="surveySave">Save survey link</button></section>');
+        '<button type="button" class="btn btn-small" id="surveySave">Save survey link</button></section>' +
+        '<section class="panel section stack"><h2>AI help</h2><p class="small">' + (b.ai && b.ai.enabled ? 'On. Spent today: $' + b.ai.spentToday.toFixed(2) + ' of a $' + b.ai.budget.toFixed(0) + ' daily budget.' : 'Off.') +
+        ' AI suggests groups and reads photos; people confirm everything it suggests. Every call is in the audit trail.</p></section>');
       $('surveySave').onclick = function () { call('captureSetSurveyUrl', SESSION_ID, $('survey').value).then(function () { Capture.toast('Survey link saved.'); }); };
+    }
+
+    // From paper ---------------------------------------------------------------
+    // Work done on paper comes in here: read from a photo with AI, or typed in.
+    // Either way people see every row, fix what's wrong, and confirm. Nothing is
+    // added before Confirm, and the reading and the confirmed rows both go into
+    // the audit trail.
+    function paperMode(id) { return (S.board.paperModes || []).find(function (m) { return m.id === id; }) || { id: id, label: id, table: false }; }
+    function blankRow(mode) {
+      var t = S.paper.table || 1, r = { include: true };
+      if (mode === 'signals') { r.table = t; r.role = ''; r.text = ''; }
+      if (mode === 'flips') { r.table = t; r.text = ''; }
+      if (mode === 'cards') { r.table = t; r.flipId = 0; r.need = ''; r.level = ''; r.role = ''; }
+      if (mode === 'flipdots') { r.flipId = 0; r.counts = {}; T().flipDots.forEach(function (d) { r.counts[d.code] = { unmarked: 0 }; T().roles.forEach(function (x) { r.counts[d.code][x.code] = 0; }); }); }
+      if (mode === 'votes') { r.groupId = ''; T().roles.forEach(function (x) { r[x.code] = 0; }); }
+      if (mode === 'testdrive') { r.table = t; T().testDrive.prompts.forEach(function (p) { r[p.key] = ''; }); }
+      return r;
+    }
+    function openPaper(mode) {
+      S.paper = { open: true, mode: mode, table: 1, hints: { student: '', adult: '' }, rows: [], entry: 0, photo: '', confidence: '', note: '', busy: false, error: '' };
+      renderPaper();
+    }
+    function renderPaper() {
+      var area = $('paperArea'); if (!area) return;
+      var modes = TAB_PAPER[S.tab];
+      if (!modes) { area.innerHTML = ''; return; }
+      var p = S.paper && S.paper.open && modes.indexOf(S.paper.mode) !== -1 ? S.paper : null;
+      if (!p) {
+        area.innerHTML = '<div class="chips" style="margin:0 0 12px">' + modes.map(function (m) {
+          return '<button type="button" class="btn btn-small" data-paper-open="' + m + '">Add ' + esc(paperMode(m).label.toLowerCase()) + ' from paper</button>'; }).join('') + '</div>';
+        return;
+      }
+      var mode = paperMode(p.mode), t = T();
+      var tableOpts = ''; for (var i = 1; i <= S.board.config.tables; i++) tableOpts += '<option value="' + i + '"' + (p.table === i ? ' selected' : '') + '>Table ' + i + '</option>';
+      var marks = ['signals', 'cards', 'flipdots', 'votes'].indexOf(p.mode) !== -1;
+      var html = '<section class="panel section paper stack" aria-labelledby="paperTitle"><div class="head"><h2 id="paperTitle">Add ' + esc(mode.label.toLowerCase()) + ' from paper</h2>' +
+        '<button type="button" class="btn btn-quiet btn-small" data-paper-close="1">Cancel</button></div>' +
+        '<div class="paper-controls">' +
+        (mode.table ? '<div><label for="paperTable">Table</label><select id="paperTable">' + tableOpts + '</select></div>' : '') +
+        (marks ? '<div><label for="hintS">Students’ work was marked by</label><input type="text" id="hintS" placeholder="e.g. yellow notes" value="' + esc(p.hints.student) + '"></div>' +
+          '<div><label for="hintA">Adults’ work was marked by</label><input type="text" id="hintA" placeholder="e.g. pink notes" value="' + esc(p.hints.adult) + '"></div>' : '') +
+        '</div>' +
+        '<div class="chips">' + (S.board.ai && S.board.ai.enabled ? '<input type="file" id="paperPhoto" accept="image/*" class="sr-only"><label for="paperPhoto" class="btn btn-primary btn-small" style="margin:0">' + (p.busy ? 'Reading…' : 'Read a photo with AI') + '</label>' : '') +
+        '<button type="button" class="btn btn-small" data-paper-add-row="1">Type a row in</button></div>' +
+        '<p class="muted small" style="margin:0">AI suggests what the photo says. Check every row against the paper, fix anything wrong, untick what shouldn’t go in, then confirm. The photo, the AI’s reading and what you confirm are all kept in the audit trail.</p>' +
+        (p.error ? '<div class="alert alert-bad" role="alert">' + esc(p.error) + '</div>' : '') +
+        (p.entry ? '<div class="alert ' + (p.confidence === 'high' ? 'alert-good' : 'alert-warn') + '">Read with ' + esc(p.confidence || 'low') + ' confidence' + (p.note ? ': ' + esc(p.note) : '.') +
+          (p.photo ? ' <a href="' + esc(p.photo) + '" target="_blank" rel="noopener">Open the photo</a>' : '') + '</div>' : '') +
+        (p.rows.length ? reviewTable(p) + '<div class="chips"><button type="button" class="btn btn-primary" data-paper-confirm="1">Confirm and add ' + p.rows.filter(function (r) { return r.include !== false; }).length + '</button></div>' : '') +
+        '</section>';
+      area.innerHTML = html;
+    }
+    function sel(name, i, options, value) {
+      return '<select data-prow="' + i + '" data-pf="' + name + '">' + options.map(function (o) { return '<option value="' + esc(o[0]) + '"' + (String(value) === String(o[0]) ? ' selected' : '') + '>' + esc(o[1]) + '</option>'; }).join('') + '</select>';
+    }
+    function area(name, i, value) { return '<textarea data-prow="' + i + '" data-pf="' + name + '" aria-label="' + esc(name) + '">' + esc(value || '') + '</textarea>'; }
+    function num(name, i, value, label) { return '<input type="number" min="0" data-prow="' + i + '" data-pf="' + name + '" value="' + (Number(value) || 0) + '" aria-label="' + esc(label) + '">'; }
+    function reviewTable(p) {
+      var t = T(), b = S.board;
+      var tables = []; for (var i = 1; i <= b.config.tables; i++) tables.push([i, 'Table ' + i]);
+      var roles = [['', 'Not marked']].concat(t.roles.map(function (r) { return [r.code, r.label]; }));
+      var levels = [['', 'Choose']].concat(t.level.options.map(function (o) { return [o.code, o.code + ' · ' + o.label]; }));
+      var liveFlips = b.flips.filter(function (f) { return !f.hidden; });
+      var head = { signals: ['Table', 'Written by', 'Signal'], flips: ['Table', t.parent.label], cards: ['Table', t.parent.label, 'Need', 'Tag', 'Written by'],
+        flipdots: [t.parent.label, 'Dots: ' + t.roles.map(function (r) { return r.label + 's'; }).join(', ') + ', unmarked'], votes: ['Topic'].concat(t.roles.map(function (r) { return r.label + 's'; })),
+        testdrive: ['Table'].concat(t.testDrive.prompts.map(function (x) { return x.label; })) }[p.mode];
+      var rows = p.rows.map(function (r, i) {
+        var cells;
+        if (p.mode === 'signals') cells = [sel('table', i, tables, r.table), sel('role', i, roles, r.role), area('text', i, r.text)];
+        if (p.mode === 'flips') cells = [sel('table', i, tables, r.table), area('text', i, r.text)];
+        if (p.mode === 'cards') {
+          var own = liveFlips.filter(function (f) { return f.table === Number(r.table); });
+          cells = [sel('table', i, tables, r.table), sel('flipId', i, [[0, 'None']].concat(own.map(function (f) { return [f.id, f.text.slice(0, 70)]; })), r.flipId),
+            area('need', i, r.need), sel('level', i, levels, r.level), sel('role', i, roles, r.role)];
+        }
+        if (p.mode === 'flipdots') {
+          cells = [sel('flipId', i, [[0, 'Choose a statement']].concat(liveFlips.map(function (f) { return [f.id, 'T' + f.table + ': ' + f.text.slice(0, 60)]; })), r.flipId) +
+            (r.statement ? '<div class="read-as">Read as: “' + esc(r.statement) + '”</div>' : ''),
+            '<div class="dotgrid"><span></span>' + t.roles.map(function (x) { return '<span>' + esc(x.code) + '</span>'; }).join('') + '<span>?</span>' + t.flipDots.map(function (d) {
+              var c = (r.counts || {})[d.code] || {};
+              return '<span><span class="sw sw-' + d.code + '" aria-hidden="true"></span> ' + esc(d.label) + '</span>' +
+                t.roles.map(function (x) { return num('counts.' + d.code + '.' + x.code, i, c[x.code], d.label + ' ' + x.label); }).join('') + num('counts.' + d.code + '.unmarked', i, c.unmarked, d.label + ' unmarked');
+            }).join('') + '</div>'];
+        }
+        if (p.mode === 'votes') {
+          cells = [sel('groupId', i, [['', 'Choose a topic']].concat((b.published || []).map(function (g) { return [g.id, g.topic]; })), r.groupId) +
+            (r.topic ? '<div class="read-as">Read as: “' + esc(r.topic) + '”' + (r.unmarked ? '; ' + r.unmarked + ' unmarked dots, add them to students or adults' : '') + '</div>' : '')]
+            .concat(t.roles.map(function (x) { return num(x.code, i, r[x.code], x.label + ' dots'); }));
+        }
+        if (p.mode === 'testdrive') cells = [sel('table', i, tables, r.table)].concat(t.testDrive.prompts.map(function (x) { return area(x.key, i, r[x.key]); }));
+        return '<tr class="' + (r.include === false ? 'off' : '') + '"><td><label class="sr-only" for="inc' + i + '">Include row ' + (i + 1) + '</label><input type="checkbox" id="inc' + i + '" data-prow="' + i + '" data-pf="include"' + (r.include === false ? '' : ' checked') + '></td>' +
+          cells.map(function (c) { return '<td>' + c + '</td>'; }).join('') + '</tr>';
+      }).join('');
+      return '<table class="review"><thead><tr><th>Add</th>' + head.map(function (h) { return '<th>' + esc(h) + '</th>'; }).join('') + '</tr></thead><tbody>' + rows + '</tbody></table>';
+    }
+    function shrinkPhoto(file) {
+      return new Promise(function (resolve, reject) {
+        var url = URL.createObjectURL(file), img = new Image();
+        img.onload = function () {
+          var scale = Math.min(1, 2200 / Math.max(img.naturalWidth, img.naturalHeight));
+          var c = document.createElement('canvas');
+          c.width = Math.round(img.naturalWidth * scale); c.height = Math.round(img.naturalHeight * scale);
+          c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+          URL.revokeObjectURL(url); resolve(c.toDataURL('image/jpeg', 0.85));
+        };
+        img.onerror = function () { URL.revokeObjectURL(url); reject(new Error('That photo couldn’t be opened.')); };
+        img.src = url;
+      });
+    }
+    function readPaperPhoto(file) {
+      var p = S.paper; p.busy = true; p.error = ''; renderPaper();
+      shrinkPhoto(file).then(function (dataUrl) {
+        return Capture.run('captureReadPaper', SESSION_ID, p.mode, p.table, dataUrl.split(',')[1], 'image/jpeg', p.hints);
+      }).then(function (r) {
+        p.entry = r.entry; p.photo = r.photo; p.confidence = r.confidence; p.note = r.note;
+        p.rows = r.rows.map(function (x) { x.include = true; return x; });
+        if (!p.rows.length) p.error = 'Nothing readable was found. Try a closer photo, or type the rows in.';
+      }).catch(function (e) { p.error = e.message; }).then(function () { p.busy = false; renderPaper(); });
+    }
+    function confirmPaper() {
+      var p = S.paper;
+      var btn = document.querySelector('[data-paper-confirm]'); if (btn) { btn.disabled = true; btn.textContent = 'Adding…'; }
+      Capture.run('captureConfirmPaper', SESSION_ID, p.mode, p.rows, p.entry).then(function (b) {
+        S.paper = null; adopt(b);
+        Capture.toast('Added ' + b.added.count + ' from paper. Audit entry ' + b.added.entry + '.');
+      }).catch(function (e) { p.error = e.message; renderPaper(); });
+    }
+    function setPaperField(i, field, el) {
+      var r = S.paper.rows[i]; if (!r) return;
+      var v = el.type === 'checkbox' ? el.checked : el.type === 'number' ? Math.max(0, Number(el.value) || 0) : el.value;
+      if (field === 'table' || field === 'flipId') v = Number(v) || 0;
+      var path = field.split('.'), o = r;
+      for (var k = 0; k < path.length - 1; k++) o = o[path[k]] = o[path[k]] || {};
+      o[path[path.length - 1]] = v;
+      if (field === 'include' || field === 'table') renderPaper();
+    }
+
+    // Record and results -------------------------------------------------------
+    function tabRecord() {
+      var b = S.board, a = S.audit;
+      body('<section class="panel section stack"><h2>Results document</h2><p class="small">A Google Doc made from the record: ranked priorities with the student and adult split, each traced to its cards; ' +
+        'every table’s test-drive notes; the parking lot; flip statements with their dots; and how AI was used. Make it again any time; each one is a new Doc.</p>' +
+        '<div class="chips"><button type="button" class="btn btn-primary btn-small" id="reportBtn">Make the results document</button>' + (S.report ? '<a class="btn btn-small" href="' + esc(S.report) + '" target="_blank" rel="noopener">Open the latest</a>' : '') + '</div></section>' +
+        '<section class="panel section stack"><div class="head"><h2>Audit trail</h2>' + (b.sheetUrl ? '<a class="btn btn-small" href="' + esc(b.sheetUrl) + '" target="_blank" rel="noopener">Open the sheet (Live Audit tab)</a>' : '') + '</div>' +
+        '<p class="small">Every entry, edit, hide, publish, count and AI call, with who did it and when. Photos AI read are kept in the session’s Drive folder. ' +
+        (b.ai && b.ai.enabled ? 'AI spent today: $' + b.ai.spentToday.toFixed(2) + ' of $' + b.ai.budget.toFixed(0) + '.' : '') + '</p>' +
+        '<div id="auditBox">' + (a ? auditTable(a) : '<p class="muted small">Loading…</p>') + '</div></section>');
+      $('reportBtn').onclick = function () {
+        var btn = this; btn.disabled = true; btn.textContent = 'Making…';
+        Capture.run('captureMakeReport', SESSION_ID).then(function (r) { S.report = r.url; Capture.toast('Results document is ready.'); window.open(r.url, '_blank', 'noopener'); tabRecord(); loadAudit(); })
+          .catch(function (e) { Capture.toast(e.message); btn.disabled = false; btn.textContent = 'Make the results document'; });
+      };
+      if (!a) loadAudit();
+    }
+    function loadAudit() {
+      return Capture.run('captureGetAudit', SESSION_ID).then(function (a) { S.audit = a; var box = $('auditBox'); if (box) box.innerHTML = auditTable(a); }).catch(showError);
+    }
+    function auditTable(a) {
+      if (!a.rows.length) return '<p class="muted small">Nothing yet.</p>';
+      return '<p class="muted small">The newest ' + a.rows.length + ' of ' + a.total + ' entries.</p><table class="audit"><thead><tr><th>#</th><th>When</th><th>Who</th><th>What</th><th>Items</th><th>AI</th><th>Photo</th></tr></thead><tbody>' +
+        a.rows.map(function (r) {
+          var when = r.Time ? new Date(r.Time).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' }) : '';
+          return '<tr><td>' + esc(r.Entry) + '</td><td>' + esc(when) + '</td><td class="wrap">' + esc(r.Actor) + '</td><td class="wrap">' + esc(r.Action) + (r.Detail && !r.Model ? '<div class="read-as">' + esc(String(r.Detail).slice(0, 200)) + '</div>' : '') + '</td>' +
+            '<td class="wrap">' + esc(r.IDs) + '</td><td>' + (r.Model ? esc(r.Model) + '<div class="read-as">$' + (Number(r['Cost (USD)']) || 0).toFixed(4) + '</div>' : '') + '</td>' +
+            '<td>' + (r.Photo ? '<a href="' + esc(r.Photo) + '" target="_blank" rel="noopener">Photo</a>' : '') + '</td></tr>';
+        }).join('') + '</tbody></table>';
     }
 
     // ── Events ───────────────────────────────────────────────────────────────
@@ -560,7 +752,11 @@
         S.tabChosen = false;
         return call('captureSetStage', SESSION_ID, to).then(function () { Capture.toast('Phones and the wall moved to ' + t.querySelector('.l').textContent + '.'); }).catch(function () {});
       }
-      if (t.dataset.tab) { S.tab = t.dataset.tab; S.tabChosen = true; return renderAll(); }
+      if (t.dataset.tab) { S.tab = t.dataset.tab; S.tabChosen = true; if (t.dataset.tab === 'record') S.audit = null; return renderAll(); }
+      if (t.dataset.paperOpen) return openPaper(t.dataset.paperOpen);
+      if (t.dataset.paperClose) { if (S.paper && S.paper.rows.length && !confirm('Leave without adding these rows?')) return; S.paper = null; return renderPaper(); }
+      if (t.dataset.paperAddRow) { S.paper.rows.push(blankRow(S.paper.mode)); return renderPaper(); }
+      if (t.dataset.paperConfirm) return confirmPaper();
       if (t.dataset.card) { var id = Number(t.dataset.card); S.selected = S.selected === id ? null : id; renderGroups(); var again = document.querySelector('[data-card="' + id + '"]'); if (again) again.focus(); return; }
       if (t.dataset.move) return move(S.selected, t.dataset.move);
       if (t.dataset.up || t.dataset.down) {
@@ -574,12 +770,19 @@
     });
 
     document.addEventListener('input', function (e) {
+      var pd = e.target.dataset || {};
+      if (pd.prow !== undefined && S.paper && e.target.type !== 'checkbox' && e.target.tagName !== 'SELECT') return setPaperField(Number(pd.prow), pd.pf, e.target);
+      if (S.paper && e.target.id === 'hintS') { S.paper.hints.student = e.target.value; return; }
+      if (S.paper && e.target.id === 'hintA') { S.paper.hints.adult = e.target.value; return; }
       var id = e.target.dataset && e.target.dataset.topic; if (!id) return;
       var g = S.groups.find(function (x) { return x.id === id; }); if (g) { g.topic = e.target.value; changed(); }
     });
 
     document.addEventListener('change', function (e) {
       var d = e.target.dataset || {};
+      if (S.paper && e.target.id === 'paperPhoto') { var f = e.target.files && e.target.files[0]; e.target.value = ''; if (f) readPaperPhoto(f); return; }
+      if (S.paper && e.target.id === 'paperTable') { S.paper.table = Number(e.target.value) || 1; S.paper.rows.forEach(function (r) { if (r.table !== undefined) r.table = S.paper.table; }); return renderPaper(); }
+      if (d.prow !== undefined && S.paper) return setPaperField(Number(d.prow), d.pf, e.target);
       if (d.colFor) { var g = S.groups.find(function (x) { return x.id === d.colFor; }); if (g) { g.columnOverride = e.target.value; renderGroups(); changed(); } return; }
       if (d.paper) {
         var counts = {};

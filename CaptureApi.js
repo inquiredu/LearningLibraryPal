@@ -6,6 +6,10 @@
  * requires the session's table key and returns only what that screen needs.
  * Board calls require an authorized facilitator, through AuthService, before
  * anything is read or written.
+ *
+ * Every change names who made it (a table's device, or a facilitator's
+ * account) for the audit trail. Stages show the room where it is; they don't
+ * lock anything. The one rule is that voting needs published groups.
  */
 
 // ─── Pages ──────────────────────────────────────────────────────────────────
@@ -13,7 +17,7 @@
 // keyed: the page's links carry the table key (public pages); the others are
 // facilitator pages that doGet only serves to authorized users.
 const CAPTURE_PAGES_ = {
-  capture: { file: 'Capture', title: 'Add a card', keyed: true },
+  capture: { file: 'Capture', title: 'Live capture', keyed: true },
   wall: { file: 'CaptureWall', title: 'Live wall', keyed: true },
   board: { file: 'CaptureBoard', title: 'Live board', keyed: false },
   tablecards: { file: 'CaptureTableCards', title: 'Table cards', keyed: false }
@@ -25,7 +29,7 @@ function captureRoute_(page, e) {
   const params = (e && e.parameter) || {};
   const sessionId = params.session ? validateSessionId_(String(params.session)) : '';
   const key = spec.keyed ? captureValidateKeyFormat_(String(params.k || '')) : '';
-  // A table card's QR code names its table, so the phone skips the table picker.
+  // A table card's QR code names its table, so the device skips the table picker.
   const table = page === 'capture' && /^[1-9][0-9]?$/.test(String(params.t || '')) ? String(params.t) : '';
   // Each page is self-contained (scripts/sync-capture-shared.cjs copies the shared
   // styles and helpers into it); only the session, key and table are filled in here.
@@ -89,8 +93,14 @@ function captureRequireKey_(sessionId, key) {
   return { config: config, template: captureTemplate_(config.template) };
 }
 
+/** Names a device in the audit trail by its table and the start of its random id. */
+function captureAsDevice_(ctx, table, device) {
+  const t = Number(table) >= 1 ? 'Table ' + Number(table) : 'No table';
+  const d = /^[a-f0-9]{16,40}$/.test(String(device || '')) ? String(device).slice(0, 8) : 'unknown';
+  CaptureStore.as(t + ' · device ' + d, ctx.config.stage);
+}
 
-/** What phones and the wall may know about the template. */
+/** What devices and the wall may know about the template. */
 function capturePublicTemplate_(template) {
   return {
     name: template.name,
@@ -101,7 +111,6 @@ function capturePublicTemplate_(template) {
     signal: template.signal,
     parent: template.parent,
     flipDots: template.flipDots,
-    flipDotsPerPerson: template.flipDotsPerPerson,
     fields: template.fields.map(f => ({ key: f.key, label: f.label, hint: f.hint || '', maxLength: f.maxLength, primary: !!f.primary })),
     level: {
       label: template.level.label,
@@ -113,24 +122,6 @@ function capturePublicTemplate_(template) {
     testDrive: template.testDrive
   };
 }
-
-/** Writes are only accepted in the stages they belong to. */
-function captureRequireStage_(ctx, allowed) {
-  if (allowed.indexOf(ctx.config.stage) !== -1) return;
-  const names = ctx.template.stages.filter(s => allowed.indexOf(s.id) !== -1).map(s => s.label);
-  throw new Error('That’s not open right now. It opens during: ' + names.join(', ') + '.');
-}
-
-const CAPTURE_STAGE_WRITES_ = {
-  signals: ['signals'],
-  flips: ['flips', 'flipdots', 'needs'],
-  flipTop: ['flips', 'flipdots', 'needs'],
-  flipDots: ['flipdots'],
-  cards: ['needs'],
-  photo: ['needs'],
-  vote: ['vote'],
-  testDrive: ['testdrive']
-};
 
 function captureStageAtOrAfter_(template, stage, from) {
   const ids = captureStageIds_(template);
@@ -150,12 +141,18 @@ function captureVoterCounts_(template, votes) {
   return out;
 }
 
-// ─── Phones (public, key required) ──────────────────────────────────────────
+function captureTableGroup_(ctx, snap, table) {
+  const a = ctx.config.published ? captureComputeResults_(ctx, snap).assignments.find(x => x.table === table) : null;
+  return a && a.groupId ? { id: a.groupId, topic: a.topic } : null;
+}
+
+// ─── Devices (public, key required) ─────────────────────────────────────────
 
 /**
- * Everything a phone needs for the current stage, in one call.
- * table: the phone's table number, or 0 before it picks one.
- * voter: the phone's own random id, so it sees its own dots and votes.
+ * Everything a device needs, in one call. Every step's lists come back, so a
+ * person can still add to an earlier step after the room has moved on.
+ * table: the device's table number, or 0 before it picks one.
+ * voter: the device's own random id, so it sees its own dots, votes and notes.
  */
 function captureGetPhoneState(sessionId, key, table, voter) {
   const ctx = captureRequireKey_(sessionId, key);
@@ -168,28 +165,26 @@ function captureGetPhoneState(sessionId, key, table, voter) {
     title: c.title,
     tables: c.tables,
     stage: c.stage,
-    aiPhotos: (Number(CONFIG.CAPTURE_AI_DAILY_LIMIT) || 0) > 0,
+    aiPhotos: CaptureAiService.enabled(),
     template: capturePublicTemplate_(t)
   };
   if (tableNo) {
-    const dots = captureTallyFlipDots_(t, snap.flipDots);
-    const assignment = captureStageAtOrAfter_(t, c.stage, 'results') && c.published
-      ? captureComputeResults_(ctx, snap).assignments.find(a => a.table === tableNo) : null;
-    const notes = snap.testDrive.find(n => n.table === tableNo);
+    const dots = captureTallyFlipDots_(t, snap.flipDots, c.paperFlipDots);
+    const assignment = captureStageAtOrAfter_(t, c.stage, 'results') && c.published ? captureTableGroup_(ctx, snap, tableNo) : null;
+    const notes = snap.testDrive.filter(n => n.table === tableNo);
+    const mine = me ? notes.find(n => n.device === me) : null;
     state.table = {
       number: tableNo,
       flips: snap.flips.filter(f => f.table === tableNo && !f.hidden).map(f => ({ id: f.id, text: f.text, top: f.top, dots: dots[f.id] || {} })),
       cards: snap.cards.filter(x => x.table === tableNo && !x.hidden).map(x => ({ id: x.id, text: x.fields[primary.key], level: x.level, role: x.role, flipId: x.flipId })),
       signals: snap.signals.filter(x => x.table === tableNo && !x.hidden).map(x => ({ id: x.id, text: x.text, role: x.role })),
-      assignment: assignment && assignment.groupId ? { groupId: assignment.groupId, topic: assignment.topic } : null,
-      testDrive: notes ? notes.notes : null
+      assignment: assignment,
+      testDrive: { mine: mine ? mine.notes : null, others: notes.filter(n => n !== mine).map(n => n.notes) }
     };
   }
-  if (c.stage === 'flipdots') {
-    state.gallery = snap.flips.filter(f => !f.hidden).map(f => ({ id: f.id, table: f.table, text: f.text }));
-    state.myDots = me ? snap.flipDots.filter(d => d.voter === me).map(d => ({ flipId: d.flipId, color: d.color })) : [];
-  }
-  if (c.published && (c.stage === 'vote' || captureStageAtOrAfter_(t, c.stage, 'vote'))) {
+  state.gallery = snap.flips.filter(f => !f.hidden).map(f => ({ id: f.id, table: f.table, text: f.text }));
+  state.myDots = me ? snap.flipDots.filter(d => d.voter === me).map(d => ({ flipId: d.flipId, color: d.color })) : [];
+  if (c.published) {
     state.ballot = c.published.map(g => ({ id: g.id, topic: g.topic, column: g.column, contested: g.contested, tableCount: g.tableCount }));
     const mine = me ? snap.votes.find(v => v.voter === me) : null;
     state.myVote = mine ? { role: mine.role, choices: mine.choices } : null;
@@ -199,96 +194,119 @@ function captureGetPhoneState(sessionId, key, table, voter) {
   return state;
 }
 
+/** input: { table, role, text, device, source } */
 function captureAddSignal(sessionId, key, input) {
   const ctx = captureRequireKey_(sessionId, key);
-  captureRequireStage_(ctx, CAPTURE_STAGE_WRITES_.signals);
-  return CaptureStore.addSignal(sessionId, captureValidateSignal_(ctx.template, input, ctx.config.tables));
+  const signal = captureValidateSignal_(ctx.template, input, ctx.config.tables);
+  signal.source = input && input.source === 'voice' ? 'voice' : 'typed';
+  captureAsDevice_(ctx, signal.table, input && input.device);
+  return CaptureStore.addSignal(sessionId, signal);
 }
 
-function captureRemoveSignal(sessionId, key, id, token) {
+function captureRemoveSignal(sessionId, key, id, token, table, device) {
   const ctx = captureRequireKey_(sessionId, key);
-  captureRequireStage_(ctx, CAPTURE_STAGE_WRITES_.signals);
-  if (!/^[a-f0-9]{32}$/.test(String(token || ''))) throw new Error('Only the phone that sent this can remove it.');
+  if (!/^[a-f0-9]{32}$/.test(String(token || ''))) throw new Error('Only the device that sent this can remove it.');
+  captureAsDevice_(ctx, table, device);
   CaptureStore.setSignalHidden(sessionId, Number(id), true, String(token));
   return { removed: true };
 }
 
 /** Adds a table's flip statement (id 0) or edits one of its own. */
-function captureSaveFlip(sessionId, key, table, id, text) {
+function captureSaveFlip(sessionId, key, table, id, text, device) {
   const ctx = captureRequireKey_(sessionId, key);
-  captureRequireStage_(ctx, CAPTURE_STAGE_WRITES_.flips);
   const t = captureValidTable_(table, ctx.config.tables);
+  captureAsDevice_(ctx, t, device);
   return CaptureStore.saveFlip(sessionId, ctx.template, t, Number(id) || 0, captureValidateFlipText_(ctx.template, text));
 }
 
-function captureRemoveFlip(sessionId, key, table, id) {
+/** Hides a statement. Cards already under it keep its words. */
+function captureRemoveFlip(sessionId, key, table, id, device) {
   const ctx = captureRequireKey_(sessionId, key);
-  captureRequireStage_(ctx, CAPTURE_STAGE_WRITES_.flips);
   const t = captureValidTable_(table, ctx.config.tables);
-  const snap = CaptureStore.snapshot(sessionId, ctx.template);
-  if (snap.cards.some(c => c.flipId === Number(id) && !c.hidden)) {
-    throw new Error('Cards already belong to this ' + ctx.template.parent.label.toLowerCase() + '. Edit it instead.');
-  }
+  captureAsDevice_(ctx, t, device);
   CaptureStore.setFlipFlags(sessionId, ctx.template, t, Number(id), { hidden: true });
   return { removed: true };
 }
 
-function captureSetFlipTop(sessionId, key, table, id, top) {
+function captureSetFlipTop(sessionId, key, table, id, top, device) {
   const ctx = captureRequireKey_(sessionId, key);
-  captureRequireStage_(ctx, CAPTURE_STAGE_WRITES_.flipTop);
   const t = captureValidTable_(table, ctx.config.tables);
+  captureAsDevice_(ctx, t, device);
   CaptureStore.setFlipFlags(sessionId, ctx.template, t, Number(id), { top: !!top });
   return { top: !!top };
 }
 
+/** input: { voter, role, dots, table } */
 function captureSaveFlipDots(sessionId, key, input) {
   const ctx = captureRequireKey_(sessionId, key);
-  captureRequireStage_(ctx, CAPTURE_STAGE_WRITES_.flipDots);
   const snap = CaptureStore.snapshot(sessionId, ctx.template);
   const entry = captureValidateFlipDots_(ctx.template, snap.flips, input);
+  captureAsDevice_(ctx, input && input.table, entry.voter);
   CaptureStore.saveFlipDots(sessionId, entry);
   return { saved: entry.dots.length };
 }
 
+/**
+ * input: { table, flipId, fields, level, role, sources, device, readingEntry }
+ * readingEntry is the audit entry of this device's photo reading, if any; the
+ * photo link and the AI's words are taken from there, not from the device.
+ */
 function captureSubmitCard(sessionId, key, input) {
   const ctx = captureRequireKey_(sessionId, key);
-  captureRequireStage_(ctx, CAPTURE_STAGE_WRITES_.cards);
   const snap = CaptureStore.snapshot(sessionId, ctx.template);
   const card = captureValidateCard_(ctx.template, input, ctx.config.tables, snap.flips);
+  captureAsDevice_(ctx, card.table, input && input.device);
+  const n = Number(input && input.readingEntry);
+  if (Number.isInteger(n) && n > 0) {
+    const reading = CaptureStore.auditEntry(sessionId, n);
+    if (reading && String(reading.Action) === 'AI read a card photo') {
+      const after = CaptureStore.json_(reading.After, {});
+      card.aiReading = String((after.fields || {})[ctx.template.fields[0].key] || '');
+      card.photo = String(reading.Photo || '');
+    }
+  }
   return CaptureStore.appendCard(sessionId, ctx.template, card);
 }
 
-function captureRemoveOwnCard(sessionId, key, cardId, token) {
+function captureRemoveOwnCard(sessionId, key, cardId, token, table, device) {
   const ctx = captureRequireKey_(sessionId, key);
-  captureRequireStage_(ctx, CAPTURE_STAGE_WRITES_.cards);
-  if (!/^[a-f0-9]{32}$/.test(String(token || ''))) throw new Error('Only the phone that sent this card can remove it.');
+  if (!/^[a-f0-9]{32}$/.test(String(token || ''))) throw new Error('Only the device that sent this card can remove it.');
+  captureAsDevice_(ctx, table, device);
   CaptureStore.setHidden(sessionId, ctx.template, Number(cardId), true, String(token));
   return { removed: true };
 }
 
-function captureReadPhoto(sessionId, key, base64, mimeType) {
+/** Reads a card photo, keeps the photo and logs the reading; the device fills its form with it. */
+function captureReadPhoto(sessionId, key, base64, mimeType, table, device) {
   const ctx = captureRequireKey_(sessionId, key);
-  captureRequireStage_(ctx, CAPTURE_STAGE_WRITES_.photo);
-  return CaptureAiService.readPhoto(ctx.template, String(base64 || ''), String(mimeType || ''));
+  captureAsDevice_(ctx, table, device);
+  const data = String(base64 || ''), mime = String(mimeType || '');
+  const res = CaptureAiService.readPhoto(ctx.template, data, mime);
+  let photo = '';
+  try { photo = CapturePhotoService.save(sessionId, data, mime, 'Card photo, table ' + (Number(table) || '?')); } catch (e) { photo = ''; }
+  const entry = CaptureStore.audit(sessionId, { action: 'AI read a card photo', item: 'card', after: res.reading, photo: photo,
+    model: res.ai.model, tokens: res.ai.tokens, cost: res.ai.cost, detail: res.ai.raw });
+  return Object.assign({ entry: entry }, res.reading);
 }
 
+/** input: { voter, role, choices, table } */
 function captureSaveVote(sessionId, key, input) {
   const ctx = captureRequireKey_(sessionId, key);
-  captureRequireStage_(ctx, CAPTURE_STAGE_WRITES_.vote);
   if (!ctx.config.published) throw new Error('Voting opens when the facilitators publish the groups.');
   const vote = captureValidateVote_(ctx.template, ctx.config.published, input);
+  captureAsDevice_(ctx, input && input.table, vote.voter);
   CaptureStore.saveVote(sessionId, vote);
   return { saved: vote.choices.length };
 }
 
-function captureSaveTestDrive(sessionId, key, table, notes) {
+/** Each device keeps its own notes; everyone at the table sees all of them. */
+function captureSaveTestDrive(sessionId, key, table, notes, device) {
   const ctx = captureRequireKey_(sessionId, key);
-  captureRequireStage_(ctx, CAPTURE_STAGE_WRITES_.testDrive);
   const t = captureValidTable_(table, ctx.config.tables);
+  const d = captureValidToken_(device);
+  captureAsDevice_(ctx, t, d);
   const snap = CaptureStore.snapshot(sessionId, ctx.template);
-  const a = ctx.config.published ? captureComputeResults_(ctx, snap).assignments.find(x => x.table === t) : null;
-  const group = a && a.groupId ? { id: a.groupId, topic: a.topic } : null;
-  CaptureStore.saveTestDrive(sessionId, ctx.template, t, group, captureValidateTestDrive_(ctx.template, notes));
+  CaptureStore.saveTestDrive(sessionId, ctx.template, t, d, captureTableGroup_(ctx, snap, t), captureValidateTestDrive_(ctx.template, notes));
   return { saved: true };
 }
 
@@ -342,20 +360,26 @@ function captureListTemplates() {
   return Object.keys(CAPTURE_TEMPLATES).map(id => ({ id: id, name: CAPTURE_TEMPLATES[id].name }));
 }
 
+function captureAsFacilitator_(stage) {
+  CaptureStore.as(AuthService.email() || 'facilitator', stage);
+}
+
 function captureEnable(sessionId, templateId, tables, title) {
   AuthService.requireUser();
   validateSessionId_(sessionId);
+  captureAsFacilitator_('');
   CaptureStore.enable(sessionId, String(templateId), tables, title);
   return captureGetBoard(sessionId);
 }
 
-/** The facilitator context for a session: config, template and the cached rows. */
+/** The facilitator context for a session: config and template, with the actor set for the audit trail. */
 function captureBoardContext_(sessionId) {
   AuthService.requireUser();
   validateSessionId_(sessionId);
   const config = CaptureStore.getConfig(sessionId);
   if (!config) throw new Error('Turn on live capture for this session first.');
   const template = captureTemplate_(config.template);
+  captureAsFacilitator_(config.stage);
   return { config: config, template: template };
 }
 
@@ -372,19 +396,23 @@ function captureGetBoard(sessionId) {
   const live = snap.cards.filter(c => !c.hidden);
   const normalized = captureNormalizeGroups_(snap.cards, snap.groups, template);
   const links = captureLinks_(sessionId, config);
-  const dots = captureTallyFlipDots_(template, snap.flipDots);
+  const dots = captureTallyFlipDots_(template, snap.flipDots, config.paperFlipDots);
   const published = config.published || null;
   return {
     sessionId: sessionId,
     sessionName: session.name,
     enabled: true,
+    sheetUrl: String(session.dbUrl || ''),
     config: { title: config.title, tables: config.tables, stage: config.stage, tallyMode: config.tallyMode,
-      surveyUrl: config.surveyUrl, publishedAt: config.publishedAt, paperDots: config.paperDots, assign: config.assign },
+      surveyUrl: config.surveyUrl, publishedAt: config.publishedAt, paperDots: config.paperDots, paperFlipDots: config.paperFlipDots, assign: config.assign },
     template: capturePublicTemplate_(template),
+    paperModes: Object.keys(CAPTURE_PAPER_MODES_).map(k => ({ id: k, label: CAPTURE_PAPER_MODES_[k].label, table: CAPTURE_PAPER_MODES_[k].table })),
+    ai: { enabled: CaptureAiService.enabled(), spentToday: CaptureAiService.spentToday(), budget: Number(CONFIG.CAPTURE_AI_DAILY_BUDGET_USD) || 0 },
     links: links.table ? links : null,
     signals: snap.signals,
     flips: snap.flips.map(f => Object.assign({}, f, { dots: dots[f.id] || {} })),
-    cards: snap.cards.map(c => ({ id: c.id, table: c.table, level: c.level, role: c.role, flipId: c.flipId, source: c.source, hidden: c.hidden, submittedAt: c.submittedAt, fields: c.fields })),
+    cards: snap.cards.map(c => ({ id: c.id, table: c.table, level: c.level, role: c.role, flipId: c.flipId, source: c.source, hidden: c.hidden,
+      submittedAt: c.submittedAt, fields: c.fields, aiReading: c.aiReading, photo: c.photo })),
     groups: captureOrderGroups_(template, live, normalized.groups),
     ungrouped: normalized.ungrouped,
     parking: captureParkingLot_(template, snap.cards).map(c => c.id),
@@ -399,7 +427,8 @@ function captureGetBoard(sessionId) {
 function captureSetStage(sessionId, stage) {
   const ctx = captureBoardContext_(sessionId);
   if (captureStageIds_(ctx.template).indexOf(String(stage)) === -1) throw new Error('Unknown stage.');
-  CaptureStore.updateConfig(sessionId, () => ({ stage: String(stage) }));
+  CaptureStore.updateConfig(sessionId, () => ({ stage: String(stage) }),
+    { action: 'Stage moved', item: 'stage', before: c => c.stage, after: n => n.stage });
   return captureGetBoard(sessionId);
 }
 
@@ -423,15 +452,15 @@ function captureSetFlipHidden(sessionId, id, hidden) {
 
 function captureSuggestGroups(sessionId) {
   const ctx = captureBoardContext_(sessionId);
-  const groups = CaptureAiService.proposeGroups(ctx.template, CaptureStore.snapshot(sessionId, ctx.template).cards);
-  CaptureStore.writeGroups(sessionId, groups);
+  const res = CaptureAiService.proposeGroups(ctx.template, CaptureStore.snapshot(sessionId, ctx.template).cards);
+  CaptureStore.writeGroups(sessionId, res.groups, { action: 'AI suggested groups', model: res.ai.model, tokens: res.ai.tokens, cost: res.ai.cost, detail: res.ai.raw });
   return captureGetBoard(sessionId);
 }
 
 function captureSaveGroups(sessionId, groups) {
   const ctx = captureBoardContext_(sessionId);
   const cards = CaptureStore.snapshot(sessionId, ctx.template).cards;
-  CaptureStore.writeGroups(sessionId, captureNormalizeGroups_(cards, groups, ctx.template).groups);
+  CaptureStore.writeGroups(sessionId, captureNormalizeGroups_(cards, groups, ctx.template).groups, { action: 'Groups edited' });
   return captureGetBoard(sessionId);
 }
 
@@ -447,29 +476,29 @@ function capturePublish(sessionId, clearVotes) {
   if (!groups.length) throw new Error('Make at least one group before publishing.');
   const published = capturePublish_(ctx.template, live, groups);
   if (clearVotes) CaptureStore.clearVotes(sessionId);
-  CaptureStore.updateConfig(sessionId, () => ({ published: published, publishedAt: new Date().toISOString() }));
+  const brief = list => (list || []).map(g => ({ id: g.id, topic: g.topic, column: g.column, contested: g.contested, cards: g.cardIds }));
+  CaptureStore.updateConfig(sessionId, () => ({ published: published, publishedAt: new Date().toISOString() }),
+    { action: 'Published for voting', item: 'groups', ids: published.length + ' groups', before: c => brief(c.published), after: n => brief(n.published) });
   return captureGetBoard(sessionId);
 }
 
-/** Paper dot counts for one published group, by role (the analog fallback). */
+/** Paper dot counts for one published group, by role (the analog count, typed in). */
 function captureSetPaperDots(sessionId, groupId, counts) {
   const ctx = captureBoardContext_(sessionId);
   const ids = (ctx.config.published || []).map(g => g.id);
   if (ids.indexOf(String(groupId)) === -1) throw new Error('Publish the groups first.');
   const clean = {};
-  ctx.template.roles.forEach(r => {
-    const n = Math.round(Number(counts && counts[r.code]) || 0);
-    if (n < 0 || n > 999) throw new Error('Dot counts must be between 0 and 999.');
-    clean[r.code] = n;
-  });
-  CaptureStore.updateConfig(sessionId, c => { const p = Object.assign({}, c.paperDots); p[String(groupId)] = clean; return { paperDots: p }; });
+  ctx.template.roles.forEach(r => { clean[r.code] = captureCount_(counts && counts[r.code]); });
+  CaptureStore.updateConfig(sessionId, c => { const p = Object.assign({}, c.paperDots); p[String(groupId)] = clean; return { paperDots: p }; },
+    { action: 'Paper vote dots typed in', item: 'votes', ids: [String(groupId)], before: c => c.paperDots[String(groupId)] || '', after: () => clean });
   return captureGetBoard(sessionId);
 }
 
 function captureSetTallyMode(sessionId, mode) {
   captureBoardContext_(sessionId);
-  if (['phone', 'paper', 'both'].indexOf(String(mode)) === -1) throw new Error('Choose phone, paper or both.');
-  CaptureStore.updateConfig(sessionId, () => ({ tallyMode: String(mode) }));
+  if (['phone', 'paper', 'both'].indexOf(String(mode)) === -1) throw new Error('Choose devices, paper or both.');
+  CaptureStore.updateConfig(sessionId, () => ({ tallyMode: String(mode) }),
+    { action: 'Vote count source changed', item: 'votes', before: c => c.tallyMode, after: n => n.tallyMode });
   return captureGetBoard(sessionId);
 }
 
@@ -479,7 +508,8 @@ function captureSetAssignment(sessionId, table, groupId) {
   const t = captureValidTable_(table, ctx.config.tables);
   const id = String(groupId || '');
   if (id && !(ctx.config.published || []).some(g => g.id === id && g.route === 'vote')) throw new Error('Choose one of the published priorities.');
-  CaptureStore.updateConfig(sessionId, c => { const a = Object.assign({}, c.assign); if (id) a[t] = id; else delete a[t]; return { assign: a }; });
+  CaptureStore.updateConfig(sessionId, c => { const a = Object.assign({}, c.assign); if (id) a[t] = id; else delete a[t]; return { assign: a }; },
+    { action: 'Table priority set by hand', item: 'assignment', ids: ['table ' + t], before: c => c.assign[t] || 'automatic', after: () => id || 'automatic' });
   return captureGetBoard(sessionId);
 }
 
@@ -487,7 +517,8 @@ function captureSetSurveyUrl(sessionId, url) {
   captureBoardContext_(sessionId);
   const clean = String(url || '').trim();
   if (clean && !/^https:\/\/[^\s"'<>]+$/.test(clean)) throw new Error('Use a full https:// link.');
-  CaptureStore.updateConfig(sessionId, () => ({ surveyUrl: clean }));
+  CaptureStore.updateConfig(sessionId, () => ({ surveyUrl: clean }),
+    { action: 'Survey link set', item: 'settings', before: c => c.surveyUrl, after: n => n.surveyUrl });
   return captureGetBoard(sessionId);
 }
 
@@ -495,7 +526,99 @@ function captureMakePosters(sessionId) {
   const ctx = captureBoardContext_(sessionId);
   const snap = CaptureStore.snapshot(sessionId, ctx.template);
   const groups = captureNormalizeGroups_(snap.cards, snap.groups, ctx.template).groups;
-  return { url: CapturePosterService.make(sessionId, ctx.template, ctx.config, snap.cards, groups) };
+  const url = CapturePosterService.make(sessionId, ctx.template, ctx.config, snap.cards, groups);
+  CaptureStore.audit(sessionId, { action: 'Posters made', item: 'posters', after: url });
+  return { url: url };
+}
+
+// ─── From paper (facilitators) ──────────────────────────────────────────────
+
+/**
+ * Reads a photo of paper work with AI and returns rows for people to check.
+ * Nothing is added yet: the photo is kept and the reading is logged, and
+ * captureConfirmPaper adds what people confirm.
+ * hints: { student, adult } — how students' and adults' work was marked.
+ */
+function captureReadPaper(sessionId, mode, table, base64, mimeType, hints) {
+  const ctx = captureBoardContext_(sessionId);
+  capturePaperMode_(mode);
+  const t = CAPTURE_PAPER_MODES_[mode].table ? captureValidTable_(table, ctx.config.tables) : 0;
+  const snap = CaptureStore.snapshot(sessionId, ctx.template);
+  const data = String(base64 || ''), mime = String(mimeType || '');
+  const readCtx = { table: t, flips: snap.flips, published: ctx.config.published || [] };
+  const res = CaptureAiService.readPaper(ctx.template, mode, data, mime, hints, readCtx);
+  const reading = captureCleanPaperReading_(ctx.template, mode, res.raw, readCtx);
+  let photo = '';
+  try { photo = CapturePhotoService.save(sessionId, data, mime, CAPTURE_PAPER_MODES_[mode].label + (t ? ', table ' + t : '')); } catch (e) { photo = ''; }
+  const entry = CaptureStore.audit(sessionId, { action: 'AI read paper: ' + CAPTURE_PAPER_MODES_[mode].label, item: mode, ids: t ? ['table ' + t] : '',
+    after: reading.rows, photo: photo, model: res.ai.model, tokens: res.ai.tokens, cost: res.ai.cost, detail: res.ai.raw });
+  return { entry: entry, photo: photo, rows: reading.rows, confidence: reading.confidence, note: reading.note, cost: res.ai.cost };
+}
+
+/**
+ * Adds the rows people confirmed, typed by hand or checked against an AI
+ * reading (readingEntry, from captureReadPaper). The audit entry records
+ * the rows and how they differ from the reading.
+ */
+function captureConfirmPaper(sessionId, mode, rows, readingEntry) {
+  const ctx = captureBoardContext_(sessionId);
+  capturePaperMode_(mode);
+  const snap = CaptureStore.snapshot(sessionId, ctx.template);
+  const clean = captureValidatePaperRows_(ctx.template, mode, rows, { tables: ctx.config.tables, flips: snap.flips, published: ctx.config.published || [] });
+  let reading = null, aiRows = [];
+  const n = Number(readingEntry);
+  if (Number.isInteger(n) && n > 0) {
+    reading = CaptureStore.auditEntry(sessionId, n);
+    if (!reading || String(reading.Action).indexOf('AI read paper') !== 0) throw new Error('That reading was not found. Read the photo again.');
+    aiRows = CaptureStore.json_(reading.After, []);
+  }
+  if (mode === 'cards') clean.forEach(r => { const a = r.ai !== null ? aiRows[r.ai] : null; r.aiReading = a ? a.need : ''; });
+  if (mode === 'testdrive') clean.forEach(r => { r.group = captureTableGroup_(ctx, snap, r.table); });
+  const res = CaptureStore.addFromPaper(sessionId, ctx.template, mode, clean, {
+    photo: reading ? String(reading.Photo || '') : '', readingEntry: reading ? n : 0, diff: captureDiffRows_(aiRows, clean)
+  });
+  const board = captureGetBoard(sessionId);
+  board.added = { count: clean.length, entry: res.entry };
+  return board;
+}
+
+// ─── Audit and results (facilitators) ───────────────────────────────────────
+
+function captureGetAudit(sessionId) {
+  captureBoardContext_(sessionId);
+  const tail = CaptureStore.auditTail(sessionId, 50);
+  const session = SessionService.getSession(sessionId);
+  return { total: tail.total, rows: tail.rows, sheetUrl: String(session && session.dbUrl || ''),
+    ai: { spentToday: CaptureAiService.spentToday(), budget: Number(CONFIG.CAPTURE_AI_DAILY_BUDGET_USD) || 0 } };
+}
+
+/** Makes the results document from the record and returns its link. */
+function captureMakeReport(sessionId) {
+  const ctx = captureBoardContext_(sessionId);
+  const session = SessionService.getSession(sessionId);
+  const snap = CaptureStore.snapshot(sessionId, ctx.template);
+  const all = CaptureStore.auditTail(sessionId, 100000);
+  const ai = { model: '', calls: 0, cost: 0, readings: 0, confirmed: 0, edited: 0 };
+  all.rows.forEach(r => {
+    if (r.Model) { ai.calls++; ai.model = ai.model || String(r.Model); ai.cost += Number(r['Cost (USD)']) || 0; }
+    const action = String(r.Action), detail = String(r.Detail || '');
+    if (action.indexOf('AI read') === 0) ai.readings++;
+    if (action.indexOf('Added from paper') === 0 && detail.indexOf('From AI reading') === 0) {
+      ai.confirmed++;
+      if (!/ 0 edited, 0 added by hand/.test(detail)) ai.edited++;
+    }
+    if (action === 'Card sent' && /AI read/.test(detail)) { ai.confirmed++; if (/Edited/.test(detail)) ai.edited++; }
+  });
+  const report = captureReport_(ctx.template, {
+    title: ctx.config.title, sessionName: session ? session.name : '',
+    madeAt: Utilities.formatDate(new Date(), CONFIG.DISPLAY_TIMEZONE || 'America/Chicago', 'MMMM d, yyyy h:mm a'),
+    tallyMode: ctx.config.tallyMode, snap: snap, published: ctx.config.published,
+    results: ctx.config.published ? captureComputeResults_(ctx, snap) : null,
+    paperFlipDots: ctx.config.paperFlipDots, ai: ai, sheetUrl: session ? session.dbUrl : '', auditEntries: all.total
+  });
+  const url = CaptureReportService.make(sessionId, report);
+  CaptureStore.audit(sessionId, { action: 'Results document made', item: 'report', after: url });
+  return { url: url };
 }
 
 // ─── Table cards and Sheet menu (facilitators only) ─────────────────────────
@@ -527,6 +650,7 @@ function captureMenuTurnOn() {
   if (answer.getSelectedButton() !== ui.Button.OK) return;
   try {
     const title = existing ? existing.title : picked.session.name;
+    captureAsFacilitator_('');
     CaptureStore.enable(picked.sessionId, existing ? existing.template : 'needCards', Number(answer.getResponseText()), title);
     captureMenuShowLinks_(picked.sessionId, 'Live capture is on');
   } catch (e) {
@@ -573,14 +697,14 @@ function captureMenuShowLinks_(sessionId, heading) {
     { label: 'Live board', url: links.board, note: 'Facilitators. Signed in with Google.' },
     { label: 'Printable table cards', url: links.tableCards, note: 'One page per table with a QR code that opens that table.' },
     { label: 'Projector wall', url: links.wall, note: 'Counts and topics only. No sign-in.' },
-    { label: 'Table and voting link', url: links.table, note: 'Anyone in the room can use this. No sign-in.' }
+    { label: 'Table and voting link', url: links.table, note: 'For phones and laptops. Anyone in the room can use it. No sign-in.' }
   ]);
 }
 
 function captureMenuDialog_(heading, items) {
   const esc = s => String(s || '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
   const rows = items.filter(i => i.url).map(i =>
-    '<li style="margin:0 0 14px"><a href="' + esc(i.url) + '" target="_blank" rel="noopener" style="font-weight:600;color:#0B2B46">' +
+    '<li style="margin:0 0 14px"><a href="' + esc(i.url) + '" target="_blank" rel="noopener" style="font-weight:600;color:#003865">' +
     esc(i.label) + '</a><br><span style="color:#4F5D6B;font-size:13px">' + esc(i.note) + '</span></li>').join('');
   const html = HtmlService.createHtmlOutput(
     '<div style="font:15px/1.5 system-ui,sans-serif;color:#17212B;padding:4px 6px">' +

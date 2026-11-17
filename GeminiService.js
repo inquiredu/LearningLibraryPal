@@ -19,6 +19,7 @@ const GeminiService = {
    */
   request: function(parts, opts) {
     const options = opts || {};
+    this.lastUsage = null;
     const props = PropertiesService.getScriptProperties();
     const apiKey = getGeminiApiKey_();
     if (!apiKey) throw new Error('Add a Gemini API key in Initial Setup.');
@@ -58,6 +59,10 @@ const GeminiService = {
       let json;
       try { json = JSON.parse(response.getContentText()); }
       catch (e) { throw new Error('Gemini returned an unreadable response. Retry.'); }
+      // What the call used, for callers that budget and audit AI spend. Thinking bills as output.
+      const usage = json.usageMetadata || {};
+      this.lastUsage = { model: model, input: Number(usage.promptTokenCount) || 0,
+        output: (Number(usage.candidatesTokenCount) || 0) + (Number(usage.thoughtsTokenCount) || 0) };
       const candidate = json.candidates && json.candidates[0];
       if (!candidate || candidate.finishReason && candidate.finishReason !== 'STOP') {
         throw new Error('Gemini did not complete the response. Review the source content or retry.');

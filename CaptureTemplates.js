@@ -47,8 +47,7 @@ const CAPTURE_TEMPLATES = {
       label: 'Flip statement',
       plural: 'flip statements',
       hint: 'Right now…, but we want…',
-      maxLength: 400,
-      perTableMax: 6
+      maxLength: 400
     },
 
     // Gallery walk dots on flip statements.
@@ -57,7 +56,6 @@ const CAPTURE_TEMPLATES = {
       { code: 'blue', label: 'Surprising' },
       { code: 'yellow', label: 'Missing or mislabeled' }
     ],
-    flipDotsPerPerson: 9,
 
     // Written on every card.
     fields: [
@@ -85,10 +83,12 @@ const CAPTURE_TEMPLATES = {
       parking: 'Parking lot'
     },
 
+    // perPerson is what the room agrees to, shown as guidance. Nothing enforces it:
+    // the room keeps its own count, and a shared device can vote for several people.
     vote: {
       perPerson: 3,
       prompt: 'Which of these need to be addressed first?',
-      note: 'You have 3 votes. Put them all on one, or spread them out.'
+      note: 'The room is using 3 votes each. Put them all on one, or spread them out.'
     },
 
     testDrive: {
@@ -124,11 +124,16 @@ const CAPTURE_TEMPLATES = {
   }
 };
 
+// Ceilings that only stop runaway input (a stuck key, a script); the room never
+// meets them. How many votes, dots or statements to use is the room's call.
 const CAPTURE_DEFAULTS = {
   TABLES: 6,
   MAX_TABLES: 40,
-  MAX_CARDS_PER_SESSION: 400,
-  MAX_SIGNALS_PER_SESSION: 600,
+  MAX_CARDS_PER_SESSION: 2000,
+  MAX_SIGNALS_PER_SESSION: 3000,
+  MAX_FLIPS_PER_TABLE: 40,
+  MAX_MARKS_PER_PERSON: 60,
+  MAX_PAPER_ROWS: 200,
   PHOTO_MAX_BYTES: 4 * 1024 * 1024
 };
 

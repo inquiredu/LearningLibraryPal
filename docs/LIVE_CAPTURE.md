@@ -1,36 +1,65 @@
 # Live capture (proof of concept)
 
-Live capture lets tables at an event send what they write together, from a phone, while it happens. Facilitators see every entry word for word, ask AI for a draft grouping, finish the grouping themselves, and print gallery-walk posters. A projector page shows the room its progress.
+Live capture lets tables at an event send what they write together, from a phone or laptop or from paper, while it happens. Facilitators see every entry word for word, ask AI for a draft grouping, finish the grouping themselves, and print gallery-walk posters. A projector page shows the room its progress.
 
 It is a new kind of event for Learning Library, not a separate app. It lives inside a session and stores its data in that session's Project Database. What tables write is defined by a **capture template** (`CaptureTemplates.js`). **Need Cards** is the first template. Another kind of event adds a template; the pages, AI prompts and posters read from it.
 
 Status: on branch `claude/need-cards-live-capture`. A first instance ran on Google through `npm run poc` (setup, sign-in and API key). The parts that need a real run are listed under [What is checked](#what-is-checked).
 
+## What it is for
+
+The retreat brings students and adults together to say what K-12 learners and educators need from AI guidance. Live capture carries the room's work forward without making the room serve the tool. People talk and write, on devices or paper. Facilitators decide when to move on, how to group and what counts. The tool keeps the record, does the counting and shows it back.
+
+What it gives back:
+
+1. **A traceable record in one Google Sheet.** Every need is linked to its flip statement, its table and whether a student or an adult wrote it; nothing is retyped from photos of posters.
+2. **Ranked priorities with student and adult voices kept separate.**
+3. **Specific edits to Minnesota's guidance**: for each top priority, what to change, add or cut, from the table that tested it.
+4. **The parking lot**: needs guidance alone can't meet (funding, training, policy).
+5. **A results document** made from the record in one click, and an **audit trail** anyone can use to check that the outcomes match what people sent.
+
 ## Need Cards, following the retreat agenda
 
-The facilitator moves the room through the agenda's stages from the **stage bar** on the board, when the room is ready. Every phone and the wall follow within a few seconds. Nothing moves on a timer, and no screen shows a clock time: gatherings run early and late, and the room sets the pace. Each kind of entry is only accepted during its own stage.
+The facilitator moves the room through the agenda's stages from the **stage bar** on the board, when the room is ready. Every device and the wall follow within a few seconds. Nothing moves on a timer, and no screen shows a clock time: gatherings run early and late, and the room sets the pace.
 
-| Stage | Phones | Board | Wall |
+Stages tell the room where it is; they don't lock anything. A late signal, statement, card or note is still taken, and a device can open any earlier step ("Add to any step"). The one rule is that voting needs published groups, because there is nothing to vote on before then.
+
+| Stage | Devices (phones and laptops) | Board | Wall |
 |---|---|---|---|
-| Welcome | Pick table (preset by a table card's QR code) and Student or Adult, once | Links, table cards, survey link | "Scan the QR code on your table" |
-| Signals | Jot signals, one per entry | Every signal, by table and role; hide any | Count, by role and table |
-| The Flip | The table's 3–4 flip statements ("Right now…, but we want…"); anyone at the table can add or edit | Flip statements by table | Count by table |
-| Gallery dots | Tap Resonates, Surprising or Missing/mislabeled on any table's flip statements (up to 9) | Dot counts per flip statement, by role | Dots placed, by role |
-| Need cards | Mark the table's top flip statement(s), using the dot counts; each person sends need cards: which flip statement, the need, G / G+ / B, Student or Adult. Photo reading and dictation help. | Cards word for word | Cards by table, tag and role |
+| Welcome | Pick table (preset by a table card's QR code) and Student or Adult, once | Links, table cards, survey link | "Scan the QR code on your table, or open the link you were sent" |
+| Signals | Jot signals, one per entry | Every signal, by table and role; hide any; add from paper | Count, by role and table |
+| The Flip | The table's flip statements ("Right now…, but we want…"); anyone at the table can add or edit | Flip statements by table; add from paper | Count by table |
+| Gallery dots | Tap Resonates, Surprising or Missing/mislabeled on any table's statements | Dot counts per statement, by role, from devices and paper | Dots placed, by role |
+| Need cards | Mark the table's top statement(s); each person sends need cards: which statement (or none), the need, G / G+ / B, Student or Adult. Photo reading and dictation help. | Cards word for word, with the AI reading and photo when there is one; add from paper | Cards by table, tag and role |
 | Synthesis | "The team is grouping" | **Suggest groups** (AI draft), then edit in G / G+ / B columns. A group's column is the tag most of its cards carry; **?** marks groups where tables tagged differently. **Doesn't fit yet** holds what no group claims. **Publish for voting** freezes the groups. | "Grouping N needs" |
-| Vote | 3 votes from each phone, stackable, by role; changeable until the stage moves on | Turnout by role | The question, turnout, and the published topics |
-| Read-out | Ranked priorities per column with the role split; the table's assigned priority | Tally from **phone votes**, **paper dots** (typed in per group, by role) or **both**; ranked columns; the top priorities go to tables 1–N, each overridable | Ranked columns with student/adult bars |
-| Test drive | The table's priority, and its notes: change, add, cut, beyond guidance | Every table's notes, for the share-outs | Each table's priority |
-| Close | Thank you and the exit survey link | Survey link setting | Thank you and the survey QR code |
+| Vote | Votes on the published groups, stackable, by role; changeable until the room moves on | Turnout by role; vote dots from paper | The question, turnout, and the published topics |
+| Read-out | Ranked priorities per column with the role split; the table's assigned priority | Tally from **device votes**, **paper dots** or **both**; ranked columns; the top priorities go to tables 1–N, each overridable | Ranked columns with student/adult bars |
+| Test drive | The table's priority; each device's own notes (change, add, cut, beyond guidance) and the table's other notes | Every set of notes, by table; add from paper | Each table's priority |
+| Close | Thank you and the exit survey link | Survey link; **Record & results** | Thank you and the survey QR code |
 
-Paper is the fallback all the way through: the tables still write on paper, and if phones fail at the vote, the team counts dots and types them into the board, which then ranks and assigns exactly as it does for phone votes.
+**No governors.** How many votes or dots each person uses is the room's agreement ("the room is using 3 votes each" is shown as guidance). A shared device has **Next person**, which starts a fresh voter on that device. Ceilings in `CAPTURE_DEFAULTS` only stop runaway input (60 marks a person, 40 statements a table, thousands of cards); the room never meets them.
 
-Two things to tell the room, because of how entries are stored:
+## From paper
 
-- **Gallery dots and votes count once per phone.** A phone gets a random voter id the first time it opens the page, so two people sharing a phone are one voter. People sharing a phone vote with paper dots.
-- **Each table has one set of test-drive notes, and each save replaces it.** If two phones at a table both type, the last save wins. Each table picks one note-taker.
+Paper is a first-class way in, not only a fallback. On every board tab that takes input there is **Add … from paper**: signals, flip statements, need cards, gallery dots, vote dots and test-drive notes.
 
-The attendee walkthrough and the projected phone guide (shared outside the repo) follow the stages above.
+1. Choose the table (when it matters) and, if the room marked students' and adults' work differently, say how ("yellow notes", "S on the dot").
+2. **Read a photo with AI**, or **Type a row in**.
+3. Every row appears in an editable table: matched to the room's statements or published topics by their words, with what AI read shown beside it. People fix anything wrong, untick what shouldn't go in, and **Confirm**. Nothing is added before that.
+
+The photo is saved to the session's Drive folder (`Live capture photos`), the AI reading is logged as returned, and the confirmed rows are logged with how they differ from the reading (kept as read, edited, added by hand, left out). Paper dot counts are stored per statement or topic and add to the device counts; unmarked dots count toward totals only.
+
+## Audit trail
+
+Every change writes a row to the session's **Live Audit** tab, in the same lock as the change itself: who (a facilitator's account, or a table and the start of a device's random id), the stage, what happened, the items, and the before and after. AI calls add the model, tokens, cost and the raw answer, and link the photo they read. Nothing is deleted: removing an entry hides it, a flip statement keeps its original wording, and a card read from a photo keeps the AI's words beside the confirmed ones. The **Record & results** tab shows the newest 50 entries and links to the sheet.
+
+## AI budget
+
+`CONFIG.CAPTURE_AI_DAILY_BUDGET_USD` (100) is the most live capture may spend on AI in a day, across all sessions. Each call is priced from the tokens Gemini reports (`usageMetadata`; thinking bills as output) at `CONFIG.CAPTURE_AI_PRICES_PER_MILLION` ($1.50 in, $7.50 out). Those prices are set high on purpose and were not checked against Google's pricing page, which this environment can't reach; check them in Google AI Studio billing. A call that fails after Gemini answered is still counted. 0 turns live-capture AI off; typing still works.
+
+## Results document
+
+**Make the results document** (Record & results) writes a Google Doc into the session's `04_Final` folder: at a glance; priorities ranked with the student/adult split and which table tested each; for each priority, its cards quoted as written and its test-drive notes; the parking lot; cards in no published group; flip statements with their dots; signals; and how the record was made (AI use and cost, hidden entries, and the audit trail's size and link). Every line comes from the stored record; AI writes none of it.
 
 ## Pages
 
@@ -38,16 +67,16 @@ The attendee walkthrough and the projected phone guide (shared outside the repo)
 |---|---|---|
 | Board | `/exec?page=board` (then pick a session) | Authorized facilitators (`AuthService`) |
 | Table cards | `/exec?page=tablecards&session=S-…` | Authorized facilitators |
-| Phones (tables and voting) | `/exec?page=capture&session=S-…&k=…` (`&t=3` chooses table 3) | Anyone with the link |
+| Devices (tables and voting) | `/exec?page=capture&session=S-…&k=…` (`&t=3` chooses table 3) | Anyone with the link |
 | Wall | `/exec?page=wall&session=S-…&k=…` | Anyone with the wall link |
 
-The `k` parameter is a random table key made when capture is turned on. Every table and wall call checks it, so the session's public library link cannot be used to send cards. The board shows both links.
+The `k` parameter is a random table key made when capture is turned on. Every table and wall call checks it, so the session's public library link cannot be used to send cards. The board shows both links. Laptops use the same table link (the board's **Copy table link**).
 
 ## AI skills
 
 Skills replace Gemini Gems. A skill is a platform-neutral instruction pack for an AI assistant: instructions, three starter prompts and the session materials to attach. Each one is saved as a `SKILL.md` file (a short YAML header, then Markdown) in the session's `03_Skills` folder (older sessions keep `03_Gems`). That is the format Claude uses for skills, and the same text pastes into a Gemini or ChatGPT custom assistant, or the start of any conversation. The library page shows each skill with a copy button, the materials to add and short notes for each assistant.
 
-- A session with live capture gets skills written for its activity. Need Cards defines three: **Need Card Coach** and **Guidance Sorter** for tables, **Next Steps Planner** for facilitators after the gallery walk.
+- A session with live capture gets skills written for its activity. Need Cards defines four: **Need Card Coach**, **Guidance Sorter** and **Guidance Test Drive** for tables, **Next Steps Planner** for facilitators afterwards.
 - Other sessions get the four library companions (Session Primer, Critical Lens, Synthesis Companion, Reflection Catalyst).
 - Ids and names come from the code, not the model; only titles of the session's public materials can be listed; old Gems still display, read as skills.
 - Skills are stored where Gems were (the Gems JSON column), so no sheet schema changes. Code names (`GemsService`, `webGenerateGems`) stay for compatibility; what people see says skills.
@@ -56,30 +85,32 @@ Skills replace Gemini Gems. A skill is a platform-neutral instruction pack for a
 
 | File | What it holds |
 |---|---|
-| `CaptureTemplates.js` | Templates: fields, levels, routes, prompt focus. Need Cards is here. |
-| `CaptureLogic.js` | Pure rules: validation, text cleaning, formula escaping, group repair, counts, ordering, wall summary. |
-| `CaptureStore.js` | Reads and writes the `Live Capture`, `Live Cards`, `Live Groups` and `Live Tables` tabs under the script lock. |
-| `CaptureAiService.js` | Photo reading and group drafting through `GeminiService.request`, with a daily call limit. |
+| `CaptureTemplates.js` | Templates: stages, fields, levels, routes, voting guidance, prompt focus. Need Cards is here. |
+| `CaptureLogic.js` | Pure rules: validation, text cleaning, formula escaping, group repair, counts, tallies, results, paper readings and matching, AI cost, and the results document's content. |
+| `CaptureStore.js` | Reads and writes the `Live …` tabs by header name under the script lock, and the `Live Audit` row for every change. |
+| `CaptureAiService.js` | Card and paper photo reading and group drafting through `GeminiService.request`, within the daily dollar budget. |
+| `CapturePhotoService.js` | Saves photos AI reads to the session's Drive folder. |
+| `CaptureReportService.js` | Writes the results document with DocumentApp. |
 | `CapturePosterService.js` | Builds the poster deck with SlidesApp. |
 | `CaptureApi.js` | Browser entry points and page rendering. |
 | `Capture.html`, `CaptureBoard.html`, `CaptureWall.html`, `CaptureTableCards.html` | The pages. Table cards draw QR codes in the browser with qrcode-generator 1.4.4 from cdnjs; if it can't load, each card prints its link. |
 | `Skills.js`, `GemsService.js` | AI skills (they replace Gems): see [AI skills](#ai-skills). |
-| `CaptureStyles.html`, `CaptureClient.html` | Shared styles and browser helpers, inserted into each page. |
-| `scripts/capture-preview.cjs` | Builds the three pages as local files with a stand-in for Apps Script, for screenshots and review. Not uploaded. |
-| `tests/capture.test.cjs` | 19 tests for the rules, the API boundaries, page rendering, public links and the AI calls. |
+| `CaptureStyles.html`, `CaptureClient.html` | Shared styles (State of Minnesota blue #003865 and green #78BE21) and browser helpers, copied into each page by `scripts/sync-capture-shared.cjs`. |
+| `scripts/capture-preview.cjs` | Builds every stage's device, board and wall page as local files with a stand-in for Apps Script, for screenshots and review. Not uploaded. |
+| `tests/capture.test.cjs` | The rules, API boundaries, audit trail, budget, paper readings, results document, page rendering, public links and AI calls. |
 | `scripts/poc.sh`, `tests/poc.test.cjs` | `npm run poc`: one command for a separate proof-of-concept instance with two deployments. Tested against a fake clasp. |
 
-Changes to existing files are small: a `request` method in `GeminiService.js` that takes image parts and a response schema (`_call` now uses it; its tests pass unchanged); a route block in `doGet`; `capture` and `wall` in `CONFIG.PUBLIC_PAGES`; `CONFIG.CAPTURE_AI_DAILY_LIMIT`; and the Slides scope widened from read-only to `presentations` so posters can be created.
+Changes to existing files are small: a `request` method in `GeminiService.js` that takes image parts and a response schema and records token usage (`_call` now uses it; its tests pass unchanged); a route block in `doGet`; `capture` and `wall` in `CONFIG.PUBLIC_PAGES`; the AI budget settings in `Config.js`; and the Slides scope widened from read-only to `presentations` so posters can be created.
 
 ## Privacy and safety
 
-- Nothing asks for a name. Table number is the only identifier.
-- Photos are sent to Gemini to be read and are **not stored**. Only the text the table confirms is saved.
+- Nothing asks for a name. A table number and Student or Adult are the only identifiers; devices are named in the audit trail by the first 8 characters of a random id.
+- Photos AI reads are kept in the session's Drive folder, with Drive's default sharing (the library owner and people the folder is shared with), so readings can be checked against them.
 - Card text and model text that start with `=`, `+`, `-` or `@` are stored with a leading apostrophe so Sheets keeps them as text.
-- Control and invisible characters are stripped from everything a table sends and everything a model returns.
-- Both prompts say that text inside a photo or a card is data, never instructions.
-- `CONFIG.CAPTURE_AI_DAILY_LIMIT` (300) caps photo readings plus grouping calls per day across all sessions. 0 turns live-capture AI off; typing still works.
-- A table can remove only cards it sent from that device (a token returned when each card is sent). Facilitators can hide any card; hidden cards stay in the Sheet.
+- Control and invisible characters are stripped from everything a device sends and everything a model returns.
+- Every prompt says that text inside a photo or a card is data, never instructions.
+- A device can remove only entries it sent (a token returned when each is sent). Facilitators can hide any entry; hidden entries stay in the Sheet and the audit trail says who hid them.
+- A card's AI reading and photo are taken from the audit trail by entry number, never from what a device sends.
 
 ## Try it: `npm run poc`
 
@@ -155,16 +186,17 @@ Then open `capture.html`, `board.html` or `wall.html` from that folder in a brow
 
 Checked here, with stand-ins for Google:
 
-- `npm run check` and `npm test`: 62 tests pass, covering the agenda rules (cards tied to their own table's flip statement, columns and **?**, the published snapshot, dots, votes, tallies by source and role, ranking and assignment), stage gating, the key and sign-in boundaries, the wall never carrying anyone's words, the store reading older sheets by header, the AI calls, the page rendering and `scripts/poc.sh`.
-- Every stage's phone, board and wall rendered from `scripts/capture-preview.cjs` with no script errors (30 screens), and a click-through of each stage's actions: adding and editing signals and flip statements, gallery dots, marking a top flip statement and sending cards, voting with the 3-vote limit, test-drive notes, publishing, switching the tally between phone, paper and both, typing paper dots, overriding a table's assignment and moving the stage.
+- `npm run check` and `npm test`: 76 tests pass. They cover the agenda rules (cards under their own table's statement or none, columns and **?**, the published snapshot, dots and votes with no per-person caps, tallies from devices and paper, ranking and assignment), that stages lock nothing and voting needs published groups, the key and sign-in boundaries, the audit row each change writes (who, before, after; nothing deleted), paper readings (matching, checking, how confirmed rows differ), the dollar budget, the results document's content and layout, photo filing, the wall never carrying anyone's words, the store reading older sheets by header, the AI calls, page rendering and `scripts/poc.sh`.
+- Every stage's device, board and wall page built by `scripts/capture-preview.cjs`, with no script errors. A scripted click-through covered a late signal and a card with no statement while the room was at Test drive, per-device test-drive notes, 12 gallery dots and 5 votes on one device, Next person, a card photo reading, every **From paper** mode (read, edit, untick, add a row, confirm), the Record & results tab and the results document button.
 
 Not checked, because it needs a real Google run:
 
-- Many phones at once: about 40 phones checking for stage changes every 8 seconds, and everyone voting within a few minutes. Reads come from a snapshot cached for 4 seconds, and writes wait on the script lock, but the real limits only show on the day. Rehearse with as many phones as you can.
-- Sheet writes for the new tabs, and the header-based reading on a real spreadsheet.
-- SlidesApp posters and filing into `04_Final`.
-- Gemini on real handwriting, and the skills the model writes.
-- The camera and **Speak** inside the Apps Script page frame on phones.
+- Many devices at once: about 40 checking for changes every 8 seconds, and everyone voting within a few minutes. Reads come from a snapshot cached for 4 seconds, and writes (now with an audit row each) wait on the script lock. Rehearse with as many devices as you can.
+- Sheet writes for the new tabs and columns, and the header-based reading on a real spreadsheet.
+- Drive photo filing, the results Doc (DocumentApp) and SlidesApp posters on a real account.
+- Gemini on real handwriting, posters and dot stickers, and the skills the model writes. Dot counting from a photo is the weakest reading; check the counts against the paper.
+- Gemini's real prices for the budget (Google's pricing page was out of reach here).
+- The camera and **Speak** inside the Apps Script page frame on phones and laptops.
 - QR codes on the table cards and the close slide (the library is loaded in the browser; it was blocked here).
 - Facilitators other than the owner (Google may withhold their email; access then fails closed).
 

@@ -11,7 +11,7 @@ const CapturePosterService = {
   H: 405,
   INK: '#1A1A1A',
   MUTED: '#5F6B78',
-  NAVY: '#0B2B46',
+  NAVY: '#003865',
   PARKING_PER_PAGE: 7,
 
   make: function(sessionId, template, config, cards, groups) {

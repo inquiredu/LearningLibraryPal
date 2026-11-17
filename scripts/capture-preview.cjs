@@ -107,12 +107,18 @@ function mock(scenario) {
     } });
   }
   window.google = { script: { run: runner(null, null) } };
+  // Some hosts (shared preview pages) refuse confirm(); the preview always answers yes.
+  window.confirm = function () { return true; };
 })();
 </script>`;
 }
 
+const NOTE = '<p style="margin:0;padding:6px 16px;font:13px/1.4 system-ui,sans-serif;background:#FFF3E0;color:#6B3A00;text-align:center">' +
+  'Preview with made-up cards. Nothing you do here is saved, and AI answers are canned.</p>';
+
 function build(file, outName, scenario, sessionId = 'S-demo') {
   const html = read(file)
+    .replace('<body>', '<body>\n  ' + NOTE)
     .replace('<!--CAPTURE_STYLES-->', '<meta name="viewport" content="width=device-width, initial-scale=1">' + read('CaptureStyles.html'))
     .replace('<!--CAPTURE_CLIENT-->', mock(scenario) + read('CaptureClient.html'))
     .replace('__SESSION_ID__', sessionId)

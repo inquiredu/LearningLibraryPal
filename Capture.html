@@ -93,38 +93,62 @@
   </style>
   <style>
     main { max-width: 560px; margin: 0 auto; padding: 16px 16px 96px; }
-    section + section, section + form, form + section { margin-top: 16px; }
     .stack > * + * { margin-top: 16px; }
-    .tables { display: grid; grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); gap: 10px; margin-top: 12px; }
-    .tables .btn { min-height: 64px; font-size: 1.35rem; }
-    .card-form { padding: 16px; }
-    .photo { display: grid; gap: 8px; }
-    #photoInput:focus-visible + label { outline: 3px solid var(--focus); outline-offset: 2px; }
-    .photo-preview { display: flex; gap: 12px; align-items: center; }
-    .photo-preview img { width: 64px; height: 64px; object-fit: cover; border-radius: 6px; border: 1px solid var(--line); }
-    .or { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: .9rem; margin: 4px 0; }
-    .or::before, .or::after { content: ""; flex: 1; border-top: 1px solid var(--line); }
+    .block { padding: 16px; }
+    .block + .block, section + section { margin-top: 16px; }
+    .stage { display: flex; gap: 10px; align-items: baseline; padding: 10px 14px; background: #E8F1F8; border-radius: 10px; color: var(--navy); }
+    .stage .time { font-weight: 800; font-variant-numeric: tabular-nums; }
+    .stage .what { font-weight: 650; }
+    .stage p { color: var(--muted); font-size: .95rem; margin-top: 2px; }
+    .grid-buttons { display: grid; grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); gap: 10px; margin-top: 10px; }
+    .grid-buttons .btn { min-height: 60px; font-size: 1.3rem; }
+    .roles { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+    .roles .btn { min-height: 56px; }
+    .btn[aria-pressed="true"] { background: var(--navy); color: #fff; border-color: var(--navy); }
     .field-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 8px; }
     .mic { min-height: 36px; padding: 4px 10px; font-size: .875rem; flex-shrink: 0; }
     .mic[aria-pressed="true"] { background: var(--bad-bg); border-color: var(--bad); color: var(--bad); }
     fieldset { border: 0; padding: 0; margin: 0; }
     legend { font-weight: 650; margin-bottom: 8px; padding: 0; }
-    .levels { display: grid; gap: 8px; }
-    .level-opt { display: flex; gap: 12px; align-items: flex-start; padding: 12px; border: 1px solid var(--line-strong);
+    .opts { display: grid; gap: 8px; }
+    .opt { display: flex; gap: 12px; align-items: flex-start; padding: 12px; border: 1px solid var(--line-strong);
       border-radius: 8px; cursor: pointer; background: #fff; font-weight: 400; margin: 0; }
-    .level-opt input { margin-top: 5px; width: 20px; height: 20px; flex-shrink: 0; accent-color: var(--navy); }
-    .level-opt:has(input:checked) { border-color: var(--navy); box-shadow: inset 0 0 0 2px var(--navy); }
-    .level-opt .code { font-weight: 800; min-width: 2.2em; color: var(--navy); }
-    .level-opt .hint { margin: 0; }
-    .saved-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
-    .saved-text { margin-top: 6px; font-size: 1.05rem; overflow-wrap: anywhere; }
-    .saved-list > * + * { margin-top: 12px; }
-    .sent-list { list-style: none; padding: 0; margin: 8px 0 0; display: grid; gap: 8px; }
-    .sent-list li { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; }
-    .sent-list .text { flex: 1; min-width: 0; overflow-wrap: anywhere; }
-    .sent-list .id { color: var(--muted); font-size: .85rem; white-space: nowrap; }
-    .footer-note { margin-top: 20px; }
-    #sent { margin-top: 28px; }
+    .opt input { margin-top: 4px; width: 20px; height: 20px; flex-shrink: 0; accent-color: var(--navy); }
+    .opt:has(input:checked) { border-color: var(--navy); box-shadow: inset 0 0 0 2px var(--navy); }
+    .opt .code { font-weight: 800; min-width: 2.2em; color: var(--navy); }
+    .opt .hint { margin: 0; }
+    .list { list-style: none; padding: 0; margin: 8px 0 0; display: grid; gap: 8px; }
+    .list li { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; }
+    .list .text { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+    .list .meta { color: var(--muted); font-size: .85rem; white-space: nowrap; }
+    .photo { display: grid; gap: 8px; }
+    #photoInput:focus-visible + label { outline: 3px solid var(--focus); outline-offset: 2px; }
+    .photo-preview { display: flex; gap: 12px; align-items: center; }
+    .photo-preview img { width: 56px; height: 56px; object-fit: cover; border-radius: 6px; border: 1px solid var(--line); }
+    .dotrow { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .dot-btn { min-height: 40px; padding: 6px 10px; font-size: .875rem; border-radius: 999px; }
+    .dot-btn .sw { width: 12px; height: 12px; border-radius: 50%; display: inline-block; border: 1px solid rgba(0,0,0,.25); }
+    .dot-btn[aria-pressed="true"] { background: var(--navy); color: #fff; }
+    .sw-green { background: #2E8B57; } .sw-blue { background: #2F6FD0; } .sw-yellow { background: #E7B416; }
+    .counts { display: flex; gap: 10px; flex-wrap: wrap; font-size: .85rem; color: var(--muted); margin-top: 4px; }
+    .counts span { display: inline-flex; gap: 4px; align-items: center; }
+    .flip { padding: 12px; }
+    .flip .row { display: flex; gap: 8px; align-items: flex-start; }
+    .flip .text { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+    .tag-top { font-size: .8rem; font-weight: 700; color: var(--good); }
+    .col-head { display: flex; align-items: baseline; gap: 8px; margin: 14px 0 6px; }
+    .ballot-item { display: flex; gap: 10px; align-items: center; padding: 10px 12px; }
+    .ballot-item .topic { flex: 1; min-width: 0; overflow-wrap: anywhere; font-weight: 600; }
+    .stepper { display: inline-flex; align-items: center; gap: 6px; }
+    .stepper .btn { min-height: 40px; min-width: 40px; padding: 0; font-size: 1.2rem; }
+    .stepper .n { min-width: 1.4em; text-align: center; font-weight: 800; font-variant-numeric: tabular-nums; }
+    .remaining { position: sticky; bottom: 0; background: var(--ground); padding: 12px 0; display: flex; gap: 10px; align-items: center; }
+    .remaining strong { flex: 1; }
+    .contested { font-size: .8rem; font-weight: 800; color: var(--warn); border: 1px dashed #C88A3A; border-radius: 6px; padding: 0 5px; }
+    .rank { font-weight: 800; color: var(--navy); min-width: 1.6em; font-variant-numeric: tabular-nums; }
+    .split { font-size: .85rem; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .mine { border: 2px solid var(--navy); }
+    .big-topic { font-size: 1.3rem; font-weight: 800; color: var(--navy); margin-top: 4px; overflow-wrap: anywhere; }
   </style>
 </head>
 <body>
@@ -133,72 +157,22 @@
       <div class="tag">Live capture</div>
       <h1 id="title">Loading…</h1>
     </div>
-    <button type="button" id="changeTable" class="btn btn-small btn-on-dark" hidden></button>
+    <button type="button" id="whoBtn" class="btn btn-small btn-on-dark" hidden></button>
   </header>
-
   <main>
     <div id="pageError" class="alert alert-bad" role="alert"></div>
-
-    <section id="pickTable" hidden>
-      <h2>Which table are you at?</h2>
-      <p class="muted small" style="margin-top:4px">Pick the number on your table. You can change it later.</p>
-      <div class="tables" id="tableButtons"></div>
+    <section id="who" class="panel block" hidden aria-labelledby="whoTitle">
+      <h2 id="whoTitle">Before you start</h2>
+      <p class="muted small" style="margin-top:4px">This phone remembers your choices. You can change them later.</p>
+      <h3 style="font-size:1rem;margin-top:16px">Which table are you at?</h3>
+      <div class="grid-buttons" id="tablePick"></div>
+      <h3 style="font-size:1rem;margin-top:16px">Are you a student or an adult?</h3>
+      <div class="roles" id="rolePick"></div>
+      <button type="button" class="btn btn-primary btn-block" id="whoDone" style="margin-top:16px">Continue</button>
     </section>
-
-    <section id="closed" class="panel" style="padding:16px" hidden>
-      <h2>Entry is closed</h2>
-      <p style="margin-top:6px">Thank you. Your table's cards are with the facilitators.</p>
-    </section>
-
-    <!-- What a table writes once, such as its flip statement -->
-    <section id="tablePanel" class="panel card-form" hidden aria-labelledby="tablePanelTitle">
-      <div id="tableSaved" class="saved-list" hidden></div>
-      <form id="tableForm" class="stack" hidden novalidate>
-        <div>
-          <h2 id="tablePanelTitle">Start with your table</h2>
-          <p class="muted small" id="tableIntro" style="margin-top:4px"></p>
-        </div>
-        <div id="tableFields" class="stack"></div>
-        <div id="tableError" class="alert alert-bad" role="alert"></div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <button type="submit" class="btn btn-primary" id="tableSaveBtn" style="flex:1">Save</button>
-          <button type="button" class="btn" id="tableCancelBtn" hidden>Cancel</button>
-        </div>
-      </form>
-    </section>
-
-    <form id="cardForm" class="panel card-form stack" hidden novalidate>
-      <div>
-        <h2 id="formTitle">Add a card</h2>
-        <p class="muted small" id="intro" style="margin-top:4px"></p>
-      </div>
-
-      <div class="photo" id="photoBlock">
-        <input type="file" id="photoInput" accept="image/*" capture="environment" class="sr-only">
-        <label for="photoInput" class="btn btn-block" style="margin:0">Read a photo of the card</label>
-        <div id="photoStatus" class="alert" aria-live="polite"></div>
-        <div class="or" aria-hidden="true">or type it</div>
-      </div>
-
-      <div id="fields" class="stack"></div>
-
-      <fieldset>
-        <legend id="levelLegend"></legend>
-        <div class="levels" id="levels"></div>
-      </fieldset>
-
-      <div id="formError" class="alert alert-bad" role="alert"></div>
-      <button type="submit" class="btn btn-primary btn-block" id="sendBtn">Send card</button>
-      <p class="muted small" id="micNote"></p>
-    </form>
-
-    <section id="sent" hidden>
-      <h2 id="sentTitle">Your table's cards</h2>
-      <ol class="sent-list" id="sentList"></ol>
-      <p class="muted small footer-note">Facilitators see every card as it arrives. AI may suggest groupings; people decide.</p>
-    </section>
+    <div id="stageBar" class="stage" hidden aria-live="polite"></div>
+    <div id="view" style="margin-top:16px"></div>
   </main>
-
   <div id="toast" class="toast" role="status" hidden></div>
   <script>
     /* shared:CaptureClient */
@@ -264,341 +238,471 @@
     var SESSION_ID = "__SESSION_ID__";
     var CAPTURE_KEY = "__CAPTURE_KEY__";
     var PRESET_TABLE = Number("__TABLE__") || 0; // set when the link came from a printed table card
-    var state = { config: null, table: null, tableFields: {}, sources: {}, busy: false };
     var $ = function (id) { return document.getElementById(id); };
-    var tokensKey = 'capture:' + SESSION_ID + ':tokens';
-    var tableKey = 'capture:' + SESSION_ID + ':table';
+    var esc = Capture.esc;
+    var K = 'capture:' + SESSION_ID + ':';
     var Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
+    var S = { state: null, stage: '', table: 0, role: '', voter: '', tokens: {}, busy: false, dots: null, ballot: null, sources: {} };
 
-    function show(id, on) { $(id).hidden = !on; }
-    function tableDefs() { return state.config.template.fields.filter(function (f) { return f.scope === 'table'; }); }
-    function cardDefs() { return state.config.template.fields.filter(function (f) { return f.scope !== 'table'; }); }
-    function tableReady() {
-      return tableDefs().every(function (f) { return !!(state.tableFields[f.key] || '').trim(); });
+    function voterId() {
+      var v = Capture.store(K + 'voter');
+      if (!v || !/^[a-f0-9]{32}$/.test(v)) {
+        var a = new Uint8Array(16);
+        (window.crypto || window.msCrypto).getRandomValues(a);
+        v = Array.prototype.map.call(a, function (b) { return ('0' + b.toString(16)).slice(-2); }).join('');
+        Capture.store(K + 'voter', v);
+      }
+      return v;
     }
 
-    function start() {
-      Capture.run('captureGetTableConfig', SESSION_ID, CAPTURE_KEY).then(function (config) {
-        state.config = config;
-        $('title').textContent = config.title;
-        $('formTitle').textContent = 'Add a ' + config.template.noun;
-        $('intro').textContent = config.template.intro;
-        $('levelLegend').textContent = config.template.level.label;
-        if (!config.aiPhotos) show('photoBlock', false);
-        $('fields').innerHTML = fieldsHtml(cardDefs(), 'f_', false);
-        $('tableFields').innerHTML = fieldsHtml(tableDefs(), 't_', true);
-        $('tableIntro').textContent = tableDefs().map(function (f) { return f.tableHint; }).filter(Boolean).join(' ');
-        $('tableSaveBtn').textContent = tableDefs().length === 1 ? 'Save ' + (tableDefs()[0].tableLabel || tableDefs()[0].label).replace(/^Your table’s /i, '').toLowerCase() : 'Save';
-        buildLevels(config.template);
-        buildTables(config.tables);
-        $('micNote').textContent = Speech
-          ? 'Speak types what you say into that box. Your keyboard’s microphone works too.'
-          : 'Tip: your keyboard’s microphone can type for you.';
-        var saved = Number(Capture.store(tableKey));
-        if (PRESET_TABLE >= 1 && PRESET_TABLE <= config.tables) chooseTable(PRESET_TABLE);
-        else if (saved >= 1 && saved <= config.tables) chooseTable(saved);
-        else showPicker();
-      }).catch(function (err) {
-        $('title').textContent = 'Link not working';
-        $('pageError').textContent = err.message;
-      });
-    }
+    function T() { return S.state.template; }
+    function roleLabel(code) { var r = T().roles.find(function (x) { return x.code === code; }); return r ? r.label : ''; }
+    function stageInfo(id) { return T().stages.find(function (s) { return s.id === id; }) || { label: id, time: '', phone: '' }; }
 
-    function buildTables(count) {
-      var html = '';
-      for (var t = 1; t <= count; t++) html += '<button type="button" class="btn" data-table="' + t + '" aria-label="Table ' + t + '">' + t + '</button>';
-      $('tableButtons').innerHTML = html;
-      $('tableButtons').onclick = function (e) {
-        var b = e.target.closest('[data-table]');
-        if (b) chooseTable(Number(b.dataset.table));
-      };
-    }
-
-    function showPicker() {
-      ['tablePanel', 'cardForm', 'sent', 'closed'].forEach(function (id) { show(id, false); });
-      show('pickTable', true);
-      $('changeTable').hidden = true;
-    }
-    $('changeTable').onclick = showPicker;
-
-    function chooseTable(t) {
-      state.table = t;
-      state.tableFields = {};
-      Capture.store(tableKey, t);
-      $('changeTable').textContent = 'Table ' + t + ' · change';
-      $('changeTable').hidden = false;
-      $('sentTitle').textContent = 'Table ' + t + '’s cards';
-      show('pickTable', false);
-      Capture.run('captureGetTableState', SESSION_ID, CAPTURE_KEY, t).then(function (res) {
-        state.tableFields = res.fields || {};
-        renderSent(res.cards);
-        render();
+    // ── Loading and polling ──────────────────────────────────────────────────
+    function load(force) {
+      return Capture.run('captureGetPhoneState', SESSION_ID, CAPTURE_KEY, S.table, S.voter).then(function (state) {
+        var changed = !S.state || state.stage !== S.stage || force;
+        S.state = state;
+        $('title').textContent = state.title;
+        if (changed) { S.stage = state.stage; S.dots = null; S.ballot = null; render(); }
+        else refreshLists();
       }).catch(function (err) { $('pageError').textContent = err.message; });
     }
 
-    /** Shows the right step: closed, the table's one-time fields, or the card form. */
+    function start() {
+      S.voter = voterId();
+      S.tokens = Capture.store(K + 'tokens') || {};
+      var savedTable = Number(Capture.store(K + 'table')) || 0;
+      S.table = PRESET_TABLE || savedTable;
+      S.role = Capture.store(K + 'role') || '';
+      Capture.run('captureGetPhoneState', SESSION_ID, CAPTURE_KEY, 0, S.voter).then(function (state) {
+        S.state = state;
+        $('title').textContent = state.title;
+        if (S.table > state.tables) S.table = 0;
+        if (PRESET_TABLE && PRESET_TABLE <= state.tables) Capture.store(K + 'table', PRESET_TABLE);
+        if (!S.table || !S.role) return showWho();
+        afterWho();
+      }).catch(function (err) { $('title').textContent = 'Link not working'; $('pageError').textContent = err.message; });
+    }
+
+    function afterWho() {
+      $('who').hidden = true;
+      $('whoBtn').hidden = false;
+      $('whoBtn').textContent = 'Table ' + S.table + ' · ' + roleLabel(S.role) + ' · change';
+      load(true).then(function () { Capture.poll(function () { return load(false); }, 8000); });
+    }
+
+    // ── Who: table and role ──────────────────────────────────────────────────
+    function showWho() {
+      var st = S.state, html = '';
+      for (var t = 1; t <= st.tables; t++) html += '<button type="button" class="btn" data-table="' + t + '" aria-pressed="' + (S.table === t) + '" aria-label="Table ' + t + '">' + t + '</button>';
+      $('tablePick').innerHTML = html;
+      $('rolePick').innerHTML = st.template.roles.map(function (r) {
+        return '<button type="button" class="btn" data-role="' + esc(r.code) + '" aria-pressed="' + (S.role === r.code) + '">' + esc(r.label) + '</button>';
+      }).join('');
+      $('who').hidden = false; $('stageBar').hidden = true; $('view').innerHTML = ''; $('whoBtn').hidden = true;
+    }
+    $('tablePick').onclick = function (e) {
+      var b = e.target.closest('[data-table]'); if (!b) return;
+      S.table = Number(b.dataset.table);
+      $('tablePick').querySelectorAll('[data-table]').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
+    };
+    $('rolePick').onclick = function (e) {
+      var b = e.target.closest('[data-role]'); if (!b) return;
+      S.role = b.dataset.role;
+      $('rolePick').querySelectorAll('[data-role]').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
+    };
+    $('whoDone').onclick = function () {
+      if (!S.table) return Capture.toast('Choose your table.');
+      if (!S.role) return Capture.toast('Choose student or adult.');
+      Capture.store(K + 'table', S.table); Capture.store(K + 'role', S.role);
+      afterWho();
+    };
+    $('whoBtn').onclick = showWho;
+
+    // ── Rendering by stage ───────────────────────────────────────────────────
     function render() {
-      var open = state.config.open;
-      show('closed', !open);
-      show('sent', true);
-      if (!tableDefs().length) { show('tablePanel', false); show('cardForm', open); return; }
-      show('tablePanel', true);
-      if (tableReady()) {
-        showTableSaved(open);
-        show('cardForm', open);
-      } else if (open) {
-        showTableForm(false);
-        show('cardForm', false);
-      } else {
-        show('tablePanel', false);
-        show('cardForm', false);
-      }
+      var info = stageInfo(S.stage);
+      $('stageBar').hidden = false;
+      $('stageBar').innerHTML = '<span class="time">' + esc(info.time) + '</span><div><div class="what">' + esc(info.label) + '</div><p>' + esc(info.phone) + '</p></div>';
+      var views = { welcome: viewWelcome, signals: viewSignals, flips: viewFlips, flipdots: viewFlipDots, needs: viewNeeds,
+        synthesis: viewSynthesis, vote: viewVote, results: viewResults, testdrive: viewTestDrive, close: viewClose };
+      $('view').innerHTML = '';
+      (views[S.stage] || viewWelcome)();
     }
 
-    function showTableSaved(canEdit) {
-      $('tableSaved').innerHTML = tableDefs().map(function (f) {
-        return '<div><div class="saved-head"><span class="label" style="margin:0">' + Capture.esc(f.tableLabel || f.label) + '</span>' +
-          (canEdit ? '<button type="button" class="btn btn-quiet btn-small" data-edit-table>Edit</button>' : '') + '</div>' +
-          '<p class="saved-text">' + Capture.esc(state.tableFields[f.key]) + '</p></div>';
-      }).join('');
-      show('tableSaved', true);
-      show('tableForm', false);
+    function refreshLists() {
+      if (S.stage === 'signals') renderSignalList();
+      if (S.stage === 'flips') renderFlipList();
+      if (S.stage === 'needs') { renderTopList(); renderCardList(); }
+      if (S.stage === 'results') viewResults();
     }
 
-    function showTableForm(editing) {
-      tableDefs().forEach(function (f) { $('t_' + f.key).value = state.tableFields[f.key] || $('t_' + f.key).value || ''; });
-      $('tablePanelTitle').textContent = editing ? 'Edit your table’s ' + (tableDefs()[0].label || '').toLowerCase() : 'Start with your table';
-      show('tableCancelBtn', editing);
-      show('tableSaved', false);
-      show('tableForm', true);
+    function panel(html) { var d = document.createElement('section'); d.className = 'panel block stack'; d.innerHTML = html; $('view').appendChild(d); return d; }
+
+    function textField(id, label, hint, max) {
+      return '<div><div class="field-head"><label for="' + id + '">' + esc(label) + '</label>' +
+        (Speech ? '<button type="button" class="btn mic" data-mic="' + id + '" aria-pressed="false">Speak</button>' : '') + '</div>' +
+        (hint ? '<span class="hint" id="' + id + '_h">' + esc(hint) + '</span>' : '') +
+        '<textarea id="' + id + '" maxlength="' + max + '"' + (hint ? ' aria-describedby="' + id + '_h"' : '') + '></textarea></div>';
     }
 
-    document.addEventListener('click', function (e) {
-      if (e.target.closest('[data-edit-table]')) { showTableForm(true); show('cardForm', false); $('t_' + tableDefs()[0].key).focus(); }
-    });
-    $('tableCancelBtn').onclick = function () { $('tableError').textContent = ''; render(); };
+    function viewWelcome() {
+      panel('<h2>You’re all set</h2><p>Table ' + S.table + ', ' + esc(roleLabel(S.role).toLowerCase()) + '. Keep this page open. It changes as the day moves along.</p>');
+    }
 
-    $('tableForm').addEventListener('submit', function (e) {
-      e.preventDefault();
-      var fields = {}, missing = null;
-      tableDefs().forEach(function (f) {
-        var v = $('t_' + f.key).value.trim();
-        fields[f.key] = v;
-        if (!v && !missing) missing = f;
+    // Signals ------------------------------------------------------------------
+    function viewSignals() {
+      var t = T();
+      panel('<h2>Add a signal</h2>' + textField('sigText', t.signal.label, t.signal.hint, t.signal.maxLength) +
+        '<div id="sigErr" class="alert alert-bad" role="alert"></div><button type="button" class="btn btn-primary btn-block" id="sigSend">Add signal</button>');
+      panel('<h2>Table ' + S.table + '’s signals</h2><ol class="list" id="sigList"></ol>');
+      $('sigSend').onclick = function () {
+        var text = $('sigText').value.trim();
+        if (!text) { $('sigErr').textContent = 'Write the signal first.'; return; }
+        busy($('sigSend'), true, 'Adding…');
+        Capture.run('captureAddSignal', SESSION_ID, CAPTURE_KEY, { table: S.table, role: S.role, text: text }).then(function (res) {
+          S.tokens['s' + res.id] = res.token; Capture.store(K + 'tokens', S.tokens);
+          $('sigText').value = ''; $('sigErr').textContent = ''; Capture.toast('Signal added.');
+          return load(false);
+        }).catch(function (e) { $('sigErr').textContent = e.message; }).then(function () { busy($('sigSend'), false, 'Add signal'); $('sigText').focus(); });
+      };
+      renderSignalList();
+    }
+    function renderSignalList() {
+      var list = $('sigList'); if (!list) return;
+      var items = (S.state.table && S.state.table.signals) || [];
+      list.innerHTML = items.length ? items.map(function (s) {
+        return '<li class="panel"><span class="text">' + esc(s.text) + '</span><span class="meta">' + esc(roleLabel(s.role)) + '</span>' +
+          (S.tokens['s' + s.id] ? '<button type="button" class="btn btn-quiet btn-small" data-rm-signal="' + s.id + '">Remove</button>' : '') + '</li>';
+      }).join('') : '<li class="muted">No signals yet.</li>';
+    }
+
+    // Flips --------------------------------------------------------------------
+    function viewFlips() {
+      var p = T().parent;
+      panel('<h2>Table ' + S.table + '’s ' + esc(p.plural) + '</h2><p class="muted small">Aim for 3–4. Anyone at the table can add or edit them.</p><ol class="list" id="flipList"></ol>');
+      panel('<h2>Add a ' + esc(p.label.toLowerCase()) + '</h2>' + textField('flipText', p.label, p.hint, p.maxLength) +
+        '<div id="flipErr" class="alert alert-bad" role="alert"></div><button type="button" class="btn btn-primary btn-block" id="flipSend">Add</button>');
+      $('flipSend').onclick = function () { saveFlip(0, $('flipText').value, $('flipSend'), $('flipErr'), function () { $('flipText').value = ''; }); };
+      renderFlipList();
+    }
+    function renderFlipList() {
+      var list = $('flipList'); if (!list) return;
+      if (document.activeElement && document.activeElement.dataset && document.activeElement.dataset.editFlip) return;
+      var flips = (S.state.table && S.state.table.flips) || [];
+      list.innerHTML = flips.length ? flips.map(function (f, i) {
+        return '<li class="panel" style="display:block"><div style="display:flex;gap:8px"><span class="rank">' + (i + 1) + '</span><span class="text">' + esc(f.text) + '</span></div>' +
+          '<div style="display:flex;gap:6px;margin-top:6px;justify-content:flex-end"><button type="button" class="btn btn-quiet btn-small" data-edit="' + f.id + '">Edit</button>' +
+          '<button type="button" class="btn btn-quiet btn-small" data-rm-flip="' + f.id + '">Remove</button></div></li>';
+      }).join('') : '<li class="muted">None yet. Add your first one below.</li>';
+    }
+    function saveFlip(id, text, btn, errEl, done) {
+      text = String(text || '').trim();
+      if (!text) { errEl.textContent = 'Write the ' + T().parent.label.toLowerCase() + ' first.'; return; }
+      var label = btn.textContent;
+      busy(btn, true, 'Saving…');
+      Capture.run('captureSaveFlip', SESSION_ID, CAPTURE_KEY, S.table, id, text).then(function () {
+        errEl.textContent = ''; if (done) done(); Capture.toast('Saved.');
+        return load(false);
+      }).catch(function (e) { errEl.textContent = e.message; }).then(function () { busy(btn, false, label); });
+    }
+
+    // Gallery dots -------------------------------------------------------------
+    function viewFlipDots() {
+      var t = T(), gallery = S.state.gallery || [];
+      if (!S.dots) S.dots = (S.state.myDots || []).map(function (d) { return d.flipId + ':' + d.color; });
+      var byTable = {};
+      gallery.forEach(function (f) { (byTable[f.table] = byTable[f.table] || []).push(f); });
+      var html = '<h2>Gallery dots</h2><p class="muted small">' + esc(t.flipDots.map(function (d) { return d.label; }).join(' · ')) +
+        '. Up to ' + t.flipDotsPerPerson + ' dots. They save as you tap.</p><p id="dotCount" class="small"></p>';
+      Object.keys(byTable).sort(function (a, b) { return a - b; }).forEach(function (tb) {
+        html += '<h3 style="font-size:1rem;margin-top:14px">Table ' + tb + '</h3><ol class="list">' + byTable[tb].map(function (f) {
+          return '<li class="panel flip" style="display:block"><div class="text">' + esc(f.text) + '</div><div class="dotrow">' + t.flipDots.map(function (d) {
+            var on = S.dots.indexOf(f.id + ':' + d.code) !== -1;
+            return '<button type="button" class="btn dot-btn" data-dot="' + f.id + ':' + d.code + '" aria-pressed="' + on + '"><span class="sw sw-' + d.code + '" aria-hidden="true"></span>' + esc(d.label) + '</button>';
+          }).join('') + '</div></li>';
+        }).join('') + '</ol>';
       });
-      if (missing) { $('tableError').textContent = 'Add ' + (missing.tableLabel || missing.label).toLowerCase() + '.'; $('t_' + missing.key).focus(); return; }
-      var btn = $('tableSaveBtn'), label = btn.textContent;
-      btn.disabled = true; btn.textContent = 'Saving…';
-      Capture.run('captureSetTableFields', SESSION_ID, CAPTURE_KEY, state.table, fields).then(function (res) {
-        state.tableFields = res.fields;
-        $('tableError').textContent = '';
-        Capture.toast('Saved for Table ' + state.table + '. Now add your need cards.');
-        render();
-        var first = cardDefs()[0];
-        if (first) $('f_' + first.key).focus();
-      }).catch(function (err) {
-        if (/closed/i.test(err.message)) { state.config.open = false; render(); }
-        $('tableError').textContent = err.message;
-      }).then(function () { btn.disabled = false; btn.textContent = label; });
-    });
+      if (!gallery.length) html += '<p class="muted">No flip statements yet.</p>';
+      panel(html);
+      countDots();
+    }
+    function countDots() { var el = $('dotCount'); if (el) el.textContent = S.dots.length + ' of ' + T().flipDotsPerPerson + ' dots placed.'; }
+    var dotTimer = null;
+    function saveDots() {
+      clearTimeout(dotTimer);
+      dotTimer = setTimeout(function () {
+        var dots = S.dots.map(function (k) { var p = k.split(':'); return { flipId: Number(p[0]), color: p[1] }; });
+        Capture.run('captureSaveFlipDots', SESSION_ID, CAPTURE_KEY, { voter: S.voter, role: S.role, dots: dots })
+          .then(function () { Capture.toast('Dots saved.'); }).catch(function (e) { Capture.toast(e.message); });
+      }, 600);
+    }
 
-    function fieldsHtml(defs, prefix, forTable) {
-      return defs.map(function (f) {
-        var id = prefix + f.key;
-        var label = forTable ? (f.tableLabel || f.label) : f.label;
-        return '<div>' +
-          '<div class="field-head"><label for="' + id + '">' + Capture.esc(label) + '</label>' +
-          (Speech ? '<button type="button" class="btn mic" data-mic="' + id + '" aria-pressed="false">Speak</button>' : '') +
-          '</div>' +
-          (f.hint ? '<span class="hint" id="' + id + '_hint">' + Capture.esc(f.hint) + '</span>' : '') +
-          '<textarea id="' + id + '" name="' + f.key + '" maxlength="' + f.maxLength + '" ' +
-          (f.hint ? 'aria-describedby="' + id + '_hint" ' : '') + 'required></textarea></div>';
+    // Need cards ---------------------------------------------------------------
+    function viewNeeds() {
+      var t = T();
+      panel('<h2>Your table’s ' + esc(t.parent.plural) + '</h2><p class="muted small">Mark your top one or two, using the gallery dots. Each card goes under one of them.</p><ol class="list" id="topList"></ol>');
+      var levels = t.level.options.map(function (o) {
+        return '<label class="opt"><input type="radio" name="level" value="' + esc(o.code) + '"><span class="code">' + esc(o.code) + '</span><span><strong>' + esc(o.label) + '</strong><span class="hint">' + esc(o.hint) + '</span></span></label>';
+      }).join('');
+      var roles = t.roles.map(function (r) {
+        return '<label class="opt" style="padding:8px 12px"><input type="radio" name="cardRole" value="' + esc(r.code) + '"' + (r.code === S.role ? ' checked' : '') + '><span>' + esc(r.label) + '</span></label>';
+      }).join('');
+      var f = t.fields[0];
+      panel('<h2>Add a ' + esc(t.noun) + '</h2><p class="muted small">' + esc(t.intro) + '</p>' +
+        '<fieldset><legend>Which ' + esc(t.parent.label.toLowerCase()) + ' is this card for?</legend><div class="opts" id="flipPick"></div></fieldset>' +
+        (S.state.aiPhotos ? '<div class="photo"><input type="file" id="photoInput" accept="image/*" capture="environment" class="sr-only"><label for="photoInput" class="btn btn-block" style="margin:0">Read a photo of the card</label><div id="photoStatus" class="alert" aria-live="polite"></div></div>' : '') +
+        textField('needText', f.label, f.hint, f.maxLength) +
+        '<fieldset><legend>' + esc(t.level.label) + '</legend><p class="hint">' + esc(t.level.levers) + '</p><div class="opts">' + levels + '</div></fieldset>' +
+        '<fieldset><legend>Written by</legend><div class="opts" style="grid-template-columns:1fr 1fr">' + roles + '</div></fieldset>' +
+        '<div id="cardErr" class="alert alert-bad" role="alert"></div><button type="button" class="btn btn-primary btn-block" id="cardSend">Send card</button>');
+      panel('<h2>Table ' + S.table + '’s cards</h2><ol class="list" id="cardList"></ol>');
+      if ($('photoInput')) $('photoInput').addEventListener('change', readPhoto);
+      $('needText').addEventListener('input', function (e) { if (e.isTrusted) S.sources.typed = true; });
+      $('cardSend').onclick = sendCard;
+      renderTopList(); renderFlipPick(); renderCardList();
+    }
+    function dotCounts(f) {
+      return T().flipDots.map(function (d) {
+        var n = f.dots && f.dots[d.code] ? f.dots[d.code].total : 0;
+        return '<span><span class="sw sw-' + d.code + '" aria-hidden="true" style="width:10px;height:10px;border-radius:50%;display:inline-block"></span>' + esc(d.label) + ' ' + n + '</span>';
       }).join('');
     }
-
-    function buildLevels(template) {
-      $('levels').innerHTML = template.level.options.map(function (o) {
-        return '<label class="level-opt"><input type="radio" name="level" value="' + Capture.esc(o.code) + '">' +
-          '<span class="code">' + Capture.esc(o.code) + '</span>' +
-          '<span><strong>' + Capture.esc(o.label) + '</strong><span class="hint">' + Capture.esc(o.hint) + '</span></span></label>';
-      }).join('');
+    function renderTopList() {
+      var list = $('topList'); if (!list) return;
+      var flips = (S.state.table && S.state.table.flips) || [];
+      list.innerHTML = flips.length ? flips.map(function (f) {
+        return '<li class="panel" style="display:block"><div class="row" style="display:flex;gap:8px"><span class="text">' + esc(f.text) + '</span>' +
+          '<button type="button" class="btn btn-small" data-top="' + f.id + '" aria-pressed="' + !!f.top + '">' + (f.top ? 'Top ✓' : 'Mark top') + '</button></div>' +
+          '<div class="counts">' + dotCounts(f) + '</div></li>';
+      }).join('') : '<li class="muted">Your table has no ' + esc(T().parent.plural) + ' yet. Ask a facilitator.</li>';
     }
-
-    document.addEventListener('input', function (e) {
-      if (e.target.closest && e.target.closest('#fields') && e.isTrusted && e.inputType) state.sources.typed = true;
-    });
-
-    // ── Dictation ────────────────────────────────────────────────────────────
-    var activeRec = null;
-    document.addEventListener('click', function (e) {
-      var b = e.target.closest('[data-mic]');
-      if (b) toggleMic(b);
-    });
-    function toggleMic(button) {
-      if (activeRec) { activeRec.stop(); return; }
-      var box = $(button.dataset.mic);
-      var rec = new Speech();
-      rec.lang = navigator.language || 'en-US';
-      rec.interimResults = false;
-      rec.continuous = false;
-      rec.onresult = function (e) {
-        var said = '';
-        for (var i = e.resultIndex; i < e.results.length; i++) if (e.results[i].isFinal) said += e.results[i][0].transcript;
-        if (said) {
-          box.value = (box.value ? box.value.replace(/\s*$/, ' ') : '') + said.trim();
-          if (box.closest('#fields')) state.sources.voice = true;
-        }
-      };
-      rec.onerror = function (e) {
-        if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
-          document.querySelectorAll('[data-mic]').forEach(function (b) { b.hidden = true; });
-          $('micNote').textContent = 'The microphone isn’t allowed on this page. Your keyboard’s microphone still works.';
-        }
-      };
-      rec.onend = function () { button.setAttribute('aria-pressed', 'false'); button.textContent = 'Speak'; activeRec = null; };
-      try {
-        rec.start();
-        activeRec = rec;
-        button.setAttribute('aria-pressed', 'true');
-        button.textContent = 'Stop';
-        box.focus();
-      } catch (err) { activeRec = null; }
+    function renderFlipPick() {
+      var box = $('flipPick'); if (!box) return;
+      var flips = (S.state.table && S.state.table.flips) || [];
+      var chosen = (document.querySelector('input[name="flipId"]:checked') || {}).value;
+      var ordered = flips.filter(function (f) { return f.top; }).concat(flips.filter(function (f) { return !f.top; }));
+      box.innerHTML = ordered.map(function (f, i) {
+        var checked = chosen ? String(f.id) === chosen : i === 0;
+        return '<label class="opt"><input type="radio" name="flipId" value="' + f.id + '"' + (checked ? ' checked' : '') + '><span>' + (f.top ? '<span class="tag-top">TOP</span> ' : '') + esc(f.text) + '</span></label>';
+      }).join('') || '<p class="muted">No ' + esc(T().parent.plural) + ' yet.</p>';
     }
-
-    // ── Photo reading ────────────────────────────────────────────────────────
+    function renderCardList() {
+      var list = $('cardList'); if (!list) return;
+      renderFlipPick();
+      var cards = (S.state.table && S.state.table.cards) || [];
+      list.innerHTML = cards.length ? cards.map(function (c) {
+        return '<li class="panel"><span class="level">' + esc(c.level) + '</span><span class="text">' + esc(c.text) + '</span><span class="meta">' + esc(roleLabel(c.role)) + ' · #' + c.id + '</span>' +
+          (S.tokens['c' + c.id] ? '<button type="button" class="btn btn-quiet btn-small" data-rm-card="' + c.id + '">Remove</button>' : '') + '</li>';
+      }).join('') : '<li class="muted">No cards yet.</li>';
+    }
+    function sendCard() {
+      var flip = document.querySelector('input[name="flipId"]:checked');
+      var level = document.querySelector('input[name="level"]:checked');
+      var role = document.querySelector('input[name="cardRole"]:checked');
+      var need = $('needText').value.trim();
+      var err = $('cardErr');
+      if (!flip) { err.textContent = 'Choose which ' + T().parent.label.toLowerCase() + ' this card is for.'; return; }
+      if (!need) { err.textContent = 'Write the need.'; $('needText').focus(); return; }
+      if (!level) { err.textContent = 'Choose G, G+ or B.'; return; }
+      var fields = {}; fields[T().fields[0].key] = need;
+      busy($('cardSend'), true, 'Sending…');
+      Capture.run('captureSubmitCard', SESSION_ID, CAPTURE_KEY, { table: S.table, flipId: Number(flip.value), fields: fields, level: level.value,
+        role: role ? role.value : S.role, sources: Object.keys(S.sources) }).then(function (res) {
+        S.tokens['c' + res.id] = res.token; Capture.store(K + 'tokens', S.tokens);
+        $('needText').value = ''; level.checked = false; S.sources = {}; err.textContent = '';
+        if ($('photoStatus')) { $('photoStatus').className = 'alert'; $('photoStatus').textContent = ''; }
+        Capture.toast('Card ' + res.id + ' sent. Pass the phone to the next person.');
+        return load(false);
+      }).catch(function (e) { err.textContent = e.message; }).then(function () { busy($('cardSend'), false, 'Send card'); });
+    }
     function shrink(file) {
       return new Promise(function (resolve, reject) {
-        var url = URL.createObjectURL(file);
-        var img = new Image();
+        var url = URL.createObjectURL(file), img = new Image();
         img.onload = function () {
           var scale = Math.min(1, 1600 / Math.max(img.naturalWidth, img.naturalHeight));
-          var canvas = document.createElement('canvas');
-          canvas.width = Math.round(img.naturalWidth * scale);
-          canvas.height = Math.round(img.naturalHeight * scale);
-          canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-          URL.revokeObjectURL(url);
-          resolve(canvas.toDataURL('image/jpeg', 0.85));
+          var c = document.createElement('canvas');
+          c.width = Math.round(img.naturalWidth * scale); c.height = Math.round(img.naturalHeight * scale);
+          c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+          URL.revokeObjectURL(url); resolve(c.toDataURL('image/jpeg', 0.85));
         };
-        img.onerror = function () { URL.revokeObjectURL(url); reject(new Error('That photo couldn’t be opened. Try again, or type the card.')); };
+        img.onerror = function () { URL.revokeObjectURL(url); reject(new Error('That photo couldn’t be opened. Type the card instead.')); };
         img.src = url;
       });
     }
-
-    $('photoInput').addEventListener('change', function () {
-      var file = this.files && this.files[0];
-      this.value = '';
+    function readPhoto() {
+      var file = this.files && this.files[0]; this.value = '';
       if (!file) return;
-      var status = $('photoStatus');
-      status.className = 'alert';
-      status.innerHTML = '<span class="photo-preview"><span class="spinner dark" aria-hidden="true"></span> Reading your card…</span>';
+      var st = $('photoStatus');
+      st.className = 'alert'; st.innerHTML = '<span class="photo-preview"><span class="spinner dark" aria-hidden="true"></span> Reading the card…</span>';
       shrink(file).then(function (dataUrl) {
-        status.innerHTML = '<span class="photo-preview"><img alt="" src="' + dataUrl + '"><span><span class="spinner dark" aria-hidden="true" style="display:inline-block;vertical-align:middle"></span> Reading your card…</span></span>';
         return Capture.run('captureReadPhoto', SESSION_ID, CAPTURE_KEY, dataUrl.split(',')[1], 'image/jpeg');
-      }).then(function (reading) {
-        if (reading.empty) {
-          status.className = 'alert alert-warn';
-          status.textContent = 'No writing was found in that photo. Try again closer, or type the card.';
-          return;
-        }
-        cardDefs().forEach(function (f) { if (reading.fields[f.key]) $('f_' + f.key).value = reading.fields[f.key]; });
-        if (reading.level) {
-          var radio = document.querySelector('input[name="level"][value="' + CSS.escape(reading.level) + '"]');
-          if (radio) radio.checked = true;
-        }
-        state.sources.photo = true;
-        var shown = {};
-        cardDefs().forEach(function (f) { shown[f.key] = reading.fields[f.key]; });
-        var unclear = JSON.stringify(shown).indexOf('[illegible]') !== -1;
-        status.className = 'alert ' + (unclear || reading.confidence === 'low' ? 'alert-warn' : 'alert-good');
-        status.textContent = unclear
-          ? 'Read. Some words were hard to read and are marked [illegible]. Fix them before sending.'
-          : 'Read. Check every word and the level, then send. AI drafted this; your table decides.';
-      }).catch(function (err) {
-        status.className = 'alert alert-bad';
-        status.textContent = err.message;
+      }).then(function (r) {
+        if (r.empty) { st.className = 'alert alert-warn'; st.textContent = 'No writing found. Try again closer, or type it.'; return; }
+        var k = T().fields[0].key;
+        if (r.fields[k]) $('needText').value = r.fields[k];
+        if (r.level) { var el = document.querySelector('input[name="level"][value="' + CSS.escape(r.level) + '"]'); if (el) el.checked = true; }
+        S.sources.photo = true;
+        var unclear = String(r.fields[k] || '').indexOf('[illegible]') !== -1;
+        st.className = 'alert ' + (unclear || r.confidence === 'low' ? 'alert-warn' : 'alert-good');
+        st.textContent = unclear ? 'Read. Words marked [illegible] were hard to read. Fix them before sending.' : 'Read. Check every word and the lever, then send. AI drafted this; you decide.';
+      }).catch(function (e) { st.className = 'alert alert-bad'; st.textContent = e.message; });
+    }
+
+    // Synthesis ----------------------------------------------------------------
+    function viewSynthesis() {
+      var n = ((S.state.table && S.state.table.cards) || []).length;
+      panel('<h2>Thank you</h2><p>Your table sent ' + n + ' card' + (n === 1 ? '' : 's') + '. The synthesis team is grouping the needs into G, G+ and B. Voting opens next, right here.</p>');
+    }
+
+    // Vote ---------------------------------------------------------------------
+    function viewVote() {
+      var t = T(), ballot = S.state.ballot;
+      if (!ballot || !ballot.length) { panel('<h2>Voting opens soon</h2><p>The facilitators are publishing the groups.</p>'); return; }
+      if (!S.ballot) {
+        S.ballot = {};
+        ((S.state.myVote && S.state.myVote.choices) || []).forEach(function (id) { S.ballot[id] = (S.ballot[id] || 0) + 1; });
+      }
+      var html = '<h2>' + esc(t.vote.prompt) + '</h2><p class="muted small">' + esc(t.vote.note) + '</p>';
+      t.level.options.forEach(function (o) {
+        var items = ballot.filter(function (g) { return g.column === o.code; });
+        if (!items.length) return;
+        html += '<div class="col-head"><span class="level" data-route="' + o.route + '">' + esc(o.code) + '</span><strong>' + esc(o.label) + '</strong>' +
+          (o.route === 'parking' ? '<span class="muted small">' + esc(t.routes.parking) + '</span>' : '') + '</div><ol class="list">' +
+          items.map(function (g) {
+            var n = S.ballot[g.id] || 0;
+            return '<li class="panel ballot-item"><span class="topic">' + esc(g.topic) + (g.contested ? ' <span class="contested" title="Tables tagged this differently">?</span>' : '') + '</span>' +
+              '<span class="stepper"><button type="button" class="btn" data-less="' + esc(g.id) + '" aria-label="One vote fewer for ' + esc(g.topic) + '">−</button>' +
+              '<span class="n" aria-live="polite">' + n + '</span><button type="button" class="btn" data-more="' + esc(g.id) + '" aria-label="One more vote for ' + esc(g.topic) + '">+</button></span></li>';
+          }).join('') + '</ol>';
       });
-    });
+      html += '<div class="remaining"><strong id="votesLeft"></strong><button type="button" class="btn btn-primary" id="voteSend">Send my votes</button></div>';
+      panel(html);
+      votesLeft();
+      $('voteSend').onclick = function () {
+        var choices = [];
+        Object.keys(S.ballot).forEach(function (id) { for (var i = 0; i < S.ballot[id]; i++) choices.push(id); });
+        if (!choices.length) return Capture.toast('Add at least one vote.');
+        busy($('voteSend'), true, 'Sending…');
+        Capture.run('captureSaveVote', SESSION_ID, CAPTURE_KEY, { voter: S.voter, role: S.role, choices: choices })
+          .then(function () { Capture.toast('Votes saved. You can change them until voting closes.'); })
+          .catch(function (e) { Capture.toast(e.message); }).then(function () { busy($('voteSend'), false, 'Update my votes'); });
+      };
+    }
+    function used() { return Object.keys(S.ballot).reduce(function (n, k) { return n + S.ballot[k]; }, 0); }
+    function votesLeft() { var el = $('votesLeft'); if (el) el.textContent = (T().vote.perPerson - used()) + ' of ' + T().vote.perPerson + ' votes left'; }
 
-    // ── Sending ──────────────────────────────────────────────────────────────
-    $('cardForm').addEventListener('submit', function (e) {
-      e.preventDefault();
-      if (state.busy) return;
-      var template = state.config.template;
-      var fields = {};
-      var missing = null;
-      cardDefs().forEach(function (f) {
-        var v = $('f_' + f.key).value.trim();
-        fields[f.key] = v;
-        if (!v && !missing) missing = f;
+    // Results ------------------------------------------------------------------
+    function viewResults() {
+      var t = T(), r = S.state.results;
+      $('view').innerHTML = '';
+      if (!r) { panel('<h2>Results are coming</h2><p>The facilitators are counting.</p>'); return; }
+      var a = S.state.table && S.state.table.assignment;
+      if (a) panel('<h2>Your table’s priority</h2><div class="big-topic">' + esc(a.topic) + '</div><p class="muted small">You’ll test current guidance against it next.</p>');
+      var html = '';
+      r.columns.forEach(function (col) {
+        if (!col.items.length) return;
+        html += '<div class="col-head"><span class="level" data-route="' + col.route + '">' + esc(col.code) + '</span><strong>' + esc(col.label) + '</strong>' +
+          (col.route === 'parking' ? '<span class="muted small">' + esc(t.routes.parking) + '</span>' : '') + '</div><ol class="list">' +
+          col.items.slice(0, 10).map(function (i) {
+            return '<li class="panel' + (a && a.groupId === i.id ? ' mine' : '') + '"><span class="rank">' + i.rank + '</span><span class="text">' + esc(i.topic) + '</span>' +
+              '<span class="split">' + i.total + ' · ' + t.roles.map(function (x) { return esc(x.code) + ' ' + (i[x.code] || 0); }).join(' ') + '</span></li>';
+          }).join('') + '</ol>';
       });
-      var picked = document.querySelector('input[name="level"]:checked');
-      if (missing) return fail('Add the ' + missing.label.replace(/…$/, '').toLowerCase() + '.', $('f_' + missing.key));
-      if (!picked) return fail('Choose ' + template.level.options.map(function (o) { return o.code; }).join(', ') + '.', document.querySelector('input[name="level"]'));
-      var sources = Object.keys(state.sources);
-      state.busy = true;
-      $('sendBtn').disabled = true;
-      $('sendBtn').innerHTML = '<span class="spinner" aria-hidden="true"></span> Sending…';
-      $('formError').textContent = '';
-      Capture.run('captureSubmitCard', SESSION_ID, CAPTURE_KEY, { table: state.table, fields: fields, level: picked.value, sources: sources })
-        .then(function (res) {
-          var tokens = Capture.store(tokensKey) || {};
-          tokens[res.id] = res.token;
-          Capture.store(tokensKey, tokens);
-          $('cardForm').reset();
-          state.sources = {};
-          $('photoStatus').className = 'alert';
-          $('photoStatus').textContent = '';
-          Capture.toast('Card ' + res.id + ' sent. Add the next one.');
-          loadSent();
-          var first = cardDefs()[0];
-          if (first) $('f_' + first.key).focus();
-        })
-        .catch(function (err) {
-          if (/closed/i.test(err.message)) { state.config.open = false; render(); }
-          fail(err.message);
-        })
-        .then(function () {
-          state.busy = false;
-          $('sendBtn').disabled = false;
-          $('sendBtn').textContent = 'Send card';
-        });
+      panel('<h2>Ranked priorities</h2>' + html);
+    }
+
+    // Test drive ---------------------------------------------------------------
+    function viewTestDrive() {
+      var t = T(), a = S.state.table && S.state.table.assignment, notes = (S.state.table && S.state.table.testDrive) || {};
+      panel('<h2>Your table’s priority</h2>' + (a ? '<div class="big-topic">' + esc(a.topic) + '</div>' : '<p class="muted">A facilitator will tell you which need your table has.</p>') +
+        '<p class="muted small">' + esc(t.testDrive.intro) + '</p>');
+      panel('<h2>Your notes</h2>' + t.testDrive.prompts.map(function (p) { return textField('td_' + p.key, p.label, p.hint, t.testDrive.maxLength); }).join('') +
+        '<div id="tdErr" class="alert alert-bad" role="alert"></div><button type="button" class="btn btn-primary btn-block" id="tdSend">Save notes</button>' +
+        '<p class="muted small">Anyone at your table can update these. The last save wins.</p>');
+      t.testDrive.prompts.forEach(function (p) { $('td_' + p.key).value = notes[p.key] || ''; });
+      $('tdSend').onclick = function () {
+        var out = {}; t.testDrive.prompts.forEach(function (p) { out[p.key] = $('td_' + p.key).value; });
+        busy($('tdSend'), true, 'Saving…');
+        Capture.run('captureSaveTestDrive', SESSION_ID, CAPTURE_KEY, S.table, out).then(function () { $('tdErr').textContent = ''; Capture.toast('Notes saved.'); })
+          .catch(function (e) { $('tdErr').textContent = e.message; }).then(function () { busy($('tdSend'), false, 'Save notes'); });
+      };
+    }
+
+    // Close --------------------------------------------------------------------
+    function viewClose() {
+      var url = S.state.surveyUrl;
+      panel('<h2>Thank you</h2><p>Your input shapes the next version of the guidance.</p>' +
+        (url ? '<a class="btn btn-primary btn-block" href="' + esc(url) + '" target="_blank" rel="noopener">Take the exit survey</a>' : ''));
+    }
+
+    // ── Shared actions ───────────────────────────────────────────────────────
+    function busy(btn, on, label) { if (!btn) return; btn.disabled = on; btn.textContent = label; }
+
+    document.addEventListener('click', function (e) {
+      var b = e.target.closest('button'); if (!b) return;
+      if (b.dataset.mic) return toggleMic(b);
+      if (b.dataset.rmSignal) {
+        var sid = b.dataset.rmSignal;
+        return Capture.run('captureRemoveSignal', SESSION_ID, CAPTURE_KEY, Number(sid), S.tokens['s' + sid]).then(function () { delete S.tokens['s' + sid]; Capture.store(K + 'tokens', S.tokens); return load(false); }).catch(function (x) { Capture.toast(x.message); });
+      }
+      if (b.dataset.rmCard) {
+        var cid = b.dataset.rmCard;
+        return Capture.run('captureRemoveOwnCard', SESSION_ID, CAPTURE_KEY, Number(cid), S.tokens['c' + cid]).then(function () { delete S.tokens['c' + cid]; Capture.store(K + 'tokens', S.tokens); Capture.toast('Card removed.'); return load(false); }).catch(function (x) { Capture.toast(x.message); });
+      }
+      if (b.dataset.rmFlip) {
+        return Capture.run('captureRemoveFlip', SESSION_ID, CAPTURE_KEY, S.table, Number(b.dataset.rmFlip)).then(function () { return load(false); }).catch(function (x) { Capture.toast(x.message); });
+      }
+      if (b.dataset.edit) {
+        var li = b.closest('li'), f = (S.state.table.flips || []).find(function (x) { return String(x.id) === b.dataset.edit; });
+        li.innerHTML = '<label class="sr-only" for="ef' + f.id + '">Edit</label><textarea id="ef' + f.id + '" data-edit-flip="1" maxlength="' + T().parent.maxLength + '">' + esc(f.text) + '</textarea>' +
+          '<div class="alert alert-bad" role="alert" id="efErr' + f.id + '"></div><div style="display:flex;gap:8px;margin-top:6px"><button type="button" class="btn btn-primary btn-small" data-save-flip="' + f.id + '">Save</button>' +
+          '<button type="button" class="btn btn-small" data-cancel-edit="1">Cancel</button></div>';
+        $('ef' + f.id).focus();
+        return;
+      }
+      if (b.dataset.saveFlip) { var id = b.dataset.saveFlip; return saveFlip(Number(id), $('ef' + id).value, b, $('efErr' + id)); }
+      if (b.dataset.cancelEdit) { document.activeElement.blur(); return renderFlipList(); }
+      if (b.dataset.top) {
+        var top = b.getAttribute('aria-pressed') !== 'true';
+        return Capture.run('captureSetFlipTop', SESSION_ID, CAPTURE_KEY, S.table, Number(b.dataset.top), top).then(function () { return load(false); }).catch(function (x) { Capture.toast(x.message); });
+      }
+      if (b.dataset.dot) {
+        var k = b.dataset.dot, i = S.dots.indexOf(k);
+        if (i === -1) { if (S.dots.length >= T().flipDotsPerPerson) return Capture.toast('You’ve placed all ' + T().flipDotsPerPerson + ' dots. Tap one to take it back.'); S.dots.push(k); }
+        else S.dots.splice(i, 1);
+        b.setAttribute('aria-pressed', String(i === -1)); countDots(); saveDots(); return;
+      }
+      if (b.dataset.more || b.dataset.less) {
+        var gid = b.dataset.more || b.dataset.less;
+        if (b.dataset.more) { if (used() >= T().vote.perPerson) return Capture.toast('You’ve used all ' + T().vote.perPerson + ' votes.'); S.ballot[gid] = (S.ballot[gid] || 0) + 1; }
+        else if (S.ballot[gid]) S.ballot[gid]--;
+        b.parentNode.querySelector('.n').textContent = S.ballot[gid] || 0; votesLeft(); return;
+      }
     });
 
-    function fail(message, focusEl) {
-      $('formError').textContent = message;
-      if (focusEl) focusEl.focus();
+    // Dictation ------------------------------------------------------------------
+    var activeRec = null;
+    function toggleMic(button) {
+      if (activeRec) { activeRec.stop(); return; }
+      var box = $(button.dataset.mic), rec = new Speech();
+      rec.lang = navigator.language || 'en-US'; rec.interimResults = false; rec.continuous = false;
+      rec.onresult = function (e) {
+        var said = '';
+        for (var i = e.resultIndex; i < e.results.length; i++) if (e.results[i].isFinal) said += e.results[i][0].transcript;
+        if (said) { box.value = (box.value ? box.value.replace(/\s*$/, ' ') : '') + said.trim(); if (box.id === 'needText') S.sources.voice = true; }
+      };
+      rec.onerror = function (e) {
+        if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
+          document.querySelectorAll('[data-mic]').forEach(function (x) { x.hidden = true; });
+          Capture.toast('The microphone isn’t allowed here. Your keyboard’s microphone still works.');
+        }
+      };
+      rec.onend = function () { button.setAttribute('aria-pressed', 'false'); button.textContent = 'Speak'; activeRec = null; };
+      try { rec.start(); activeRec = rec; button.setAttribute('aria-pressed', 'true'); button.textContent = 'Stop'; box.focus(); } catch (err) { activeRec = null; }
     }
-
-    function loadSent() {
-      return Capture.run('captureGetTableCards', SESSION_ID, CAPTURE_KEY, state.table).then(renderSent).catch(function () {});
-    }
-
-    function renderSent(cards) {
-      var tokens = Capture.store(tokensKey) || {};
-      var routes = {};
-      state.config.template.level.options.forEach(function (o) { routes[o.code] = o.route; });
-      $('sentList').innerHTML = cards.length ? cards.map(function (c) {
-        return '<li class="panel"><span class="level" data-route="' + Capture.esc(routes[c.level]) + '">' + Capture.esc(c.level) + '</span>' +
-          '<span class="text">' + Capture.esc(c.text) + '</span>' +
-          '<span class="id num">#' + c.id + '</span>' +
-          (tokens[c.id] && state.config.open ? '<button type="button" class="btn btn-quiet btn-small" data-remove="' + c.id + '">Remove</button>' : '') +
-          '</li>';
-      }).join('') : '<li class="muted">No cards yet. The first one you send shows up here.</li>';
-    }
-
-    $('sentList').addEventListener('click', function (e) {
-      var b = e.target.closest('[data-remove]');
-      if (!b) return;
-      var id = Number(b.dataset.remove);
-      if (!confirm('Remove card ' + id + '?')) return;
-      var tokens = Capture.store(tokensKey) || {};
-      Capture.run('captureRemoveOwnCard', SESSION_ID, CAPTURE_KEY, id, tokens[id]).then(function () {
-        delete tokens[id];
-        Capture.store(tokensKey, tokens);
-        Capture.toast('Card ' + id + ' removed.');
-        loadSent();
-      }).catch(function (err) { Capture.toast(err.message); });
-    });
 
     start();
   </script>

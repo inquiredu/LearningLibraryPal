@@ -46,7 +46,8 @@ const CapturePosterService = {
       .map(o => o.code + ' ' + group.stats.levels[o.code])
       .join('  ·  ');
     const tables = group.stats.tableCount === 1 ? '1 table' : group.stats.tableCount + ' tables';
-    this.text_(slide, 'Raised by ' + tables + '  ·  ' + levels, 30, 160, 660, 28, 18, this.MUTED, false);
+    const column = template.level.options.find(o => o.code === group.stats.column) || { code: '', label: '' };
+    this.text_(slide, column.code + ' · ' + column.label + (group.stats.contested ? ' (?)' : '') + '  ·  Raised by ' + tables + '  ·  ' + levels, 30, 160, 660, 28, 18, this.MUTED, false);
     const box = slide.insertShape(SlidesApp.ShapeType.ROUND_RECTANGLE, 30, 198, 660, 182);
     box.getFill().setSolidFill('#FFFFFF');
     box.getBorder().setWeight(2).setDashStyle(SlidesApp.DashStyle.DASH).getLineFill().setSolidFill('#9AA5B1');

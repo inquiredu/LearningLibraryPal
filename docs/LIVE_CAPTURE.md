@@ -6,17 +6,24 @@ It is a new kind of event for Learning Library, not a separate app. It lives ins
 
 Status: on branch `claude/need-cards-live-capture`. A first instance ran on Google through `npm run poc` (setup, sign-in and API key). The parts that need a real run are listed under [What is checked](#what-is-checked).
 
-## Need Cards, end to end
+## Need Cards, following the retreat agenda
 
-1. A facilitator creates the session in the wizard with the event type **Live capture: Need Cards** and the number of tables. The wizard turns capture on and opens the board. (Or: the Sheet's **Live Capture** menu, or the board itself.)
-2. The facilitator prints the **table cards**: one page per table with a QR code that opens the phone page with that table already chosen. The plain table link also works; then tables pick their number once.
-3. Each table writes its **flip statement once** ("Right now…, but we need…"). It stays at the top of the phone page with an **Edit** button, and is copied onto every card the table sends; editing it updates the table's cards.
-4. For each need card the table types the need, takes a photo of the paper card, or dictates, and chooses G, G+ or B. A photo is read by Gemini into the need and level; the table checks and fixes the text, then sends. Each text box has a **Speak** button where the browser allows dictation.
-5. Cards appear on the board as they arrive, with counts per table and each table's flip statement. Tables with no cards are flagged.
-6. A facilitator closes entry and presses **Suggest groups**. Gemini proposes topics and which cards belong together. The board repairs any draft that drops or repeats a card. Every count, table list and route is computed from the cards, never taken from the model.
-7. Facilitators rename topics, move cards (drag, or select a card and press **Move here**), reorder groups and override a route. Changes save automatically.
-8. **Make posters** creates a Slides deck in the session's `04_Final` folder: one poster per gallery-walk topic with space for dots, then parking-lot pages listing every B card word for word.
-9. The **wall** shows card counts by table and level while entry is open, then the ranked topics. It never shows card text.
+The facilitator moves the room through the agenda's stages from the **stage bar** on the board. Every phone and the wall follow within a few seconds. Each kind of entry is only accepted during its own stage.
+
+| Time | Stage | Phones | Board | Wall |
+|---|---|---|---|---|
+| 9:00 | Welcome | Pick table (preset by a table card's QR code) and Student or Adult, once | Links, table cards, survey link | "Scan the QR code on your table" |
+| 10:00 | Signals | Jot signals, one per entry | Every signal, by table and role; hide any | Count, by role and table |
+| 11:12 | The Flip | The table's 3–4 flip statements ("Right now…, but we want…"); anyone at the table can add or edit | Flip statements by table | Count by table |
+| 11:30 | Gallery dots | Tap Resonates, Surprising or Missing/mislabeled on any table's flip statements (up to 9) | Dot counts per flip statement, by role | Dots placed, by role |
+| 12:08 | Need cards | Mark the table's top flip statement(s), using the dot counts; each person sends need cards: which flip statement, the need, G / G+ / B, Student or Adult. Photo reading and dictation help. | Cards word for word | Cards by table, tag and role |
+| 12:25 | Synthesis | "The team is grouping" | **Suggest groups** (AI draft), then edit in G / G+ / B columns. A group's column is the tag most of its cards carry; **?** marks groups where tables tagged differently. **Doesn't fit yet** holds what no group claims. **Publish for voting** freezes the groups. | "Grouping N needs" |
+| 12:40 | Vote | 3 votes from each phone, stackable, by role; changeable until the stage moves on | Turnout by role | The question, turnout, and the published topics |
+| 12:55 | Read-out | Ranked priorities per column with the role split; the table's assigned priority | Tally from **phone votes**, **paper dots** (typed in per group, by role) or **both**; ranked columns; the top priorities go to tables 1–N, each overridable | Ranked columns with student/adult bars |
+| 13:05 | Test drive | The table's priority, and its notes: change, add, cut, beyond guidance | Every table's notes, for the share-outs | Each table's priority |
+| 13:47 | Close | Thank you and the exit survey link | Survey link setting | Thank you and the survey QR code |
+
+Paper is the fallback all the way through: the tables still write on paper, and if phones fail at the vote, the team counts dots and types them into the board, which then ranks and assigns exactly as it does for phone votes.
 
 ## Pages
 
@@ -24,7 +31,7 @@ Status: on branch `claude/need-cards-live-capture`. A first instance ran on Goog
 |---|---|---|
 | Board | `/exec?page=board` (then pick a session) | Authorized facilitators (`AuthService`) |
 | Table cards | `/exec?page=tablecards&session=S-…` | Authorized facilitators |
-| Table entry | `/exec?page=capture&session=S-…&k=…` (`&t=3` chooses table 3) | Anyone with the table link |
+| Phones (tables and voting) | `/exec?page=capture&session=S-…&k=…` (`&t=3` chooses table 3) | Anyone with the link |
 | Wall | `/exec?page=wall&session=S-…&k=…` | Anyone with the wall link |
 
 The `k` parameter is a random table key made when capture is turned on. Every table and wall call checks it, so the session's public library link cannot be used to send cards. The board shows both links.
@@ -139,28 +146,20 @@ Then open `capture.html`, `board.html` or `wall.html` from that folder in a brow
 
 ## What is checked
 
-Checked here, with mocks:
+Checked here, with stand-ins for Google:
 
-- `npm run check` and `npm test`: 57 tests pass (the 22 existing, one of them now also loading the skill helpers, and 35 new), including `scripts/poc.sh` run against a fake clasp that rejects relative paths the way clasp 3.4.1 does.
-- The flip-statement flow on the phone: saving it once, an empty save refused, the card form asking only for the need, Edit and Cancel, and a table that already has one going straight to cards.
-- Table cards: six cards, six printed pages, each link ending in its table number. Checked with the QR library blocked, so the fallback was seen, not the QR codes.
-- The library page's AI Skills section with stand-in skills: cards, the copyable SKILL.md, materials and how-to notes.
-- The pages, rendered against the stand-in with 30 made-up cards, at 375 px (phone), 1366×768 (Chromebook) and 1920×1080 (projector). No script errors.
-- On the board: drafting groups, keyboard select-and-move, drag-and-drop, reordering, renaming with autosave, making posters, closing entry and filtering by table.
+- `npm run check` and `npm test`: 62 tests pass, covering the agenda rules (cards tied to their own table's flip statement, columns and **?**, the published snapshot, dots, votes, tallies by source and role, ranking and assignment), stage gating, the key and sign-in boundaries, the wall never carrying anyone's words, the store reading older sheets by header, the AI calls, the page rendering and `scripts/poc.sh`.
+- Every stage's phone, board and wall rendered from `scripts/capture-preview.cjs` with no script errors (30 screens), and a click-through of each stage's actions: adding and editing signals and flip statements, gallery dots, marking a top flip statement and sending cards, voting with the 3-vote limit, test-drive notes, publishing, switching the tally between phone, paper and both, typing paper dots, overriding a table's assignment and moving the stage.
 
 Not checked, because it needs a real Google run:
 
-- Sheet writes, the script lock under six tables sending at once, and the per-session ID numbering.
-- SlidesApp poster building and filing into `04_Final`.
-- Gemini: whether the configured model accepts images, `responseSchema` and `thinkingConfig`, and how well it reads handwriting on real cards.
-- The camera button and **Speak** inside the Apps Script page frame on iPhone, Android and Chromebook. If the frame blocks the microphone, the page hides **Speak** and points to the keyboard's microphone.
-- Whether Google shows its "created by another user" notice on the page.
-- `npm run poc` against the real Apps Script API: setup and sign-in ran on November 17; whether the board deployment sees the owner's email, and the update that writes both addresses, still need a check.
-- QR codes on the table cards: the library was not run here. Scan one printed card before the event.
-- Printing table cards from inside the Apps Script page (the Print button calls the browser's print).
-- Skills written by the real model, and how useful they are for the activity.
-- Facilitators other than the owner: Google may withhold their email in an owner-run web app, and access then fails closed (see the README).
-- Apps Script quotas and response times with about 36 cards.
+- Many phones at once: about 40 phones checking for stage changes every 8 seconds, and everyone voting within a few minutes. Reads come from a snapshot cached for 4 seconds, and writes wait on the script lock, but the real limits only show on the day. Rehearse with as many phones as you can.
+- Sheet writes for the new tabs, and the header-based reading on a real spreadsheet.
+- SlidesApp posters and filing into `04_Final`.
+- Gemini on real handwriting, and the skills the model writes.
+- The camera and **Speak** inside the Apps Script page frame on phones.
+- QR codes on the table cards and the close slide (the library is loaded in the browser; it was blocked here).
+- Facilitators other than the owner (Google may withhold their email; access then fails closed).
 
 ## Next ideas
 

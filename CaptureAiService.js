@@ -78,10 +78,13 @@ const CaptureAiService = {
   groupingPrompt_: function(template, cards) {
     const primary = template.fields.find(f => f.primary) || template.fields[0];
     const others = template.fields.filter(f => f !== primary);
+    const roleLabel = code => (template.roles.find(r => r.code === code) || { label: code || 'unknown' }).label;
     const lines = cards.map(c => {
       const parts = ['Card ' + c.id, 'Table ' + c.table, primary.label.replace(/…$/, '') + ': ' + c.fields[primary.key]];
       others.forEach(f => parts.push(f.label + ': ' + c.fields[f.key]));
+      if (template.parent) parts.push(template.parent.label + ': ' + (c.fields[template.parent.key] || ''));
       parts.push('Level: ' + c.level);
+      parts.push('Written by: ' + roleLabel(c.role));
       return parts.join(' | ');
     });
     return [
@@ -131,11 +134,7 @@ const CaptureAiService = {
     const proposed = (raw && Array.isArray(raw.groups) ? raw.groups : []).map((g, i) => ({
       id: 'g' + (i + 1), topic: g.topic, cardIds: g.cardIds
     }));
-    const result = captureNormalizeGroups_(live, proposed);
-    if (result.ungrouped.length) {
-      result.groups.push({ id: 'g-rest', topic: 'Not yet grouped', cardIds: result.ungrouped, rank: 0, routeOverride: '' });
-      result.ungrouped = [];
-    }
-    return result.groups;
+    // Cards the model left out stay in "Doesn't fit yet" for the team to place.
+    return captureNormalizeGroups_(live, proposed, template).groups;
   }
 };

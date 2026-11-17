@@ -95,52 +95,54 @@
     body { background: var(--navy); color: #fff; font-size: clamp(18px, 1.6vw, 30px); min-height: 100vh; }
     .wall { display: grid; grid-template-rows: auto 1fr auto; min-height: 100vh; padding: 2.5vh 4vw 2vh; gap: 2.5vh; }
     .wall-head { display: flex; align-items: baseline; gap: 2vw; flex-wrap: wrap; }
-    .wall-head h1 { font-size: 2em; font-weight: 750; flex: 1; min-width: 0; }
-    .status { font-size: .8em; padding: .2em .7em; border-radius: 999px; border: 2px solid #CFE3F2; color: #CFE3F2; }
-    .status[data-open="true"] { border-color: var(--cyan); color: var(--cyan); }
-    .total { font-size: 1em; color: #CFE3F2; }
-    .total strong { font-size: 2.6em; color: #fff; font-weight: 800; margin-right: .2em; }
+    .wall-head h1 { font-size: 1.9em; font-weight: 750; flex: 1; min-width: 0; }
+    .stage { color: var(--cyan); font-weight: 700; }
+    .stage .time { color: #CFE3F2; font-weight: 600; margin-right: .4em; font-variant-numeric: tabular-nums; }
+    .big { font-size: 4.2em; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+    .sub { color: #CFE3F2; }
     .tables { display: grid; grid-template-columns: repeat(auto-fit, minmax(7em, 1fr)); gap: 2vw; align-content: start; }
     .table { border-top: 3px solid rgba(255,255,255,.25); padding-top: .6em; }
     .table h2 { font-size: .9em; font-weight: 650; color: #CFE3F2; display: flex; justify-content: space-between; }
-    .dots { display: flex; flex-wrap: wrap; gap: .35em; margin-top: .6em; }
-    .dot { width: .9em; height: .9em; border-radius: 50%; background: var(--cyan); animation: pop .5s ease-out both; }
+    .dots { display: flex; flex-wrap: wrap; gap: .4em; margin-top: .6em; }
+    .dot { width: 1.3em; height: 1.3em; border-radius: 50%; background: var(--cyan); animation: pop .5s ease-out both; }
     @keyframes pop { from { transform: scale(0); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-    .levels { display: flex; gap: 2.5vw; flex-wrap: wrap; color: #CFE3F2; font-size: .9em; }
-    .levels strong { color: #fff; font-size: 1.3em; margin-left: .25em; }
-    .levels .code { display: inline-block; border: 2px solid #CFE3F2; border-radius: .3em; padding: 0 .35em; font-weight: 800; color: #fff; }
-    .levels .code[data-route="parking"] { border-style: dashed; }
-    .topics { list-style: none; margin: 0; padding: 0; display: grid; gap: 1.6vh; align-content: start; counter-reset: t; }
-    .topic { display: grid; grid-template-columns: 2.2em 1fr auto; gap: 1vw; align-items: center; padding-bottom: 1.4vh; border-bottom: 1px solid rgba(255,255,255,.15); }
-    .topic .n { font-weight: 800; color: var(--cyan); font-size: 1.3em; text-align: right; }
-    .topic .name { font-size: 1.35em; font-weight: 700; overflow-wrap: anywhere; }
-    .topic .meta { color: #CFE3F2; text-align: right; white-space: nowrap; }
-    .topic .pips { display: inline-flex; gap: .25em; margin-left: .6em; vertical-align: middle; }
-    .pip { width: .6em; height: .6em; border-radius: 50%; border: 2px solid #CFE3F2; }
-    .pip.on { background: var(--cyan); border-color: var(--cyan); }
-    .topic.parking .name { color: #CFE3F2; font-weight: 600; }
-    .two { display: grid; grid-template-columns: 1.6fr 1fr; gap: 4vw; align-items: start; }
-    .two .tables { grid-template-columns: repeat(auto-fit, minmax(5em, 1fr)); font-size: .8em; }
-    .topics.dense { gap: 1vh; }
-    .topics.dense .topic { padding-bottom: .9vh; }
-    .topics.dense .topic .name { font-size: 1.1em; }
-    .topics.dense .topic .n { font-size: 1.1em; }
-    .solo .dot { width: 1.6em; height: 1.6em; }
-    .solo .dots { gap: .5em; }
-    .solo .table h2 { font-size: 1.1em; }
+    .row { display: flex; gap: 3vw; flex-wrap: wrap; align-items: baseline; }
+    .kv strong { font-size: 1.6em; margin-left: .2em; font-variant-numeric: tabular-nums; }
+    .code { display: inline-block; border: 2px solid #CFE3F2; border-radius: .3em; padding: 0 .35em; font-weight: 800; }
+    .code[data-route="parking"] { border-style: dashed; }
+    .cols { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3vw; align-items: start; }
+    .col h2 { font-size: 1em; display: flex; gap: .5em; align-items: center; margin-bottom: .6em; }
+    .topics { list-style: none; margin: 0; padding: 0; display: grid; gap: 1.1vh; }
+    .topics li { border-bottom: 1px solid rgba(255,255,255,.15); padding-bottom: .9vh; }
+    .topics .name { font-weight: 700; overflow-wrap: anywhere; }
+    .topics .n { color: var(--cyan); font-weight: 800; margin-right: .4em; font-variant-numeric: tabular-nums; }
+    .contested { color: #FFD38A; font-weight: 800; margin-left: .3em; }
+    .bar2 { display: flex; height: .55em; border-radius: .3em; overflow: hidden; margin-top: .35em; background: rgba(255,255,255,.12); }
+    .bar2 span:first-child { background: var(--cyan); }
+    .bar2 span:last-child { background: #FFD38A; }
+    .legend { display: flex; gap: 1.5em; color: #CFE3F2; font-size: .8em; }
+    .legend i { display: inline-block; width: .8em; height: .8em; border-radius: 2px; margin-right: .3em; vertical-align: middle; }
+    .assign { display: grid; grid-template-columns: repeat(auto-fit, minmax(12em, 1fr)); gap: 2vw; }
+    .assign div { border-top: 3px solid var(--cyan); padding-top: .5em; }
+    .assign .t { color: #CFE3F2; font-size: .85em; }
+    .assign .p { font-weight: 800; font-size: 1.15em; overflow-wrap: anywhere; }
+    .qr { width: 32vh; max-width: 100%; background: #fff; padding: 1vh; border-radius: 1vh; }
+    .qr svg { width: 100%; height: auto; display: block; }
     .foot { color: #CFE3F2; font-size: .75em; }
     .error { background: var(--bad-bg); color: var(--bad); padding: 1em; border-radius: 8px; }
+    .welcome { display: grid; gap: 3vh; align-content: center; }
   </style>
+  <!-- The close slide draws its survey QR code with qrcode-generator (MIT) when it loads; otherwise it shows the link. -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 </head>
 <body>
   <div class="wall">
     <header class="wall-head">
       <h1 id="title">Live wall</h1>
-      <span class="status" id="status"></span>
-      <span class="total num" id="total"></span>
+      <span class="stage" id="stage" aria-live="polite"></span>
     </header>
     <main id="view" aria-live="polite"></main>
-    <footer class="foot" id="foot">Tables add cards from their phones. Facilitators group them; AI only drafts.</footer>
+    <footer class="foot">Phones add what tables write. Facilitators group it; AI only drafts. The wall never shows anyone’s card text.</footer>
   </div>
   <script>
     /* shared:CaptureClient */
@@ -209,42 +211,90 @@
     var esc = Capture.esc;
     var shown = {};
 
+    function dots(n, key) {
+      var out = '';
+      for (var d = 0; d < n; d++) { var k = key + ':' + d; out += '<span class="dot" style="' + (shown[k] ? 'animation:none' : '') + '"></span>'; shown[k] = true; }
+      return out;
+    }
+    function perTable(list, key) {
+      return '<div class="tables">' + list.map(function (n, i) {
+        return '<section class="table"><h2><span>Table ' + (i + 1) + '</span><span class="num">' + n + '</span></h2><div class="dots" aria-hidden="true">' + dots(Math.min(n, 30), key + (i + 1)) + '</div></section>';
+      }).join('') + '</div>';
+    }
+    function roles(w, counts) {
+      return '<div class="row">' + w.template.roles.map(function (r) { return '<span class="kv sub">' + esc(r.label) + 's<strong>' + (counts[r.code] || 0) + '</strong></span>'; }).join('') + '</div>';
+    }
+    function stageInfo(w) { return w.template.stages.find(function (s) { return s.id === w.stage; }) || { label: w.stage, time: '' }; }
+
+    var views = {
+      welcome: function (w) {
+        return '<div class="welcome"><p class="big" style="font-size:2.6em">Scan the QR code on your table.</p><p class="sub">Pick your table and whether you’re a student or an adult. Keep the page open; it follows along all day.</p></div>';
+      },
+      signals: function (w) {
+        return '<div style="display:grid;gap:4vh"><div class="row"><span class="big">' + w.signals.byRole.total + '</span><span class="sub">signals so far</span></div>' + roles(w, w.signals.byRole) + perTable(w.signals.perTable, 's') + '</div>';
+      },
+      flips: function (w) {
+        return '<div style="display:grid;gap:4vh"><div class="row"><span class="big">' + w.flips.total + '</span><span class="sub">' + esc(w.template.parent.plural) + '</span></div>' + perTable(w.flips.perTable, 'f') + '</div>';
+      },
+      flipdots: function (w) {
+        return '<div style="display:grid;gap:4vh"><div class="row"><span class="big">' + w.flipDots.total + '</span><span class="sub">gallery dots placed by phone</span></div>' + roles(w, w.flipDots) +
+          '<div class="legend">' + w.template.flipDots.map(function (d) { return '<span>' + esc(d.label) + '</span>'; }).join(' · ') + '</div></div>';
+      },
+      needs: function (w) {
+        return '<div style="display:grid;gap:4vh"><div class="row"><span class="big">' + w.cards.total + '</span><span class="sub">need cards</span></div>' +
+          '<div class="row">' + w.template.levelOptions.map(function (o) { return '<span class="kv sub"><span class="code" data-route="' + o.route + '">' + esc(o.code) + '</span> ' + esc(o.label) + '<strong>' + (w.cards.levels[o.code] || 0) + '</strong></span>'; }).join('') + '</div>' +
+          roles(w, w.cards.byRole) + perTable(w.cards.perTable, 'c') + '</div>';
+      },
+      synthesis: function (w) {
+        return '<div class="welcome"><p class="big" style="font-size:2.4em">The synthesis team is grouping ' + w.cards.total + ' needs.</p><p class="sub">Into G, G+ and B, marking where tables disagreed. Voting opens next, on your phone.</p></div>';
+      },
+      vote: function (w) {
+        var html = '<div style="display:grid;gap:3vh"><p class="big" style="font-size:2em">' + esc(w.template.vote.prompt) + '</p><div class="row"><span class="kv sub">Voted so far<strong>' + w.voters.total + '</strong></span>' + roles(w, w.voters) + '</div>';
+        if (w.topics) html += '<div class="cols">' + w.template.levelOptions.map(function (o) {
+          var items = w.topics.filter(function (t) { return t.column === o.code; });
+          return '<div class="col"><h2><span class="code" data-route="' + o.route + '">' + esc(o.code) + '</span>' + esc(o.label) + '</h2><ul class="topics">' +
+            items.map(function (t) { return '<li><span class="name">' + esc(t.topic) + '</span>' + (t.contested ? '<span class="contested" title="tag disputed">?</span>' : '') + '</li>'; }).join('') + '</ul></div>';
+        }).join('') + '</div>';
+        return html + '</div>';
+      },
+      results: function (w) {
+        if (!w.results) return views.vote(w);
+        var roleA = w.template.roles[0], roleB = w.template.roles[1];
+        return '<div style="display:grid;gap:3vh"><div class="legend"><span><i style="background:var(--cyan)"></i>' + esc(roleA.label) + 's</span><span><i style="background:#FFD38A"></i>' + esc(roleB.label) + 's</span></div><div class="cols">' +
+          w.results.columns.map(function (col) {
+            return '<div class="col"><h2><span class="code" data-route="' + col.route + '">' + esc(col.code) + '</span>' + esc(col.label) + (col.route === 'parking' ? ' <span class="sub" style="font-weight:400">' + esc(w.template.routes.parking) + '</span>' : '') + '</h2><ol class="topics">' +
+              col.items.slice(0, 8).map(function (i) {
+                var a = i[roleA.code] || 0, b = i[roleB.code] || 0, tot = Math.max(1, a + b);
+                return '<li><span class="n">' + i.rank + '</span><span class="name">' + esc(i.topic) + '</span>' + (i.contested ? '<span class="contested">?</span>' : '') +
+                  '<span class="sub" style="float:right;font-variant-numeric:tabular-nums">' + i.total + '</span><div class="bar2" aria-hidden="true"><span style="width:' + (a / tot * 100) + '%"></span><span style="width:' + (b / tot * 100) + '%"></span></div></li>';
+              }).join('') + '</ol></div>';
+          }).join('') + '</div></div>';
+      },
+      testdrive: function (w) {
+        if (!w.results) return views.synthesis(w);
+        return '<div style="display:grid;gap:4vh"><p class="big" style="font-size:2em">Guidance test drive</p><div class="assign">' + w.results.assignments.map(function (a) {
+          return '<div><div class="t">Table ' + a.table + '</div><div class="p">' + esc(a.topic || '–') + '</div></div>';
+        }).join('') + '</div></div>';
+      },
+      close: function (w) {
+        var qr = '';
+        if (w.surveyUrl && typeof qrcode === 'function') {
+          try { var q = qrcode(0, 'M'); q.addData(w.surveyUrl); q.make(); qr = '<div class="qr">' + q.createSvgTag(8, 2) + '</div>'; } catch (e) { qr = ''; }
+        }
+        return '<div class="welcome"><p class="big" style="font-size:2.6em">Thank you.</p>' +
+          (w.surveyUrl ? '<p class="sub">Exit survey: scan, or open it from your phone page.</p>' + (qr || '<p style="overflow-wrap:anywhere">' + esc(w.surveyUrl) + '</p>') : '') + '</div>';
+      }
+    };
+
     function draw(w) {
       $('title').textContent = w.title;
-      $('status').dataset.open = String(w.open);
-      $('status').textContent = w.open ? 'Entry open' : 'Entry closed';
-      $('total').innerHTML = '<strong>' + w.total + '</strong>' + (w.total === 1 ? 'card' : 'cards');
-      var tablesHtml = '<div class="tables" aria-label="Cards per table">' + w.perTable.map(function (n, i) {
-        var dots = '';
-        for (var d = 0; d < n; d++) {
-          var key = i + ':' + d;
-          dots += '<span class="dot" style="' + (shown[key] ? 'animation:none' : '') + '"></span>';
-          shown[key] = true;
-        }
-        return '<section class="table"><h2><span>Table ' + (i + 1) + '</span><span class="num">' + n + '</span></h2><div class="dots" aria-hidden="true">' + dots + '</div></section>';
-      }).join('') + '</div>';
-      var levels = '<div class="levels" aria-label="Cards by level">' + w.levelOptions.map(function (o) {
-        return '<span><span class="code" data-route="' + o.route + '">' + esc(o.code) + '</span> ' + esc(o.label) + '<strong class="num">' + (w.levels[o.code] || 0) + '</strong></span>';
-      }).join('') + '</div>';
-      if (!w.topics.length) {
-        $('view').innerHTML = '<div class="solo" style="display:grid;gap:5vh">' + tablesHtml + levels + '</div>';
-        return;
-      }
-      var tableCount = w.perTable.length;
-      var topics = '<ol class="topics' + (w.topics.length > 8 ? ' dense' : '') + '" aria-label="Topics">' + w.topics.map(function (t, i) {
-        var pips = '';
-        for (var p = 0; p < tableCount; p++) pips += '<span class="pip' + (p < t.tableCount ? ' on' : '') + '"></span>';
-        return '<li class="topic ' + t.route + '"><span class="n num">' + (i + 1) + '</span><span class="name">' + esc(t.topic) + '</span>' +
-          '<span class="meta num">' + t.tableCount + (t.tableCount === 1 ? ' table' : ' tables') +
-          (t.route === 'parking' ? ' · ' + esc(w.routes.parking) : '') + '<span class="pips" aria-hidden="true">' + pips + '</span></span></li>';
-      }).join('') + '</ol>';
-      $('view').innerHTML = '<div class="two">' + topics + '<div style="display:grid;gap:4vh">' + tablesHtml + levels + '</div></div>';
+      var s = stageInfo(w);
+      $('stage').innerHTML = '<span class="time">' + esc(s.time) + '</span>' + esc(s.label);
+      $('view').innerHTML = (views[w.stage] || views.welcome)(w);
     }
 
     Capture.poll(function () {
-      return Capture.run('captureGetWall', SESSION_ID, CAPTURE_KEY).then(draw).catch(function (err) {
-        $('view').innerHTML = '<p class="error">' + esc(err.message) + '</p>';
-      });
+      return Capture.run('captureGetWall', SESSION_ID, CAPTURE_KEY).then(draw).catch(function (err) { $('view').innerHTML = '<p class="error">' + esc(err.message) + '</p>'; });
     }, 5000);
   </script>
 </body>

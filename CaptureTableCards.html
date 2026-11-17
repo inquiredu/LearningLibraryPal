@@ -220,8 +220,8 @@
           '<div class="event">' + Capture.esc(d.title) + '</div>' +
           '<div class="num">Table ' + t + '</div>' +
           '<div class="qr">' + (svg || '<p class="qr-missing">The QR code couldn’t be drawn. Use this link: ' + Capture.esc(link) + '</p>') + '</div>' +
-          '<div class="scan">Scan to add your table’s ' + Capture.esc(d.noun) + 's</div>' +
-          '<ol><li>Write your table’s flip statement once.</li><li>Add each need, and choose G, G+ or B.</li><li>Check what you sent at the bottom of the page.</li></ol>' +
+          '<div class="scan">Scan to join Table ' + t + '</div>' +
+          '<ol><li>Pick student or adult. Your table is already set.</li><li>Keep the page open. It follows the agenda: signals, flip statements, need cards, voting.</li><li>Everyone votes from their own phone.</li></ol>' +
           '</section>';
       }
       $('cards').innerHTML = html;

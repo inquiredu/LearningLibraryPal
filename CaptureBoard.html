@@ -93,53 +93,70 @@
   </style>
   <style>
     body { font-size: 16px; }
-    main { padding: 16px; max-width: 1600px; margin: 0 auto; }
+    main { padding: 16px; max-width: 1680px; margin: 0 auto; }
     .bar .actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-    .entry[data-open="true"] { background: var(--good-bg); color: var(--good); border-color: var(--good); }
-    .entry[data-open="false"] { background: #fff; color: var(--bad); border-color: var(--bad); }
-    .summary { display: flex; flex-wrap: wrap; gap: 8px 20px; align-items: baseline; padding: 12px 16px; margin-bottom: 16px; }
-    .summary .big { font-size: 1.6rem; font-weight: 750; color: var(--navy); }
-    .tables-strip { display: flex; flex-wrap: wrap; gap: 6px; }
-    .tables-strip span { border: 1px solid var(--line); border-radius: 6px; padding: 2px 8px; font-size: .875rem; background: var(--ground); }
-    .tables-strip span.zero { color: var(--bad); border-color: #E7B6B1; background: var(--bad-bg); }
-    .linkrow { display: flex; gap: 8px; align-items: center; flex: 1 1 360px; }
-    .linkrow input { font-size: .85rem; padding: 6px 8px; }
-    .cols { display: grid; grid-template-columns: minmax(300px, 380px) 1fr; gap: 16px; align-items: start; }
-    @media (max-width: 900px) { .cols { grid-template-columns: 1fr; } }
-    .col-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 12px 14px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
-    .feed { list-style: none; margin: 0; padding: 8px; display: grid; gap: 8px; max-height: calc(100vh - 230px); overflow: auto; }
-    .feed li { border: 1px solid var(--line); border-radius: 8px; padding: 10px; background: #fff; }
-    .feed li.is-hidden { opacity: .55; background: var(--ground); }
-    .feed .meta { display: flex; gap: 8px; align-items: center; font-size: .85rem; color: var(--muted); }
-    .feed .meta .spacer { flex: 1; }
-    .feed .need { margin-top: 6px; font-weight: 600; overflow-wrap: anywhere; }
-    .feed .flip { margin-top: 4px; color: var(--muted); font-size: .9rem; overflow-wrap: anywhere; }
-    .groups-tools { display: flex; gap: 8px; flex-wrap: wrap; }
-    .groups { padding: 12px; display: grid; gap: 12px; }
-    .group { border: 1px solid var(--line-strong); border-radius: 10px; background: #fff; }
-    .group.drop { box-shadow: 0 0 0 3px var(--cyan); }
-    .group.tray { border-style: dashed; background: var(--ground); }
-    .group-head { display: grid; grid-template-columns: auto auto 1fr auto; gap: 8px; align-items: center; padding: 10px; border-bottom: 1px solid var(--line); }
-    .rank { font-weight: 800; color: var(--navy); min-width: 1.6em; text-align: center; font-size: 1.15rem; }
+    .stepper { display: flex; gap: 6px; overflow-x: auto; padding: 10px 16px; background: #E8F1F8; border-bottom: 1px solid var(--line); }
+    .step { display: grid; text-align: left; min-width: 104px; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--line-strong); background: #fff; cursor: pointer; font: inherit; color: var(--ink); }
+    .step .t { font-size: .8rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+    .step .l { font-weight: 700; font-size: .9rem; }
+    .step[aria-current="step"] { background: var(--navy); color: #fff; border-color: var(--navy); }
+    .step[aria-current="step"] .t { color: #CFE3F2; }
+    .tabs { display: flex; gap: 4px; flex-wrap: wrap; margin: 0 0 12px; border-bottom: 1px solid var(--line); }
+    .tab { border: 0; background: none; padding: 10px 12px; font: 600 .95rem var(--font); color: var(--muted); cursor: pointer; border-bottom: 3px solid transparent; }
+    .tab[aria-selected="true"] { color: var(--navy); border-bottom-color: var(--navy); }
+    .summary { display: flex; flex-wrap: wrap; gap: 8px 20px; align-items: baseline; padding: 12px 16px; margin-bottom: 12px; }
+    .summary .big { font-size: 1.5rem; font-weight: 750; color: var(--navy); }
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .pill { border: 1px solid var(--line); border-radius: 6px; padding: 2px 8px; font-size: .85rem; background: var(--ground); font-variant-numeric: tabular-nums; }
+    .pill.zero { color: var(--bad); border-color: #E7B6B1; background: var(--bad-bg); }
+    .section { padding: 12px 14px; }
+    .section + .section { margin-top: 12px; }
+    .head { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+    .list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+    .list li { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; background: #fff; display: flex; gap: 8px; align-items: flex-start; }
+    .list li.is-hidden { opacity: .5; }
+    .list .text { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+    .meta { color: var(--muted); font-size: .85rem; white-space: nowrap; }
+    .two { display: grid; grid-template-columns: minmax(280px, 360px) 1fr; gap: 12px; align-items: start; }
+    @media (max-width: 1000px) { .two { grid-template-columns: 1fr; } }
+    .feed { max-height: calc(100vh - 300px); overflow: auto; }
+    .cols { display: grid; grid-template-columns: repeat(3, minmax(220px, 1fr)); gap: 10px; align-items: start; }
+    @media (max-width: 1200px) { .cols { grid-template-columns: 1fr; } }
+    .col { background: var(--ground); border: 1px solid var(--line); border-radius: 10px; padding: 8px; min-height: 120px; }
+    .col.drop, .group.drop, .tray.drop { box-shadow: 0 0 0 3px var(--cyan); }
+    .col h3 { font-size: 1rem; display: flex; gap: 8px; align-items: center; margin: 4px 4px 8px; }
+    .group { background: #fff; border: 1px solid var(--line-strong); border-radius: 10px; margin-bottom: 8px; }
+    .group-head { display: grid; grid-template-columns: auto 1fr auto; gap: 6px; align-items: center; padding: 8px; border-bottom: 1px solid var(--line); }
     .order { display: flex; flex-direction: column; gap: 2px; }
-    .order .btn { min-height: 26px; padding: 0 8px; font-size: .8rem; }
-    .topic { font-weight: 700; font-size: 1.05rem; }
-    .route { width: auto; padding: 6px 8px; font-size: .875rem; }
-    .stats { padding: 6px 10px 0; color: var(--muted); font-size: .875rem; }
-    .chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 10px 10px; min-height: 48px; }
-    .chip { display: inline-flex; gap: 6px; align-items: baseline; max-width: 100%; text-align: left; border: 1px solid var(--line);
-      background: var(--ground); border-radius: 8px; padding: 6px 8px; font: .875rem/1.35 var(--font); color: var(--ink); cursor: grab; }
+    .order .btn { min-height: 24px; padding: 0 7px; font-size: .75rem; }
+    .topic { font-weight: 700; padding: 6px 8px; }
+    .colsel { width: auto; padding: 4px 6px; font-size: .8rem; }
+    .gstats { padding: 6px 8px 0; color: var(--muted); font-size: .8rem; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+    .contested { font-weight: 800; color: var(--warn); border: 1px dashed #C88A3A; border-radius: 6px; padding: 0 5px; }
+    .gchips { display: flex; flex-wrap: wrap; gap: 5px; padding: 8px; min-height: 40px; }
+    .chip { display: inline-flex; gap: 5px; align-items: baseline; max-width: 100%; text-align: left; border: 1px solid var(--line); background: var(--ground);
+      border-radius: 8px; padding: 4px 7px; font: .8rem/1.35 var(--font); color: var(--ink); cursor: grab; }
     .chip[aria-pressed="true"] { border-color: var(--navy); box-shadow: inset 0 0 0 2px var(--navy); background: #fff; }
     .chip .t { color: var(--muted); white-space: nowrap; }
-    .chip .x { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 34ch; }
-    .group-foot { display: flex; gap: 8px; justify-content: space-between; padding: 0 10px 10px; flex-wrap: wrap; }
-    .note { padding: 0 12px 12px; }
-    .empty { padding: 24px; text-align: center; color: var(--muted); }
+    .chip .x { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 26ch; }
+    .gfoot { display: flex; justify-content: space-between; gap: 6px; padding: 0 8px 8px; flex-wrap: wrap; }
+    .tray { background: #FFF8EC; border: 1px dashed #C88A3A; border-radius: 10px; padding: 8px; margin-bottom: 10px; }
+    .publish-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 10px 12px; border-radius: 8px; background: var(--ground); margin-bottom: 10px; }
+    table.tally { width: 100%; border-collapse: collapse; font-size: .9rem; }
+    table.tally th, table.tally td { border-bottom: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: middle; }
+    table.tally th { font-size: .8rem; color: var(--muted); font-weight: 650; }
+    table.tally td.num, table.tally th.num { text-align: right; font-variant-numeric: tabular-nums; }
+    table.tally input { width: 4.2em; padding: 4px 6px; text-align: right; }
+    .tdnote { display: grid; grid-template-columns: 9em 1fr; gap: 4px 10px; font-size: .9rem; margin-top: 6px; }
+    .tdnote dt { color: var(--muted); font-weight: 650; }
+    .tdnote dd { margin: 0; overflow-wrap: anywhere; }
     .setup { max-width: 520px; margin: 24px auto; padding: 20px; }
     .setup > * + * { margin-top: 14px; }
     .sessions { list-style: none; padding: 0; margin: 12px 0 0; display: grid; gap: 8px; }
     .sessions a { display: block; padding: 12px 14px; text-decoration: none; color: var(--ink); }
-    .posters { padding: 0 12px 12px; }
+    .empty { padding: 16px; text-align: center; color: var(--muted); }
+    .sw { width: 10px; height: 10px; border-radius: 50%; display: inline-block; border: 1px solid rgba(0,0,0,.25); }
+    .sw-green { background: #2E8B57; } .sw-blue { background: #2F6FD0; } .sw-yellow { background: #E7B416; }
   </style>
 </head>
 <body>
@@ -149,12 +166,13 @@
       <h1 id="title">Loading…</h1>
     </div>
     <div class="actions" id="barActions" hidden>
-      <button type="button" class="btn btn-small entry" id="entryBtn"></button>
+      <button type="button" class="btn btn-small btn-on-dark" id="copyLink">Copy table link</button>
       <a class="btn btn-small btn-on-dark" id="cardsLink" target="_blank" rel="noopener">Table cards</a>
       <a class="btn btn-small btn-on-dark" id="wallLink" target="_blank" rel="noopener">Open the wall</a>
     </div>
   </header>
-  <main id="main">
+  <nav class="stepper" id="stepper" aria-label="Agenda stage" hidden></nav>
+  <main>
     <div id="pageError" class="alert alert-bad" role="alert"></div>
     <div id="view"></div>
   </main>
@@ -223,27 +241,23 @@
     var SESSION_ID = "__SESSION_ID__";
     var $ = function (id) { return document.getElementById(id); };
     var esc = Capture.esc;
-    var S = { board: null, groups: [], selected: null, filter: 'all', dirty: 0, saving: false, saveTimer: null, base: '' };
+    var S = { board: null, groups: [], selected: null, dirty: 0, saving: false, saveTimer: null, tab: '', tabChosen: false, lastStage: '', tableFilter: 'all' };
+    var STAGE_TAB = { welcome: 'settings', signals: 'signals', flips: 'flips', flipdots: 'flips', needs: 'cards', synthesis: 'cards', vote: 'results', results: 'results', testdrive: 'testdrive', close: 'testdrive' };
+    var TABS = [['signals', 'Signals'], ['flips', 'Flip statements'], ['cards', 'Cards & groups'], ['results', 'Vote & results'], ['testdrive', 'Test drive'], ['settings', 'Settings & links']];
 
     // ── Start ────────────────────────────────────────────────────────────────
     function start() {
       if (!SESSION_ID) return pickSession();
-      Capture.run('captureGetBoard', SESSION_ID).then(adopt).then(function () {
-        Capture.poll(refresh, 6000);
-      }).catch(showError);
+      Capture.run('captureGetBoard', SESSION_ID).then(adopt).then(function () { Capture.poll(refresh, 6000); }).catch(showError);
     }
-
     function showError(err) { $('pageError').textContent = err.message || String(err); }
-
     function pickSession() {
       $('title').textContent = 'Choose a session';
       Promise.all([Capture.run('captureListSessions'), Capture.run('webGetAppBaseUrl')]).then(function (res) {
         var sessions = res[0], base = res[1] || '';
         $('view').innerHTML = '<section class="panel setup"><h2>Which session is this for?</h2>' +
-          '<p class="muted small">Live capture lives inside a Learning Library session. Create one from the dashboard first if you need to.</p>' +
           (sessions.length ? '<ul class="sessions">' + sessions.map(function (s) {
-            return '<li class="panel"><a href="' + esc(base + '?page=board&session=' + encodeURIComponent(s.id)) + '">' +
-              '<strong>' + esc(s.name) + '</strong><br><span class="muted small">' + esc(s.date || '') + '</span></a></li>';
+            return '<li class="panel"><a href="' + esc(base + '?page=board&session=' + encodeURIComponent(s.id)) + '"><strong>' + esc(s.name) + '</strong><br><span class="muted small">' + esc(s.date || '') + '</span></a></li>';
           }).join('') + '</ul>' : '<p class="empty">No sessions yet.</p>') + '</section>';
       }).catch(showError);
     }
@@ -253,346 +267,340 @@
       $('title').textContent = board.enabled ? board.config.title + ' · ' + board.sessionName : board.sessionName;
       if (!board.enabled) return renderSetup();
       if (!S.dirty && !S.saving) {
-        // Empty groups a facilitator just made live only here until a card lands in them.
         var pending = S.groups.filter(function (g) { return g.isNew && !g.cardIds.length; });
-        S.groups = board.groups.map(function (g) {
-          return { id: g.id, topic: g.topic, cardIds: g.cardIds.slice(), rank: g.rank, routeOverride: g.routeOverride };
-        }).concat(pending);
+        S.groups = board.groups.map(function (g) { return { id: g.id, topic: g.topic, cardIds: g.cardIds.slice(), rank: g.rank, columnOverride: g.columnOverride || '' }; }).concat(pending);
       }
+      if (board.config.stage !== S.lastStage) { S.lastStage = board.config.stage; if (!S.tabChosen) S.tab = STAGE_TAB[board.config.stage] || 'cards'; }
       renderAll();
     }
 
     function refresh() {
       return Capture.run('captureGetBoard', SESSION_ID).then(function (board) {
-        var focused = document.activeElement && document.activeElement.dataset && document.activeElement.dataset.topic;
-        S.board = board;
-        if (!S.dirty && !S.saving && !focused) adopt(board);
-        else { renderSummary(); renderFeed(); if (!focused) renderGroups(); }
+        var a = document.activeElement, typing = a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA' || a.tagName === 'SELECT');
+        if (typing || S.dirty || S.saving) { S.board = board; renderStepper(); return; }
+        adopt(board);
       });
     }
 
-    // ── Setup ────────────────────────────────────────────────────────────────
     function renderSetup() {
-      $('barActions').hidden = true;
+      $('barActions').hidden = true; $('stepper').hidden = true;
       Capture.run('captureListTemplates').then(function (templates) {
         $('view').innerHTML = '<form class="panel setup" id="setupForm"><h2>Turn on live capture</h2>' +
-          '<p class="muted small">Tables add cards from their phones. You group them here and make gallery-walk posters.</p>' +
-          '<div><label for="tpl">What are tables writing?</label><select id="tpl">' +
-          templates.map(function (t) { return '<option value="' + esc(t.id) + '">' + esc(t.name) + '</option>'; }).join('') + '</select></div>' +
-          '<div><label for="ttl">Title tables will see</label><input type="text" id="ttl" maxlength="80" value="' + esc(templates[0] ? templates[0].name : '') + '"></div>' +
+          '<div><label for="tpl">Activity</label><select id="tpl">' + templates.map(function (t) { return '<option value="' + esc(t.id) + '">' + esc(t.name) + '</option>'; }).join('') + '</select></div>' +
+          '<div><label for="ttl">Title people will see</label><input type="text" id="ttl" maxlength="80" value="' + esc(templates[0] ? templates[0].name : '') + '"></div>' +
           '<div><label for="tbl">Number of tables</label><input type="number" id="tbl" min="1" max="40" value="6" style="max-width:8rem"></div>' +
           '<button class="btn btn-primary" type="submit">Turn on</button></form>';
         $('setupForm').onsubmit = function (e) {
           e.preventDefault();
-          Capture.run('captureEnable', SESSION_ID, $('tpl').value, Number($('tbl').value), $('ttl').value)
-            .then(function (board) { adopt(board); Capture.poll(refresh, 6000); })
-            .catch(showError);
+          Capture.run('captureEnable', SESSION_ID, $('tpl').value, Number($('tbl').value), $('ttl').value).then(function (b) { adopt(b); Capture.poll(refresh, 6000); }).catch(showError);
         };
       }).catch(showError);
+    }
+
+    // ── Helpers ──────────────────────────────────────────────────────────────
+    function T() { return S.board.template; }
+    function cardById(id) { return S.board.cards.find(function (c) { return c.id === id; }); }
+    function liveCards() { return S.board.cards.filter(function (c) { return !c.hidden; }); }
+    function roleLabel(code) { var r = T().roles.find(function (x) { return x.code === code; }); return r ? r.label : '–'; }
+    function levelOpt(code) { return T().level.options.find(function (o) { return o.code === code; }) || { route: 'vote', label: code }; }
+    function perTable(list) { var out = []; for (var t = 1; t <= S.board.config.tables; t++) out.push(list.filter(function (x) { return x.table === t; }).length); return out; }
+    function tablePills(list, unit) { return '<div class="chips">' + perTable(list).map(function (n, i) { return '<span class="pill' + (n ? '' : ' zero') + '">T' + (i + 1) + ' · ' + n + '</span>'; }).join('') + '</div>'; }
+    function roleSplit(list) { return T().roles.map(function (r) { return esc(r.label) + ' ' + list.filter(function (x) { return x.role === r.code; }).length; }).join(' · '); }
+    function call(name) {
+      var args = Array.prototype.slice.call(arguments);
+      return Capture.run.apply(null, args).then(function (b) { adopt(b); return b; }).catch(function (e) { Capture.toast(e.message); throw e; });
     }
 
     // ── Layout ───────────────────────────────────────────────────────────────
     function renderAll() {
       var b = S.board;
       $('barActions').hidden = false;
-      $('entryBtn').dataset.open = String(b.config.open);
-      $('entryBtn').textContent = b.config.open ? 'Entry open · close it' : 'Entry closed · open it';
-      if (b.links) { $('wallLink').href = b.links.wall; $('wallLink').hidden = false; } else { $('wallLink').hidden = true; }
-      if (b.links && b.links.tableCards) { $('cardsLink').href = b.links.tableCards; $('cardsLink').hidden = false; } else { $('cardsLink').hidden = true; }
-      $('view').innerHTML =
-        '<section class="panel summary" id="summary" aria-label="Summary"></section>' +
-        '<div class="cols">' +
-        '<section class="panel" aria-labelledby="feedTitle"><div class="col-head"><h2 id="feedTitle">Cards, word for word</h2>' +
-        '<label class="sr-only" for="filter">Show</label><select id="filter" style="width:auto"></select></div>' +
-        '<ol class="feed" id="feed" aria-live="polite"></ol></section>' +
-        '<section class="panel" aria-labelledby="groupsTitle"><div class="col-head"><h2 id="groupsTitle">Groups</h2>' +
-        '<div class="groups-tools"><button type="button" class="btn btn-primary btn-small" id="suggestBtn">Suggest groups</button>' +
-        '<button type="button" class="btn btn-small" id="newGroupBtn">New group</button>' +
-        '<button type="button" class="btn btn-small" id="postersBtn">Make posters</button></div></div>' +
-        '<p class="muted small" style="padding:10px 12px 0">AI drafts the groups. You rename them, move cards and set the order. Counts always come from the cards.</p>' +
-        '<div class="posters" id="posters" aria-live="polite"></div>' +
-        '<div class="groups" id="groups"></div>' +
-        '<div class="note" id="parking"></div></section></div>';
-      $('filter').onchange = function () { S.filter = this.value; renderFeed(); };
-      $('suggestBtn').onclick = suggest;
-      $('newGroupBtn').onclick = newGroup;
-      $('postersBtn').onclick = posters;
-      renderSummary(); renderFeed(); renderGroups();
+      if (b.links) { $('wallLink').href = b.links.wall; $('cardsLink').href = b.links.tableCards; }
+      $('wallLink').hidden = $('cardsLink').hidden = $('copyLink').hidden = !b.links;
+      renderStepper();
+      var tabs = '<div class="tabs" role="tablist">' + TABS.map(function (t) {
+        return '<button type="button" class="tab" role="tab" data-tab="' + t[0] + '" aria-selected="' + (S.tab === t[0]) + '">' + t[1] + '</button>';
+      }).join('') + '</div>';
+      var body = { signals: tabSignals, flips: tabFlips, cards: tabCards, results: tabResults, testdrive: tabTestDrive, settings: tabSettings }[S.tab] || tabCards;
+      $('view').innerHTML = tabs + '<div id="tabBody"></div>';
+      body();
     }
 
-    function liveCards() { return S.board.cards.filter(function (c) { return !c.hidden; }); }
-    function cardById(id) { return S.board.cards.find(function (c) { return c.id === id; }); }
-    function primaryKey() { var t = S.board.template; var p = t.fields.find(function (f) { return f.primary; }) || t.fields[0]; return p.key; }
-    function routeOf(code) { var o = S.board.template.level.options.find(function (x) { return x.code === code; }); return o ? o.route : 'vote'; }
-
-    function renderSummary() {
-      var b = S.board, live = liveCards();
-      var per = [];
-      for (var t = 1; t <= b.config.tables; t++) per.push(live.filter(function (c) { return c.table === t; }).length);
-      var levels = b.template.level.options.map(function (o) {
-        return '<span><span class="level" data-route="' + o.route + '">' + esc(o.code) + '</span> <span class="num">' +
-          live.filter(function (c) { return c.level === o.code; }).length + '</span></span>';
-      }).join(' ');
-      var link = b.links ? '<div class="linkrow"><label class="small" for="tableLink" style="margin:0;white-space:nowrap">Table link</label>' +
-        '<input id="tableLink" type="text" readonly value="' + esc(b.links.table) + '">' +
-        '<button type="button" class="btn btn-small" id="copyLink">Copy</button></div>'
-        : '<p class="small muted">Deploy the web app to get the table link.</p>';
-      $('summary').innerHTML = '<span><span class="big num">' + live.length + '</span> cards</span>' +
-        '<div class="tables-strip" aria-label="Cards per table">' + per.map(function (n, i) {
-          return '<span class="num' + (n ? '' : ' zero') + '">T' + (i + 1) + ' · ' + n + '</span>';
-        }).join('') + '</div><div style="display:flex;gap:10px">' + levels + '</div>' + link + tableFieldsHtml();
-      if ($('copyLink')) $('copyLink').onclick = function () {
-        var input = $('tableLink');
-        input.select();
-        var done = function () { Capture.toast('Table link copied.'); };
-        if (navigator.clipboard) navigator.clipboard.writeText(input.value).then(done, function () { document.execCommand('copy'); done(); });
-        else { document.execCommand('copy'); done(); }
-      };
-      var f = $('filter');
-      if (f && f.options.length !== b.config.tables + 2) {
-        var opts = '<option value="all">All tables</option><option value="hidden">Hidden cards</option>';
-        for (var i = 1; i <= b.config.tables; i++) opts += '<option value="' + i + '">Table ' + i + '</option>';
-        f.innerHTML = opts;
-        f.value = S.filter;
-      }
+    function renderStepper() {
+      var b = S.board;
+      $('stepper').hidden = false;
+      $('stepper').innerHTML = T().stages.map(function (s) {
+        return '<button type="button" class="step" data-stage="' + esc(s.id) + '"' + (b.config.stage === s.id ? ' aria-current="step"' : '') + '><span class="t">' + esc(s.time) + '</span><span class="l">' + esc(s.label) + '</span></button>';
+      }).join('');
     }
 
-    /** What each table wrote once (its flip statement), in table order. */
-    function tableFieldsHtml() {
-      var defs = S.board.template.fields.filter(function (f) { return f.scope === 'table'; });
-      if (!defs.length) return '';
-      var saved = S.board.tableFields || {}, rows = '', count = 0;
+    function body(html) { $('tabBody').innerHTML = html; }
+
+    // Signals ------------------------------------------------------------------
+    function tabSignals() {
+      var sig = S.board.signals, live = sig.filter(function (s) { return !s.hidden; });
+      body('<section class="panel summary"><span><span class="big num">' + live.length + '</span> signals</span>' + tablePills(live) + '<span class="small">' + roleSplit(live) + '</span></section>' +
+        '<section class="panel section"><div class="head"><h2>Signals, newest first</h2></div><ol class="list feed">' + (sig.length ? sig.slice().reverse().map(function (s) {
+          return '<li class="' + (s.hidden ? 'is-hidden' : '') + '"><span class="text">' + esc(s.text) + '</span><span class="meta">T' + s.table + ' · ' + esc(roleLabel(s.role)) + '</span>' +
+            '<button type="button" class="btn btn-quiet btn-small" data-hide-signal="' + s.id + '" data-hidden="' + s.hidden + '">' + (s.hidden ? 'Show' : 'Hide') + '</button></li>';
+        }).join('') : '<li class="empty">Signals appear here when the stage is Signals.</li>') + '</ol></section>');
+    }
+
+    // Flips --------------------------------------------------------------------
+    function tabFlips() {
+      var flips = S.board.flips, live = flips.filter(function (f) { return !f.hidden; });
+      var html = '<section class="panel summary"><span><span class="big num">' + live.length + '</span> ' + esc(T().parent.plural) + '</span>' + tablePills(live) + '</section>';
       for (var t = 1; t <= S.board.config.tables; t++) {
-        var f = saved[t] || {};
-        var text = defs.map(function (d) { return f[d.key] || ''; }).filter(Boolean).join(' · ');
-        if (text) count++;
-        rows += '<li><strong class="num">T' + t + '</strong> ' + (text ? esc(text) : '<span class="muted">Not written yet</span>') + '</li>';
+        var mine = flips.filter(function (f) { return f.table === t; });
+        html += '<section class="panel section"><div class="head"><h2>Table ' + t + '</h2></div><ol class="list">' + (mine.length ? mine.map(function (f) {
+          var dots = T().flipDots.map(function (d) { var n = f.dots && f.dots[d.code] ? f.dots[d.code] : null;
+            return '<span class="pill"><span class="sw sw-' + d.code + '" aria-hidden="true"></span> ' + esc(d.label) + ' ' + (n ? n.total : 0) +
+              (n ? ' (' + T().roles.map(function (r) { return r.code + ' ' + (n[r.code] || 0); }).join(', ') + ')' : '') + '</span>'; }).join('');
+          return '<li class="' + (f.hidden ? 'is-hidden' : '') + '" style="display:block"><div style="display:flex;gap:8px"><span class="text">' + (f.top ? '<strong style="color:var(--good)">TOP</strong> ' : '') + esc(f.text) + '</span>' +
+            '<button type="button" class="btn btn-quiet btn-small" data-hide-flip="' + f.id + '" data-hidden="' + f.hidden + '">' + (f.hidden ? 'Show' : 'Hide') + '</button></div><div class="chips" style="margin-top:6px">' + dots + '</div></li>';
+        }).join('') : '<li class="empty">None yet.</li>') + '</ol></section>';
       }
-      var label = defs.length === 1 ? defs[0].label + 's' : 'Table answers';
-      return '<details class="table-fields"' + (S.tableFieldsOpen ? ' open' : '') + ' style="flex-basis:100%">' +
-        '<summary><strong>' + esc(label) + '</strong> <span class="muted num">(' + count + ' of ' + S.board.config.tables + ')</span></summary>' +
-        '<ol style="list-style:none;padding:0;margin:8px 0 0;display:grid;gap:6px">' + rows + '</ol></details>';
-    }
-    document.addEventListener('toggle', function (e) {
-      if (e.target.classList && e.target.classList.contains('table-fields')) S.tableFieldsOpen = e.target.open;
-    }, true);
-
-    function renderFeed() {
-      var key = primaryKey(), others = S.board.template.fields.filter(function (f) { return f.key !== key; });
-      var list = S.board.cards.slice().reverse().filter(function (c) {
-        if (S.filter === 'all') return !c.hidden;
-        if (S.filter === 'hidden') return c.hidden;
-        return !c.hidden && c.table === Number(S.filter);
-      });
-      $('feed').innerHTML = list.length ? list.map(function (c) {
-        return '<li class="' + (c.hidden ? 'is-hidden' : '') + '"><div class="meta"><strong class="num">#' + c.id + '</strong>' +
-          '<span>Table ' + c.table + '</span><span class="level" data-route="' + routeOf(c.level) + '">' + esc(c.level) + '</span>' +
-          '<span>' + esc(c.source.replace('+', ' + ')) + '</span><span class="spacer"></span>' +
-          '<button type="button" class="btn btn-quiet btn-small" data-hide="' + c.id + '" data-hidden="' + c.hidden + '">' + (c.hidden ? 'Show' : 'Hide') + '</button></div>' +
-          '<p class="need">' + esc(c.fields[key]) + '</p>' +
-          others.map(function (f) { return '<p class="flip">' + esc(c.fields[f.key]) + '</p>'; }).join('') + '</li>';
-      }).join('') : '<li class="empty">' + (S.filter === 'hidden' ? 'No hidden cards.' : 'Cards appear here as tables send them.') + '</li>';
+      body(html);
     }
 
-    // ── Groups ───────────────────────────────────────────────────────────────
+    // Cards and groups ---------------------------------------------------------
     function grouped() { var s = {}; S.groups.forEach(function (g) { g.cardIds.forEach(function (id) { s[id] = true; }); }); return s; }
     function ungrouped() { var s = grouped(); return liveCards().filter(function (c) { return !s[c.id]; }).map(function (c) { return c.id; }); }
-
     function stats(g) {
-      var tables = {}, levels = {}, anyVote = false;
-      S.board.template.level.options.forEach(function (o) { levels[o.code] = 0; });
-      g.cardIds.forEach(function (id) {
-        var c = cardById(id);
-        if (!c || c.hidden) return;
-        tables[c.table] = true;
-        if (levels[c.level] !== undefined) levels[c.level]++;
-        if (routeOf(c.level) === 'vote') anyVote = true;
-      });
-      var n = Object.keys(tables).length;
-      return { tableCount: n, levels: levels, route: g.routeOverride || (anyVote ? 'vote' : 'parking'), auto: anyVote ? 'vote' : 'parking' };
+      var tables = {}, levels = {}, roles = {};
+      T().level.options.forEach(function (o) { levels[o.code] = 0; });
+      T().roles.forEach(function (r) { roles[r.code] = 0; });
+      g.cardIds.forEach(function (id) { var c = cardById(id); if (!c || c.hidden) return; tables[c.table] = 1; if (levels[c.level] !== undefined) levels[c.level]++; if (roles[c.role] !== undefined) roles[c.role]++; });
+      var majority = T().level.options[0].code;
+      T().level.options.forEach(function (o) { if (levels[o.code] > levels[majority]) majority = o.code; });
+      var tagged = T().level.options.filter(function (o) { return levels[o.code] > 0; }).length;
+      return { tableCount: Object.keys(tables).length, levels: levels, roles: roles, contested: tagged > 1, auto: majority, column: g.columnOverride || majority };
     }
-
     function chip(id) {
-      var c = cardById(id);
-      if (!c || c.hidden) return '';
-      var text = c.fields[primaryKey()];
-      return '<button type="button" class="chip" draggable="true" data-card="' + id + '" aria-pressed="' + (S.selected === id) + '" title="' + esc(text) + '">' +
-        '<span class="t num">#' + id + ' T' + c.table + ' ' + esc(c.level) + '</span><span class="x">' + esc(text) + '</span></button>';
+      var c = cardById(id); if (!c || c.hidden) return '';
+      var text = c.fields[T().fields[0].key];
+      return '<button type="button" class="chip" draggable="true" data-card="' + id + '" aria-pressed="' + (S.selected === id) + '" title="' + esc(text) + ' (flip: ' + esc(c.fields[T().parent.key]) + ')">' +
+        '<span class="t">#' + id + ' T' + c.table + ' ' + esc(c.level) + ' ' + esc(c.role) + '</span><span class="x">' + esc(text) + '</span></button>';
+    }
+    function moveHere(target) { return S.selected != null ? '<button type="button" class="btn btn-small" data-move="' + esc(target) + '">Move #' + S.selected + ' here</button>' : ''; }
+
+    function tabCards() {
+      var live = liveCards(), pub = S.board.published;
+      var levels = T().level.options.map(function (o) { return '<span class="pill"><strong>' + esc(o.code) + '</strong> ' + live.filter(function (c) { return c.level === o.code; }).length + '</span>'; }).join('');
+      var key = T().fields[0].key;
+      var feed = S.board.cards.slice().reverse().filter(function (c) { return S.tableFilter === 'all' ? !c.hidden : S.tableFilter === 'hidden' ? c.hidden : (!c.hidden && c.table === Number(S.tableFilter)); });
+      var filterOpts = '<option value="all">All tables</option><option value="hidden">Hidden</option>';
+      for (var t = 1; t <= S.board.config.tables; t++) filterOpts += '<option value="' + t + '">Table ' + t + '</option>';
+      body('<section class="panel summary"><span><span class="big num">' + live.length + '</span> cards</span>' + tablePills(live) + '<span class="chips">' + levels + '</span><span class="small">' + roleSplit(live) + '</span></section>' +
+        '<div class="two"><section class="panel section"><div class="head"><h2>Cards, word for word</h2><label class="sr-only" for="filter">Show</label><select id="filter" style="width:auto">' + filterOpts + '</select></div>' +
+        '<ol class="list feed">' + (feed.length ? feed.map(function (c) {
+          return '<li class="' + (c.hidden ? 'is-hidden' : '') + '" style="display:block"><div class="meta"><strong>#' + c.id + '</strong> T' + c.table + ' · <span class="level" data-route="' + levelOpt(c.level).route + '">' + esc(c.level) + '</span> · ' + esc(roleLabel(c.role)) + ' · ' + esc(c.source) +
+            ' <button type="button" class="btn btn-quiet btn-small" data-hide="' + c.id + '" data-hidden="' + c.hidden + '">' + (c.hidden ? 'Show' : 'Hide') + '</button></div>' +
+            '<div style="font-weight:600;margin-top:4px;overflow-wrap:anywhere">' + esc(c.fields[key]) + '</div><div class="muted small" style="overflow-wrap:anywhere">' + esc(c.fields[T().parent.key]) + '</div></li>';
+        }).join('') : '<li class="empty">Cards appear here during Need cards.</li>') + '</ol></section>' +
+        '<section class="panel section"><div class="head"><h2>Groups</h2><div class="chips">' +
+          '<button type="button" class="btn btn-primary btn-small" id="suggestBtn">Suggest groups</button><button type="button" class="btn btn-small" id="newGroupBtn">New group</button>' +
+          '<button type="button" class="btn btn-small" id="postersBtn">Make posters</button></div></div>' +
+          '<div class="publish-row"><button type="button" class="btn btn-primary btn-small" id="publishBtn">' + (pub ? 'Publish again' : 'Publish for voting') + '</button>' +
+          '<span class="small">' + (pub ? 'Published ' + new Date(S.board.config.publishedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) + ': ' + pub.length + ' groups. Phones and the wall show the published version.' : 'Phones and the wall see groups only after you publish.') + '</span></div>' +
+          '<p class="muted small" style="margin:0 0 10px">AI drafts the groups. The column is the tag most of a group’s cards carry; <span class="contested">?</span> means tables tagged them differently. Counts always come from the cards.</p>' +
+          '<div id="posters" aria-live="polite"></div><div id="groupsArea"></div></section></div>');
+      $('filter').value = S.tableFilter;
+      $('filter').onchange = function () { S.tableFilter = this.value; tabCards(); };
+      $('suggestBtn').onclick = suggest; $('newGroupBtn').onclick = newGroup; $('postersBtn').onclick = posters; $('publishBtn').onclick = publish;
+      renderGroups();
     }
 
     function renderGroups() {
-      var routes = S.board.template.routes, rest = ungrouped();
-      var moveHere = S.selected != null ? function (target) {
-        return '<button type="button" class="btn btn-small" data-move="' + target + '">Move #' + S.selected + ' here</button>';
-      } : function () { return ''; };
-      var html = '';
-      if (rest.length) {
-        html += '<article class="group tray" data-drop="tray"><div class="group-head" style="grid-template-columns:1fr auto">' +
-          '<h3 class="topic">Not in a group yet <span class="num muted">(' + rest.length + ')</span></h3>' + moveHere('tray') + '</div>' +
-          '<div class="chips">' + rest.map(chip).join('') + '</div></article>';
-      }
-      if (!S.groups.length) {
-        html += '<p class="empty">No groups yet. Use <strong>Suggest groups</strong> for an AI draft, or make them by hand with <strong>New group</strong>.</p>';
-      }
-      html += S.groups.map(function (g, i) {
-        var s = stats(g);
-        var lv = S.board.template.level.options.map(function (o) { return esc(o.code) + ' ' + s.levels[o.code]; }).join(' · ');
-        return '<article class="group" data-drop="' + esc(g.id) + '" aria-label="Group ' + (i + 1) + ': ' + esc(g.topic) + '">' +
-          '<div class="group-head"><span class="rank num">' + (i + 1) + '</span>' +
-          '<span class="order"><button type="button" class="btn" data-up="' + i + '" aria-label="Move group up"' + (i ? '' : ' disabled') + '>▲</button>' +
-          '<button type="button" class="btn" data-down="' + i + '" aria-label="Move group down"' + (i < S.groups.length - 1 ? '' : ' disabled') + '>▼</button></span>' +
-          '<input type="text" class="topic" data-topic="' + esc(g.id) + '" value="' + esc(g.topic) + '" maxlength="80" aria-label="Topic name">' +
-          '<select class="route" data-route-for="' + esc(g.id) + '" aria-label="Where this group goes">' +
-          '<option value=""' + (g.routeOverride ? '' : ' selected') + '>' + esc(routes[s.auto]) + ' (automatic)</option>' +
-          '<option value="vote"' + (g.routeOverride === 'vote' ? ' selected' : '') + '>' + esc(routes.vote) + '</option>' +
-          '<option value="parking"' + (g.routeOverride === 'parking' ? ' selected' : '') + '>' + esc(routes.parking) + '</option></select></div>' +
-          '<p class="stats num">' + s.tableCount + (s.tableCount === 1 ? ' table' : ' tables') + ' · ' + lv + ' · ' + esc(routes[s.route]) + '</p>' +
-          '<div class="chips">' + g.cardIds.map(chip).join('') + '</div>' +
-          '<div class="group-foot">' + moveHere(esc(g.id)) + '<span></span><button type="button" class="btn btn-quiet btn-small" data-delete="' + esc(g.id) + '">Remove group</button></div></article>';
-      }).join('');
-      $('groups').innerHTML = html;
-      var parking = S.board.cards.filter(function (c) { return !c.hidden && routeOf(c.level) === 'parking'; });
-      $('parking').innerHTML = parking.length ? '<h3 style="font-size:1rem;margin:4px 0 6px">' + esc(routes.parking) + ' <span class="muted num">(' + parking.length + ')</span></h3>' +
-        '<p class="small muted">Every card marked ' + S.board.template.level.options.filter(function (o) { return o.route === 'parking'; }).map(function (o) { return esc(o.code); }).join(', ') +
-        ' goes here on the posters, word for word, whatever group it is in.</p>' : '';
+      var area = $('groupsArea'); if (!area) return;
+      var rest = ungrouped();
+      var html = '<div class="tray" data-drop="tray"><div class="head" style="margin:0 0 6px"><strong>Doesn’t fit yet <span class="muted num">(' + rest.length + ')</span></strong>' + moveHere('tray') + '</div>' +
+        '<div class="gchips">' + (rest.length ? rest.map(chip).join('') : '<span class="muted small">Every card is in a group.</span>') + '</div></div><div class="cols">';
+      T().level.options.forEach(function (o) {
+        var inCol = S.groups.map(function (g, i) { return { g: g, i: i, s: stats(g) }; }).filter(function (x) { return x.s.column === o.code; });
+        html += '<div class="col" data-col="' + esc(o.code) + '"><h3><span class="level" data-route="' + o.route + '">' + esc(o.code) + '</span>' + esc(o.label) +
+          '<span class="muted small">' + (o.route === 'parking' ? esc(T().routes.parking) : '') + '</span></h3>' +
+          (inCol.length ? inCol.map(function (x) { return groupHtml(x.g, x.i, x.s); }).join('') : '<p class="muted small" style="margin:4px">No groups.</p>') + '</div>';
+      });
+      area.innerHTML = html + '</div>';
     }
 
-    function changed() {
-      S.dirty++;
-      clearTimeout(S.saveTimer);
-      S.saveTimer = setTimeout(save, 700);
+    function groupHtml(g, i, s) {
+      var colOpts = '<option value=""' + (g.columnOverride ? '' : ' selected') + '>' + esc(s.auto) + ' (auto)</option>' + T().level.options.map(function (o) {
+        return '<option value="' + esc(o.code) + '"' + (g.columnOverride === o.code ? ' selected' : '') + '>' + esc(o.code) + '</option>'; }).join('');
+      return '<article class="group" data-drop="' + esc(g.id) + '"><div class="group-head">' +
+        '<span class="order"><button type="button" class="btn" data-up="' + i + '" aria-label="Move group up"' + (i ? '' : ' disabled') + '>▲</button>' +
+        '<button type="button" class="btn" data-down="' + i + '" aria-label="Move group down"' + (i < S.groups.length - 1 ? '' : ' disabled') + '>▼</button></span>' +
+        '<input type="text" class="topic" data-topic="' + esc(g.id) + '" value="' + esc(g.topic) + '" maxlength="80" aria-label="Topic name">' +
+        '<select class="colsel" data-col-for="' + esc(g.id) + '" aria-label="Column">' + colOpts + '</select></div>' +
+        '<div class="gstats">' + (s.contested ? '<span class="contested" title="Tables tagged these cards differently">?</span>' : '') +
+        '<span>' + s.tableCount + (s.tableCount === 1 ? ' table' : ' tables') + '</span><span>· ' + T().level.options.map(function (o) { return esc(o.code) + ' ' + s.levels[o.code]; }).join(' ') + '</span>' +
+        '<span>· ' + T().roles.map(function (r) { return esc(r.code) + ' ' + s.roles[r.code]; }).join(' ') + '</span></div>' +
+        '<div class="gchips">' + g.cardIds.map(chip).join('') + '</div><div class="gfoot">' + moveHere(g.id) + '<span></span><button type="button" class="btn btn-quiet btn-small" data-delete="' + esc(g.id) + '">Remove group</button></div></article>';
     }
 
+    function changed() { S.dirty++; clearTimeout(S.saveTimer); S.saveTimer = setTimeout(save, 700); }
     function save() {
       if (S.saving) { S.saveTimer = setTimeout(save, 400); return Promise.resolve(); }
-      var version = S.dirty;
-      S.saving = true;
-      var payload = S.groups.map(function (g, i) {
-        return { id: g.id, topic: g.topic, cardIds: g.cardIds, rank: i + 1, routeOverride: g.routeOverride || '' };
-      });
-      return Capture.run('captureSaveGroups', SESSION_ID, payload).then(function (board) {
-        S.board = board;
-        S.saving = false;
-        if (S.dirty === version) { S.dirty = 0; }
-        renderSummary();
-      }).catch(function (err) {
-        S.saving = false;
-        Capture.toast('Not saved: ' + err.message);
-      });
+      var version = S.dirty; S.saving = true;
+      var payload = S.groups.map(function (g, i) { return { id: g.id, topic: g.topic, cardIds: g.cardIds, rank: i + 1, columnOverride: g.columnOverride || '' }; });
+      return Capture.run('captureSaveGroups', SESSION_ID, payload).then(function (b) { S.board = b; S.saving = false; if (S.dirty === version) S.dirty = 0; })
+        .catch(function (e) { S.saving = false; Capture.toast('Not saved: ' + e.message); });
     }
-
     function move(cardId, target) {
       S.groups.forEach(function (g) { g.cardIds = g.cardIds.filter(function (id) { return id !== cardId; }); });
-      if (target !== 'tray') {
-        var g = S.groups.find(function (x) { return x.id === target; });
-        if (g) g.cardIds.push(cardId);
-      }
+      if (target !== 'tray') { var g = S.groups.find(function (x) { return x.id === target; }); if (g) g.cardIds.push(cardId); }
       S.groups.forEach(function (g) { if (g.cardIds.length) delete g.isNew; });
       S.groups = S.groups.filter(function (g) { return g.cardIds.length || g.isNew; });
-      S.selected = null;
-      renderGroups(); changed();
+      S.selected = null; renderGroups(); changed();
     }
-
     function newGroup() {
       var id = 'n' + Date.now().toString(36);
-      S.groups.push({ id: id, topic: 'New group', cardIds: [], rank: 0, routeOverride: '', isNew: true });
+      S.groups.push({ id: id, topic: 'New group', cardIds: [], rank: 0, columnOverride: '', isNew: true });
       if (S.selected != null) move(S.selected, id); else renderGroups();
-      var input = document.querySelector('[data-topic="' + id + '"]');
-      if (input) { input.focus(); input.select(); }
+      var input = document.querySelector('[data-topic="' + id + '"]'); if (input) { input.focus(); input.select(); }
     }
-
     function suggest() {
       if (S.groups.length && !confirm('Replace the current groups with a new AI draft?')) return;
-      var btn = $('suggestBtn');
-      btn.disabled = true; btn.innerHTML = '<span class="spinner" aria-hidden="true"></span> Drafting…';
-      Capture.run('captureSuggestGroups', SESSION_ID).then(function (board) {
-        S.dirty = 0; adopt(board); Capture.toast('AI draft ready. Rename, move and reorder as you like.');
-      }).catch(function (err) { Capture.toast(err.message); })
-        .then(function () { var b = $('suggestBtn'); if (b) { b.disabled = false; b.textContent = 'Suggest groups'; } });
+      var btn = $('suggestBtn'); btn.disabled = true; btn.textContent = 'Drafting…';
+      Capture.run('captureSuggestGroups', SESSION_ID).then(function (b) { S.dirty = 0; adopt(b); Capture.toast('AI draft ready. Rename, move and re-column as you like, then publish.'); })
+        .catch(function (e) { Capture.toast(e.message); }).then(function () { var x = $('suggestBtn'); if (x) { x.disabled = false; x.textContent = 'Suggest groups'; } });
+    }
+    function publish() {
+      var hasVotes = S.board.voters && S.board.voters.total > 0;
+      var clear = false;
+      if (S.board.published && hasVotes) {
+        if (!confirm(S.board.voters.total + ' people have voted. Publish again and keep votes for groups that still exist?')) return;
+        clear = confirm('Also clear all votes and start the vote over?');
+      }
+      clearTimeout(S.saveTimer);
+      (S.dirty ? save() : Promise.resolve()).then(function () { return call('capturePublish', SESSION_ID, clear); })
+        .then(function () { Capture.toast('Published. Move to the Vote stage when you’re ready.'); }).catch(function () {});
+    }
+    function posters() {
+      var btn = $('postersBtn'); btn.disabled = true; btn.textContent = 'Making…';
+      clearTimeout(S.saveTimer);
+      (S.dirty ? save() : Promise.resolve()).then(function () { return Capture.run('captureMakePosters', SESSION_ID); })
+        .then(function (r) { $('posters').innerHTML = '<div class="alert alert-good">Posters are ready. <a href="' + esc(r.url) + '" target="_blank" rel="noopener">Open the slides</a> to print.</div>'; })
+        .catch(function (e) { $('posters').innerHTML = '<div class="alert alert-bad">' + esc(e.message) + '</div>'; })
+        .then(function () { btn.disabled = false; btn.textContent = 'Make posters'; });
     }
 
-    function posters() {
-      var btn = $('postersBtn');
-      btn.disabled = true; btn.textContent = 'Making posters…';
-      clearTimeout(S.saveTimer);
-      (S.dirty ? save() : Promise.resolve()).then(function () {
-        return Capture.run('captureMakePosters', SESSION_ID);
-      }).then(function (res) {
-        $('posters').innerHTML = '<div class="alert alert-good">Posters are ready. <a href="' + esc(res.url) + '" target="_blank" rel="noopener">Open the slides</a> to print.</div>';
-      }).catch(function (err) {
-        $('posters').innerHTML = '<div class="alert alert-bad">' + esc(err.message) + '</div>';
-      }).then(function () { btn.disabled = false; btn.textContent = 'Make posters'; });
+    // Vote and results ---------------------------------------------------------
+    function tabResults() {
+      var b = S.board, pub = b.published;
+      if (!pub) { body('<section class="panel section"><h2>Nothing published yet</h2><p>Group the cards on <strong>Cards & groups</strong>, then publish them for voting.</p></section>'); return; }
+      var modes = [['phone', 'Phone votes'], ['paper', 'Paper dots'], ['both', 'Both added together']];
+      var html = '<section class="panel summary"><span><span class="big num">' + b.voters.total + '</span> people voted by phone</span><span class="small">' +
+        T().roles.map(function (r) { return esc(r.label) + ' ' + (b.voters[r.code] || 0); }).join(' · ') + '</span>' +
+        '<label class="small" for="mode" style="margin:0 0 0 auto">Count from</label><select id="mode" style="width:auto">' + modes.map(function (m) {
+          return '<option value="' + m[0] + '"' + (b.config.tallyMode === m[0] ? ' selected' : '') + '>' + m[1] + '</option>'; }).join('') + '</select></section>';
+      b.results.columns.forEach(function (col) {
+        if (!col.items.length) return;
+        html += '<section class="panel section"><div class="head"><h2><span class="level" data-route="' + col.route + '">' + esc(col.code) + '</span> ' + esc(col.label) +
+          (col.route === 'parking' ? ' <span class="muted small">' + esc(T().routes.parking) + '</span>' : '') + '</h2></div><table class="tally"><thead><tr><th class="num">Rank</th><th>Topic</th>' +
+          T().roles.map(function (r) { return '<th class="num">Phone ' + esc(r.code) + '</th>'; }).join('') + T().roles.map(function (r) { return '<th class="num">Paper ' + esc(r.code) + '</th>'; }).join('') +
+          '<th class="num">Total</th></tr></thead><tbody>' + col.items.map(function (i) {
+            var t = b.tally[i.id] || { phone: {}, paper: {} };
+            return '<tr><td class="num">' + i.rank + '</td><td>' + esc(i.topic) + (i.contested ? ' <span class="contested">?</span>' : '') + '</td>' +
+              T().roles.map(function (r) { return '<td class="num">' + (t.phone[r.code] || 0) + '</td>'; }).join('') +
+              T().roles.map(function (r) { return '<td class="num"><label class="sr-only" for="pd_' + esc(i.id) + '_' + r.code + '">Paper ' + esc(r.label) + ' dots for ' + esc(i.topic) + '</label><input type="number" min="0" max="999" id="pd_' + esc(i.id) + '_' + r.code + '" data-paper="' + esc(i.id) + '" value="' + (t.paper[r.code] || 0) + '"></td>'; }).join('') +
+              '<td class="num"><strong>' + i.total + '</strong></td></tr>';
+          }).join('') + '</tbody></table></section>';
+      });
+      var priorities = b.results.priorities;
+      html += '<section class="panel section"><div class="head"><h2>Table assignments</h2><span class="muted small">The top ' + b.config.tables + ' priorities go to tables in order. Change any by hand.</span></div><table class="tally"><tbody>' +
+        b.results.assignments.map(function (a) {
+          return '<tr><th scope="row">Table ' + a.table + '</th><td><label class="sr-only" for="as' + a.table + '">Priority for table ' + a.table + '</label><select id="as' + a.table + '" data-assign="' + a.table + '" style="width:100%">' +
+            '<option value="">Automatic' + (a.manual ? '' : ': ' + esc(a.topic || 'none')) + '</option>' + priorities.map(function (p) {
+              return '<option value="' + esc(p.id) + '"' + (a.manual && a.groupId === p.id ? ' selected' : '') + '>' + esc(p.topic) + ' (' + p.total + ')</option>'; }).join('') + '</select></td></tr>';
+        }).join('') + '</tbody></table></section>';
+      body(html);
+      $('mode').onchange = function () { call('captureSetTallyMode', SESSION_ID, this.value); };
+    }
+
+    // Test drive ---------------------------------------------------------------
+    function tabTestDrive() {
+      var b = S.board, notes = b.testDrive || [];
+      var html = '';
+      var assignments = b.results ? b.results.assignments : [];
+      for (var t = 1; t <= b.config.tables; t++) {
+        var a = assignments.find(function (x) { return x.table === t; }), n = notes.find(function (x) { return x.table === t; });
+        html += '<section class="panel section"><div class="head"><h2>Table ' + t + (a && a.topic ? ': ' + esc(a.topic) : '') + '</h2></div>' +
+          (n ? '<dl class="tdnote">' + T().testDrive.prompts.map(function (p) { return '<dt>' + esc(p.label) + '</dt><dd>' + (esc(n.notes[p.key]) || '<span class="muted">–</span>') + '</dd>'; }).join('') + '</dl>'
+            : '<p class="muted small">No notes yet.</p>') + '</section>';
+      }
+      body(html);
+    }
+
+    // Settings -----------------------------------------------------------------
+    function tabSettings() {
+      var b = S.board, l = b.links || {};
+      body('<section class="panel section stack"><h2>Links</h2>' +
+        [['Table and voting link (no sign-in)', l.table], ['Projector wall (no sign-in)', l.wall], ['Printable table cards', l.tableCards], ['This board', l.board]].map(function (x) {
+          return x[1] ? '<div><label class="small">' + esc(x[0]) + '</label><input type="text" readonly value="' + esc(x[1]) + '"></div>' : ''; }).join('') +
+        '</section><section class="panel section stack"><h2>Exit survey</h2><p class="muted small">Shown on phones and the wall during Close.</p>' +
+        '<div><label for="survey">Survey link</label><input type="text" id="survey" placeholder="https://" value="' + esc(b.config.surveyUrl || '') + '"></div>' +
+        '<button type="button" class="btn btn-small" id="surveySave">Save survey link</button></section>');
+      $('surveySave').onclick = function () { call('captureSetSurveyUrl', SESSION_ID, $('survey').value).then(function () { Capture.toast('Survey link saved.'); }); };
     }
 
     // ── Events ───────────────────────────────────────────────────────────────
+    $('copyLink').onclick = function () {
+      var link = S.board && S.board.links && S.board.links.table; if (!link) return;
+      var done = function () { Capture.toast('Table link copied.'); };
+      if (navigator.clipboard) navigator.clipboard.writeText(link).then(done, function () { prompt('Copy the table link:', link); });
+      else prompt('Copy the table link:', link);
+    };
+
     document.addEventListener('click', function (e) {
-      var t = e.target.closest('button');
-      if (!t || !S.board || !S.board.enabled) return;
-      if (t.id === 'entryBtn') {
-        t.disabled = true;
-        return Capture.run('captureSetOpen', SESSION_ID, !S.board.config.open).then(adopt).catch(showError).then(function () { t.disabled = false; });
+      var t = e.target.closest('button'); if (!t || !S.board || !S.board.enabled) return;
+      if (t.dataset.stage) {
+        var to = t.dataset.stage;
+        if (to === S.board.config.stage) return;
+        if (to === 'vote' && !S.board.published) { if (!confirm('Nothing is published yet, so phones will say voting opens soon. Move to Vote anyway?')) return; }
+        S.tabChosen = false;
+        return call('captureSetStage', SESSION_ID, to).then(function () { Capture.toast('Phones and the wall moved to ' + t.querySelector('.l').textContent + '.'); }).catch(function () {});
       }
-      if (t.dataset.card) {
-        var id = Number(t.dataset.card);
-        S.selected = S.selected === id ? null : id;
-        renderGroups();
-        var again = document.querySelector('[data-card="' + id + '"]');
-        if (again) again.focus();
-        return;
-      }
+      if (t.dataset.tab) { S.tab = t.dataset.tab; S.tabChosen = true; return renderAll(); }
+      if (t.dataset.card) { var id = Number(t.dataset.card); S.selected = S.selected === id ? null : id; renderGroups(); var again = document.querySelector('[data-card="' + id + '"]'); if (again) again.focus(); return; }
       if (t.dataset.move) return move(S.selected, t.dataset.move);
       if (t.dataset.up || t.dataset.down) {
-        var i = Number(t.dataset.up || t.dataset.down), j = t.dataset.up ? i - 1 : i + 1;
-        var tmp = S.groups[i]; S.groups[i] = S.groups[j]; S.groups[j] = tmp;
-        renderGroups(); changed();
-        var btn = document.querySelector('[data-' + (t.dataset.up ? 'up' : 'down') + '="' + j + '"]');
-        if (btn && !btn.disabled) btn.focus();
-        return;
+        var i = Number(t.dataset.up || t.dataset.down), j = t.dataset.up ? i - 1 : i + 1, tmp = S.groups[i];
+        S.groups[i] = S.groups[j]; S.groups[j] = tmp; renderGroups(); changed(); return;
       }
-      if (t.dataset.delete) {
-        S.groups = S.groups.filter(function (g) { return g.id !== t.dataset.delete; });
-        renderGroups(); changed(); return;
-      }
-      if (t.dataset.hide) {
-        Capture.run('captureSetHidden', SESSION_ID, Number(t.dataset.hide), t.dataset.hidden !== 'true').then(function (board) {
-          S.board = board; renderSummary(); renderFeed(); renderGroups();
-        }).catch(function (err) { Capture.toast(err.message); });
-      }
+      if (t.dataset.delete) { S.groups = S.groups.filter(function (g) { return g.id !== t.dataset.delete; }); renderGroups(); changed(); return; }
+      if (t.dataset.hide) return call('captureSetHidden', SESSION_ID, Number(t.dataset.hide), t.dataset.hidden !== 'true').catch(function () {});
+      if (t.dataset.hideSignal) return call('captureSetSignalHidden', SESSION_ID, Number(t.dataset.hideSignal), t.dataset.hidden !== 'true').catch(function () {});
+      if (t.dataset.hideFlip) return call('captureSetFlipHidden', SESSION_ID, Number(t.dataset.hideFlip), t.dataset.hidden !== 'true').catch(function () {});
     });
 
     document.addEventListener('input', function (e) {
-      var id = e.target.dataset && e.target.dataset.topic;
-      if (!id) return;
-      var g = S.groups.find(function (x) { return x.id === id; });
-      if (g) { g.topic = e.target.value; changed(); }
+      var id = e.target.dataset && e.target.dataset.topic; if (!id) return;
+      var g = S.groups.find(function (x) { return x.id === id; }); if (g) { g.topic = e.target.value; changed(); }
     });
 
     document.addEventListener('change', function (e) {
-      var id = e.target.dataset && e.target.dataset.routeFor;
-      if (!id) return;
-      var g = S.groups.find(function (x) { return x.id === id; });
-      if (g) { g.routeOverride = e.target.value; renderGroups(); changed(); }
+      var d = e.target.dataset || {};
+      if (d.colFor) { var g = S.groups.find(function (x) { return x.id === d.colFor; }); if (g) { g.columnOverride = e.target.value; renderGroups(); changed(); } return; }
+      if (d.paper) {
+        var counts = {};
+        T().roles.forEach(function (r) { var el = $('pd_' + d.paper + '_' + r.code); counts[r.code] = el ? Number(el.value) || 0 : 0; });
+        return call('captureSetPaperDots', SESSION_ID, d.paper, counts).catch(function () {});
+      }
+      if (d.assign) return call('captureSetAssignment', SESSION_ID, Number(d.assign), e.target.value).catch(function () {});
     });
 
-    document.addEventListener('dragstart', function (e) {
-      var c = e.target.closest && e.target.closest('[data-card]');
-      if (c) e.dataTransfer.setData('text/plain', c.dataset.card);
-    });
+    document.addEventListener('dragstart', function (e) { var c = e.target.closest && e.target.closest('[data-card]'); if (c) e.dataTransfer.setData('text/plain', c.dataset.card); });
     document.addEventListener('dragover', function (e) {
-      var zone = e.target.closest && e.target.closest('[data-drop]');
-      if (!zone) return;
-      e.preventDefault();
-      document.querySelectorAll('.drop').forEach(function (z) { if (z !== zone) z.classList.remove('drop'); });
-      zone.classList.add('drop');
+      var z = e.target.closest && e.target.closest('[data-drop]'); if (!z) return;
+      e.preventDefault(); document.querySelectorAll('.drop').forEach(function (x) { if (x !== z) x.classList.remove('drop'); }); z.classList.add('drop');
     });
     document.addEventListener('drop', function (e) {
-      var zone = e.target.closest && e.target.closest('[data-drop]');
-      if (!zone) return;
-      e.preventDefault();
-      var id = Number(e.dataTransfer.getData('text/plain'));
-      if (id) move(id, zone.dataset.drop);
+      var z = e.target.closest && e.target.closest('[data-drop]'); if (!z) return;
+      e.preventDefault(); var id = Number(e.dataTransfer.getData('text/plain')); if (id) move(id, z.dataset.drop);
     });
-    document.addEventListener('dragend', function () { document.querySelectorAll('.drop').forEach(function (z) { z.classList.remove('drop'); }); });
+    document.addEventListener('dragend', function () { document.querySelectorAll('.drop').forEach(function (x) { x.classList.remove('drop'); }); });
 
     start();
   </script>

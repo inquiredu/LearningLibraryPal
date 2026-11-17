@@ -28,7 +28,7 @@ test('an old Gem reads as a skill, and only https links are kept', () => {
 
 test('a live-capture session gets its activity\'s skills; a library session gets the four companions', () => {
   const c = helpers();
-  assert.deepEqual(plain(c.eval('skillsRoles_(CAPTURE_TEMPLATES.needCards).map(r => r.id)')), ['need-card-coach', 'guidance-sorter', 'next-steps-planner']);
+  assert.deepEqual(plain(c.eval('skillsRoles_(CAPTURE_TEMPLATES.needCards).map(r => r.id)')), ['need-card-coach', 'guidance-sorter', 'guidance-test-drive', 'next-steps-planner']);
   assert.deepEqual(plain(c.eval('skillsRoles_(null).map(r => r.id)')), ['session-primer', 'critical-lens', 'synthesis-companion', 'reflection-catalyst']);
 });
 
@@ -110,13 +110,13 @@ function gemsContext({ capture = true, stored = [], resources } = {}) {
 test('a live-capture session\'s skills come from its activity, use public materials only, and keep existing links', () => {
   const h = gemsContext({ stored: [{ id: 'guidance-sorter', name: 'Guidance Sorter', instructions: 'old', link: 'https://claude.ai/project/abc' }] });
   const skills = plain(h.c.eval('GemsService.generateGems("S-1")'));
-  assert.deepEqual(plain(h.c.sent.roles), ['need-card-coach', 'guidance-sorter', 'next-steps-planner']);
+  assert.deepEqual(plain(h.c.sent.roles), ['need-card-coach', 'guidance-sorter', 'guidance-test-drive', 'next-steps-planner']);
   assert.match(h.c.sent.activity, /flip statement/);
   assert.deepEqual(plain(h.c.sent.titles), ['State AI Guidance'], 'internal materials are never sent or attached');
-  assert.deepEqual(skills.map(s => s.materials), [['State AI Guidance'], ['State AI Guidance'], ['State AI Guidance']]);
+  assert.deepEqual(skills.map(s => s.materials), [['State AI Guidance'], ['State AI Guidance'], ['State AI Guidance'], ['State AI Guidance']]);
   assert.equal(skills[1].link, 'https://claude.ai/project/abc');
   assert.equal(h.updates[0].STATUS, 'Skills Ready');
-  assert.deepEqual(h.files.map(f => f[1]), ['need-card-coach.SKILL.md', 'guidance-sorter.SKILL.md', 'next-steps-planner.SKILL.md', 'skills.json']);
+  assert.deepEqual(h.files.map(f => f[1]), ['need-card-coach.SKILL.md', 'guidance-sorter.SKILL.md', 'guidance-test-drive.SKILL.md', 'next-steps-planner.SKILL.md', 'skills.json']);
   assert.equal(h.files[0][0], '03_Gems', 'an older session keeps using its 03_Gems folder');
 });
 

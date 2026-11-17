@@ -26,7 +26,8 @@ WEBAPP_BASE=https://script.google.com/macros/s
 cp "$MANIFEST" "$MANIFEST.poc-original"
 trap 'mv -f "$MANIFEST.poc-original" "$MANIFEST"' EXIT
 
-clasp_p() { "$CLASP" -P "$PROJECT" -I .claspignore "$@"; }
+# Absolute paths: clasp 3.4.1 rejects a relative -P file as "escapes project root".
+clasp_p() { "$CLASP" -P "$PWD/$PROJECT" -I "$PWD/.claspignore" "$@"; }
 
 set_access() {
   node -e '
@@ -64,16 +65,21 @@ if [ ! -f "$HOME/.clasprc.json" ]; then
 fi
 
 if [ ! -f "$STATE" ]; then
-  echo "Creating a new Sheet and Apps Script project named \"$TITLE\"..."
-  WORK=$(mktemp -d)
-  (cd "$WORK" && "$CLASP" create-script --type sheets --title "$TITLE" >/dev/null)
-  node - "$WORK/.clasp.json" "$PROJECT" <<'JS'
+  if [ -f "$PROJECT" ]; then
+    # An earlier run made the project but stopped before deploying: reuse it.
+    echo "Reusing the project an earlier run created ($PROJECT)..."
+  else
+    echo "Creating a new Sheet and Apps Script project named \"$TITLE\"..."
+    WORK=$(mktemp -d)
+    (cd "$WORK" && "$CLASP" create-script --type sheets --title "$TITLE" >/dev/null)
+    node - "$WORK/.clasp.json" "$PROJECT" <<'JS'
 const fs = require('fs');
 const s = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
 if (!s.scriptId || !s.parentId) throw new Error('clasp did not return the new project IDs.');
 fs.writeFileSync(process.argv[3], JSON.stringify({ scriptId: s.scriptId, parentId: s.parentId, rootDir: '.' }, null, 2) + '\n');
 JS
-  rm -rf "$WORK"
+    rm -rf "$WORK"
+  fi
   rm -f "$DEPLOY_FILE"
 
   echo "Uploading and deploying the public pages (tables and wall)..."

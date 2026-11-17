@@ -21,6 +21,12 @@ function fixture(t) {
 const fs = require('fs');
 const args = process.argv.slice(2);
 const log = entry => fs.appendFileSync(process.env.MOCK_LOG, JSON.stringify(entry) + '\\n');
+// Like clasp 3.4.1: a relative project file makes its root "." and fails the srcDir check.
+const pi = args.indexOf('-P');
+if (pi >= 0 && !require('path').isAbsolute(args[pi + 1])) {
+  console.error('Security Error: srcDir "." escapes project root.');
+  process.exit(1);
+}
 if (args.includes('create-script')) {
   fs.writeFileSync('.clasp.json', JSON.stringify({ scriptId: 'SCRIPT1', parentId: 'SHEET1', rootDir: '.' }));
   log({ cmd: 'create', cwd: process.cwd() });
@@ -58,7 +64,7 @@ test('first run makes a new project with a public deployment and a sign-in deplo
   assert.notEqual(calls[0].cwd, f.dir, 'the new project is created in a temporary folder');
   assert.equal(calls[1].access, 'ANYONE_ANONYMOUS');
   assert.equal(calls[1].deployFile, '');
-  assert.ok(calls[1].args.includes('.clasp.poc.json') && calls[1].args.includes('--force'));
+  assert.ok(calls[1].args.includes(path.join(f.dir, '.clasp.poc.json')) && calls[1].args.includes('--force'));
   assert.equal(calls[3].access, 'ANYONE');
   assert.match(calls[3].deployFile, /CAPTURE_PUBLIC_URL = 'https:\/\/script\.google\.com\/macros\/s\/DEP1\/exec'/);
   const state = JSON.parse(f.read('.poc.json'));
@@ -83,4 +89,16 @@ test('a second run updates both deployments instead of creating new ones', t => 
   assert.equal(calls[0].access, 'ANYONE_ANONYMOUS');
   assert.match(calls[0].deployFile, /DEP1/);
   assert.equal(calls[2].access, 'ANYONE');
+});
+
+test('a run that stopped after creating the project reuses it instead of making a second Sheet', t => {
+  const f = fixture(t);
+  fs.writeFileSync(path.join(f.dir, '.clasp.poc.json'), JSON.stringify({ scriptId: 'EARLIER', parentId: 'EARLIER_SHEET', rootDir: '.' }));
+  const r = f.run();
+  assert.equal(r.status, 0, r.stderr);
+  assert.deepEqual(f.calls().map(c => c.cmd), ['push', 'deploy', 'push', 'deploy']);
+  const state = JSON.parse(f.read('.poc.json'));
+  assert.equal(state.scriptId, 'EARLIER');
+  assert.equal(state.sheetId, 'EARLIER_SHEET');
+  assert.match(r.stdout, /Reusing the project/);
 });

@@ -27,9 +27,9 @@ function captureRoute_(page, e) {
   const key = spec.keyed ? captureValidateKeyFormat_(String(params.k || '')) : '';
   // A table card's QR code names its table, so the phone skips the table picker.
   const table = page === 'capture' && /^[1-9][0-9]?$/.test(String(params.t || '')) ? String(params.t) : '';
+  // Each page is self-contained (scripts/sync-capture-shared.cjs copies the shared
+  // styles and helpers into it); only the session, key and table are filled in here.
   let html = HtmlService.createHtmlOutputFromFile(spec.file).getContent()
-    .replace('<!--CAPTURE_STYLES-->', HtmlService.createHtmlOutputFromFile('CaptureStyles').getContent())
-    .replace('<!--CAPTURE_CLIENT-->', HtmlService.createHtmlOutputFromFile('CaptureClient').getContent())
     .replace('__SESSION_ID__', sessionId)
     .replace('__CAPTURE_KEY__', key)
     .replace('__TABLE__', table);

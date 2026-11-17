@@ -129,9 +129,8 @@ const NOTE = '<p style="margin:0;padding:6px 16px;font:13px/1.4 system-ui,sans-s
 
 function build(file, outName, scenario, sessionId = 'S-demo') {
   const html = read(file)
-    .replace('<body>', '<body>\n  ' + NOTE)
-    .replace('<!--CAPTURE_STYLES-->', '<meta name="viewport" content="width=device-width, initial-scale=1">' + read('CaptureStyles.html'))
-    .replace('<!--CAPTURE_CLIENT-->', mock(scenario) + read('CaptureClient.html'))
+    .replace('<head>', '<head>\n  <meta name="viewport" content="width=device-width, initial-scale=1">')
+    .replace('<body>', '<body>\n  ' + NOTE + mock(scenario))
     .replace('__SESSION_ID__', sessionId)
     .replace('__CAPTURE_KEY__', KEY);
   fs.writeFileSync(path.join(out, outName), html);

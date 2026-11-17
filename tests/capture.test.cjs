@@ -418,3 +418,25 @@ test('choosing a live-capture event in the wizard turns capture on with the tabl
   c.processWizardSubmit({ name: 'x', theme: 't', captureTemplate: 'notATemplate' });
   assert.equal(enabled.length, 1, 'an unknown event type is ignored');
 });
+
+test('each live-capture page is self-contained: one inline script that defines Capture before using it', () => {
+  const read = [];
+  const c = load(['CaptureTemplates.js', 'CaptureLogic.js', 'CaptureApi.js'], {
+    validateSessionId_: id => id,
+    HtmlService: {
+      XFrameOptionsMode: { ALLOWALL: 'ALLOWALL' },
+      createHtmlOutputFromFile: name => { read.push(name); return { getContent: () => source(name + '.html') }; },
+      createHtmlOutput: () => { const out = { setTitle: () => out, addMetaTag: () => out, setXFrameOptionsMode: () => out }; return out; }
+    }
+  });
+  for (const [page, file] of [['capture', 'Capture'], ['board', 'CaptureBoard'], ['wall', 'CaptureWall'], ['tablecards', 'CaptureTableCards']]) {
+    read.length = 0;
+    c.captureRoute_(page, { parameter: { session: 'S-1', k: KEY } });
+    assert.deepEqual([...read], [file], page + ' is served from its own file only');
+    const html = source(file + '.html');
+    const inline = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m => m[1]);
+    assert.equal(inline.length, 1, file + ' has one inline script');
+    const def = inline[0].indexOf('var Capture = (function');
+    assert.ok(def > -1 && def < inline[0].search(/Capture\.(run|poll|esc|store|toast)\b/), file + ' defines Capture before using it');
+  }
+});

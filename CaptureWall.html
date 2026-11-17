@@ -3,7 +3,94 @@
 <head>
   <base target="_top">
   <meta charset="utf-8">
-  <!--CAPTURE_STYLES-->
+  <style>
+    /* shared:CaptureStyles */
+  :root {
+    --ink: #17212B;
+    --muted: #4F5D6B;
+    --navy: #0B2B46;
+    --navy-2: #163E62;
+    --cyan: #5DCDF5;
+    --ground: #F4F6F8;
+    --surface: #FFFFFF;
+    --line: #D5DCE3;
+    --line-strong: #9AA7B4;
+    --focus: #1565C0;
+    --good: #1E6B3A;
+    --good-bg: #E6F2EA;
+    --warn: #8A4B00;
+    --warn-bg: #FFF3E0;
+    --bad: #A1261B;
+    --bad-bg: #FCEBEA;
+    --radius: 10px;
+    --shadow: 0 1px 2px rgba(11, 43, 70, .08), 0 2px 8px rgba(11, 43, 70, .06);
+    --font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; font: 17px/1.5 var(--font); color: var(--ink); background: var(--ground); }
+  h1, h2, h3 { line-height: 1.2; margin: 0; }
+  h1 { font-size: 1.35rem; }
+  h2 { font-size: 1.1rem; }
+  p { margin: 0; }
+  a { color: var(--focus); }
+  ::selection { background: #CDE9F8; }
+  :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+  .num { font-variant-numeric: tabular-nums; }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .muted { color: var(--muted); }
+  .small { font-size: .875rem; }
+
+  .bar { background: var(--navy); color: #fff; padding: 12px 16px; display: flex; align-items: center; gap: 12px; }
+  .bar h1 { font-size: 1.05rem; font-weight: 700; flex: 1; min-width: 0; overflow-wrap: anywhere; }
+  .bar .tag { font-size: .8rem; letter-spacing: .04em; text-transform: uppercase; color: #CFE3F2; }
+
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px;
+    padding: 10px 16px; border-radius: 8px; border: 1px solid transparent; font: 600 1rem/1.2 var(--font);
+    cursor: pointer; text-decoration: none; background: var(--surface); color: var(--navy); border-color: var(--line-strong); }
+  .btn:hover { border-color: var(--navy); }
+  .btn[disabled] { opacity: .55; cursor: not-allowed; }
+  .btn-primary { background: var(--navy); color: #fff; border-color: var(--navy); }
+  .btn-primary:hover { background: var(--navy-2); }
+  .btn-quiet { background: transparent; border-color: transparent; color: var(--navy); text-decoration: underline; text-underline-offset: 3px; padding-inline: 6px; }
+  .btn-on-dark { background: transparent; color: #fff; border-color: rgba(255,255,255,.5); }
+  .btn-small { min-height: 36px; padding: 6px 10px; font-size: .875rem; }
+  .btn-block { width: 100%; }
+
+  .panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); }
+  label, .label { display: block; font-weight: 650; margin-bottom: 4px; }
+  .hint { display: block; color: var(--muted); font-size: .9rem; margin-bottom: 6px; }
+  textarea, input[type=text], input[type=number], select {
+    width: 100%; font: 1rem/1.4 var(--font); color: var(--ink); background: #fff;
+    border: 1px solid var(--line-strong); border-radius: 8px; padding: 10px 12px; }
+  textarea { min-height: 88px; resize: vertical; }
+  textarea:focus, input:focus, select:focus { border-color: var(--focus); }
+
+  .alert { border-radius: 8px; padding: 10px 12px; font-size: .95rem; }
+  .alert-bad { background: var(--bad-bg); color: var(--bad); }
+  .alert-good { background: var(--good-bg); color: var(--good); }
+  .alert-warn { background: var(--warn-bg); color: var(--warn); }
+  .alert:empty { display: none; }
+
+  .level { display: inline-flex; align-items: center; justify-content: center; min-width: 2.4em; padding: 1px 7px;
+    border-radius: 6px; font-weight: 700; font-size: .85rem; border: 1px solid var(--line-strong); background: #fff; color: var(--navy); }
+  .level[data-route="parking"] { border-style: dashed; color: var(--warn); border-color: #C88A3A; }
+
+  .spinner { width: 18px; height: 18px; border-radius: 50%; border: 3px solid rgba(255,255,255,.4); border-top-color: #fff; animation: spin .9s linear infinite; }
+  .spinner.dark { border-color: rgba(11,43,70,.2); border-top-color: var(--navy); }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); max-width: calc(100% - 32px);
+    background: var(--ink); color: #fff; padding: 12px 16px; border-radius: 10px; box-shadow: var(--shadow); z-index: 50; }
+  .toast[hidden] { display: none; }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+  }
+  @media print { .bar, .btn, .toast { display: none !important; } body { background: #fff; } }
+  /* /shared:CaptureStyles */
+  </style>
   <style>
     body { background: var(--navy); color: #fff; font-size: clamp(18px, 1.6vw, 30px); min-height: 100vh; }
     .wall { display: grid; grid-template-rows: auto 1fr auto; min-height: 100vh; padding: 2.5vh 4vw 2vh; gap: 2.5vh; }
@@ -55,8 +142,67 @@
     <main id="view" aria-live="polite"></main>
     <footer class="foot" id="foot">Tables add cards from their phones. Facilitators group them; AI only drafts.</footer>
   </div>
-  <!--CAPTURE_CLIENT-->
   <script>
+    /* shared:CaptureClient */
+  /* Shared browser helpers for the live-capture pages. */
+  var Capture = (function () {
+    function run(name) {
+      var args = Array.prototype.slice.call(arguments, 1);
+      return new Promise(function (resolve, reject) {
+        var runner = google.script.run
+          .withSuccessHandler(resolve)
+          .withFailureHandler(function (err) { reject(new Error(friendly(err))); });
+        runner[name].apply(runner, args);
+      });
+    }
+
+    function friendly(err) {
+      var message = String(err && err.message || err || '');
+      message = message.replace(/^(Exception|Error):\s*/i, '');
+      if (!message || /NetworkError|failed to fetch/i.test(message)) return 'The connection dropped. Check the Wi-Fi and try again.';
+      return message;
+    }
+
+    function esc(value) {
+      return String(value == null ? '' : value).replace(/[&<>"']/g, function (ch) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch];
+      });
+    }
+
+    var toastTimer = null;
+    function toast(message) {
+      var el = document.getElementById('toast');
+      if (!el) return;
+      el.textContent = message;
+      el.hidden = false;
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(function () { el.hidden = true; }, 3200);
+    }
+
+    /** Calls fn now and every ms while the page is visible; never overlaps. */
+    function poll(fn, ms) {
+      var busy = false;
+      function tick() {
+        if (document.hidden || busy) return;
+        busy = true;
+        Promise.resolve().then(fn).catch(function () {}).then(function () { busy = false; });
+      }
+      tick();
+      setInterval(tick, ms);
+      document.addEventListener('visibilitychange', function () { if (!document.hidden) tick(); });
+    }
+
+    function store(key, value) {
+      try {
+        if (value === undefined) return JSON.parse(localStorage.getItem(key) || 'null');
+        localStorage.setItem(key, JSON.stringify(value));
+      } catch (e) { return null; }
+    }
+
+    return { run: run, esc: esc, toast: toast, poll: poll, store: store, friendly: friendly };
+  })();
+  /* /shared:CaptureClient */
+
     var SESSION_ID = "__SESSION_ID__";
     var CAPTURE_KEY = "__CAPTURE_KEY__";
     var $ = function (id) { return document.getElementById(id); };

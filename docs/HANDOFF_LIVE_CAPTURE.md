@@ -2,7 +2,7 @@
 
 Written November 18, 2026, the day of the retreat. Start any new session on this work from **this repository** (`inquiredu/LearningLibraryPal`), branch `claude/need-cards-live-capture`, and read this file first. Then read `docs/LIVE_CAPTURE.md` for how live capture works.
 
-This work lives in LearningLibraryPal and nowhere else. Gather (`inquiredu/gather`) was only a source of lessons; none of its code or data is part of this, and it must not be changed for this work.
+For the retreat, this work lives in LearningLibraryPal. Whether it stays here, becomes a fork, or moves to Firebase is open and gets decided after the retreat (see "What this is for" in `CLAUDE.md`). Gather (`inquiredu/gather`) was only a source of lessons; none of its code or data is part of this, and it must not be changed for this work.
 
 ## Why this exists
 
@@ -27,6 +27,7 @@ What it gives back to MDE:
 - **AI budget: $100 a day**, on Sean's own Gemini key. Data in Sean's Google account is fine for this experience.
 - **State of Minnesota colors** (blue #003865, green #78BE21) on the live capture screens and the facilitator screens. The newsletter, emails and public library pages keep their colors.
 - **Stay laser focused** on this retreat's goal; don't spread into other parts of Learning Library.
+- **Live capture's long-term home is open** (November 17). Staying in this repo was a choice for shipping the retreat, not a rule. After the retreat, decide between keeping it here as an event type, forking it into its own repo (not a long-lived branch), or the Firebase version, based on whether the library side did real work at the retreat.
 - Skills replace Gemini Gems (platform-neutral `SKILL.md`).
 
 ## Where things are

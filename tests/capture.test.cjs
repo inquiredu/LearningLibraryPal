@@ -581,7 +581,7 @@ test('nothing is timed: stages carry no clock times and no page shows one', () =
 
 // ─── Store ──────────────────────────────────────────────────────────────────
 
-function storeContext(grid) {
+function storeContext(grid, events = []) {
   const sheet = name => grid[name] && {
     getName: () => name,
     getDataRange: () => ({ getValues: () => grid[name].map(r => r.slice()) }),
@@ -609,13 +609,25 @@ function storeContext(grid) {
       get: k => (k in cached ? cached[k] : null), put: (k, v) => { cached[k] = String(v); }, remove: k => { delete cached[k]; },
       getAll: ks => { const o = {}; ks.forEach(k => { if (k in cached) o[k] = cached[k]; }); return o; },
       putAll: o => { Object.keys(o).forEach(k => { if (String(o[k]).length > 100 * 1024) throw new Error('Argument too large'); cached[k] = String(o[k]); }); } }) },
-    SpreadsheetApp: { openById: () => db },
-    LockService: { getScriptLock: () => ({ tryLock: () => true, releaseLock() {} }) },
+    SpreadsheetApp: { openById: () => db, flush: () => { events.push('flush: ' + (grid['Live Cards'] || []).length + ' card rows'); } },
+    LockService: { getScriptLock: () => ({ tryLock: () => { events.push('lock'); return true; }, releaseLock: () => { events.push('release'); } }) },
     Utilities: { getUuid: () => '11111111-2222-3333-4444-' + String(++uuid).padStart(12, '0') }
   });
 }
 const auditRows = grid => (grid['Live Audit'] || []).slice(1).map(r => {
   const h = grid['Live Audit'][0]; const o = {}; h.forEach((k, i) => { o[k] = r[i]; }); return o;
+});
+
+test('writes reach the Sheet before the lock is let go, so the next writer numbers from them', () => {
+  const grid = { 'Live Cards': [['Card', 'Submitted', 'Table', 'Level', 'Source', 'Hidden', 'Token', 'Role', 'Flip ID', 'Flip statement', 'Need']] };
+  const events = [];
+  const c = storeContext(grid, events);
+  const card = '{ table: 2, level: "G", source: "typed", role: "S", flipId: 0, fields: { need: "Time to try things" } }';
+  c.eval(`CaptureStore.appendCard("S-1", CAPTURE_TEMPLATES.needCards, ${card})`);
+  assert.deepEqual(events, ['lock', 'flush: 2 card rows', 'release'], 'flushed after the card was written, then released');
+  events.length = 0;
+  assert.throws(() => c.eval('CaptureStore.withLock_(() => { throw new Error("Sheet full") })'), /Sheet full/);
+  assert.deepEqual(events, ['lock', 'flush: 2 card rows', 'release'], 'a failed change still flushes and releases, and its error comes through');
 });
 
 test('the store reads older sheets by header name and adds new columns at the end', () => {

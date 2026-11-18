@@ -15,7 +15,8 @@
  * Nothing is deleted: removing an entry hides it, and the audit row says who
  * hid it. Rows are read and written by header name, so a column added later
  * goes at the end and older sheets keep working. Writes, and the audit row
- * that describes them, run together under the script lock.
+ * that describes them, run together under the script lock, and are flushed to
+ * the Sheet before the lock is let go.
  *
  * Speed: every device checks in every few seconds, so reads come from
  * CacheService. The snapshot of all rows is cached in chunks (one cache value
@@ -658,6 +659,14 @@ const CaptureStore = {
   withLock_: function(action) {
     const lock = LockService.getScriptLock();
     if (!lock.tryLock(20000)) throw new Error('Busy saving other entries. Try again in a moment.');
-    try { return action(); } finally { lock.releaseLock(); }
+    try {
+      return action();
+    } finally {
+      // Apps Script may hold Sheet writes until the script ends. Commit them
+      // while this execution still has the lock, so the next writer reads them
+      // (new entry numbers are the highest so far + 1). Google's docs for
+      // Lock.releaseLock() say to flush first when working with a spreadsheet.
+      try { SpreadsheetApp.flush(); } finally { lock.releaseLock(); }
+    }
   }
 };

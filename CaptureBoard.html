@@ -235,11 +235,13 @@
 
     /** Calls fn now and every ms while the page is visible; never overlaps. */
     function poll(fn, ms) {
-      var busy = false;
+      var busy = false, since = 0;
       function tick() {
-        if (document.hidden || busy) return;
-        busy = true;
-        Promise.resolve().then(fn).catch(function () {}).then(function () { busy = false; });
+        // A call that never answers (a phone that slept, Wi-Fi that stalled) must not stop the checking for good.
+        if (document.hidden || (busy && Date.now() - since < 30000)) return;
+        busy = true; since = Date.now();
+        var mine = since;
+        Promise.resolve().then(fn).catch(function () {}).then(function () { if (since === mine) busy = false; });
       }
       tick();
       setInterval(tick, ms);

@@ -219,11 +219,13 @@
 
     /** Calls fn now and every ms while the page is visible; never overlaps. */
     function poll(fn, ms) {
-      var busy = false;
+      var busy = false, since = 0;
       function tick() {
-        if (document.hidden || busy) return;
-        busy = true;
-        Promise.resolve().then(fn).catch(function () {}).then(function () { busy = false; });
+        // A call that never answers (a phone that slept, Wi-Fi that stalled) must not stop the checking for good.
+        if (document.hidden || (busy && Date.now() - since < 30000)) return;
+        busy = true; since = Date.now();
+        var mine = since;
+        Promise.resolve().then(fn).catch(function () {}).then(function () { if (since === mine) busy = false; });
       }
       tick();
       setInterval(tick, ms);
@@ -249,7 +251,7 @@
     var K = 'capture:' + SESSION_ID + ':';
     var Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
     // view: a step someone opened on purpose (an earlier one, say); '' follows the room.
-    var S = { state: null, stage: '', view: '', table: 0, role: '', voter: '', tokens: {}, busy: false, dots: null, ballot: null, sources: {}, readingEntry: 0 };
+    var S = { state: null, stage: '', view: '', table: 0, role: '', voter: '', tokens: {}, busy: false, dots: null, ballot: null, sentBallot: '', drafts: {}, myNotes: null, sources: {}, readingEntry: 0 };
 
     function randomId() {
       var a = new Uint8Array(16);
@@ -263,8 +265,12 @@
       return v;
     }
     function nextPerson() {
+      if (current() === 'vote' && S.ballot && used() && ballotKey() !== S.sentBallot) {
+        return Capture.toast('Send your votes first, then tap Next person.');
+      }
+      flushDots(); // the last person's dots go out under their own id
       S.voter = randomId(); Capture.store(K + 'voter', S.voter);
-      S.dots = []; S.ballot = {};
+      S.dots = []; S.ballot = {}; S.sentBallot = ''; S.drafts = {}; S.myNotes = null;
       if (S.state) { S.state.myDots = []; S.state.myVote = null; }
       S.role = ''; Capture.store(K + 'role', '');
       Capture.toast('Ready for the next person. Choose student or adult.');
@@ -277,15 +283,47 @@
 
     // ── Loading and polling ──────────────────────────────────────────────────
     // fresh: right after this device changed something, so its change shows at once.
+    var asked = 0, shown = 0;
     function load(force, fresh) {
+      var n = ++asked;
       return Capture.run('captureGetPhoneState', SESSION_ID, CAPTURE_KEY, S.table, S.voter, !!fresh).then(function (state) {
-        var moved = !S.state || state.stage !== S.stage;
+        if (n < shown) return; // a slower, older answer: what's on screen is newer
+        shown = n;
+        $('pageError').textContent = '';
+        var first = !S.stage, moved = state.stage !== S.stage, was = first ? '' : current();
         S.state = state;
         $('title').textContent = state.title;
-        if (moved) { S.stage = state.stage; S.view = ''; }
-        if (moved || force) { S.dots = null; S.ballot = null; render(); }
-        else refreshLists();
-      }).catch(function (err) { $('pageError').textContent = err.message; });
+        if (moved) S.stage = state.stage;
+        if (force || first) { if (moved) S.view = ''; return render(); }
+        if (!moved) return refreshLists();
+        // The room moved on. Someone in the middle of writing or voting stays
+        // where they are, with their words; everyone else follows the room.
+        if (hasUnsent()) {
+          S.view = was === S.stage ? '' : was;
+          renderStageBar(); renderAlso(); refreshLists();
+          Capture.toast('The room moved on to ' + stageInfo(S.stage).label + '. Finish here, then tap Back to now.');
+        } else { S.view = ''; render(); }
+      }).catch(function (err) { if (n >= shown) $('pageError').textContent = err.message; });
+    }
+
+    // Words or votes on this screen that haven't been sent yet.
+    function hasUnsent() {
+      var areas = $('view').querySelectorAll('textarea');
+      for (var i = 0; i < areas.length; i++) {
+        if (areas[i].dataset.editFlip) return true;
+        if (areas[i].value.trim() !== String(areas[i].dataset.saved || '').trim()) return true;
+      }
+      return current() === 'vote' && !!S.ballot && used() > 0 && ballotKey() !== S.sentBallot;
+    }
+    // What's typed is kept when a screen is redrawn or someone looks at another step.
+    function stashDrafts() {
+      $('view').querySelectorAll('textarea[id]').forEach(function (a) { if (!a.dataset.editFlip) S.drafts[a.id] = a.value; });
+      var level = document.querySelector('input[name="level"]:checked');
+      if ($('cardSend')) S.drafts.level = level ? level.value : '';
+    }
+    function restoreDrafts() {
+      $('view').querySelectorAll('textarea[id]').forEach(function (a) { if (typeof S.drafts[a.id] === 'string' && !a.dataset.editFlip) a.value = S.drafts[a.id]; });
+      if (S.drafts.level) { var el = document.querySelector('input[name="level"][value="' + CSS.escape(S.drafts.level) + '"]'); if (el) el.checked = true; }
     }
 
     function start() {
@@ -294,14 +332,25 @@
       var savedTable = Number(Capture.store(K + 'table')) || 0;
       S.table = PRESET_TABLE || savedTable;
       S.role = Capture.store(K + 'role') || '';
+      open(0);
+    }
+    // A whole room opens this at once, so a first try can fail on a good link: try again before saying so.
+    function open(tries) {
       Capture.run('captureGetPhoneState', SESSION_ID, CAPTURE_KEY, 0, S.voter).then(function (state) {
         S.state = state;
+        $('pageError').textContent = '';
         $('title').textContent = state.title;
         if (S.table > state.tables) S.table = 0;
         if (PRESET_TABLE && PRESET_TABLE <= state.tables) Capture.store(K + 'table', PRESET_TABLE);
         if (!S.table || !S.role) return showWho();
         afterWho();
-      }).catch(function (err) { $('title').textContent = 'Link not working'; $('pageError').textContent = err.message; });
+      }).catch(function (err) {
+        if (/table link/i.test(err.message)) { $('title').textContent = 'Link not working'; $('pageError').textContent = err.message; return; }
+        if (tries < 4) { $('pageError').textContent = 'Still connecting…'; return setTimeout(function () { open(tries + 1); }, 2500); }
+        $('title').textContent = 'Not connected';
+        $('pageError').innerHTML = esc(err.message) + ' <button type="button" class="btn btn-small" id="retryOpen">Try again</button>';
+        $('retryOpen').onclick = function () { $('pageError').textContent = 'Connecting…'; open(0); };
+      });
     }
 
     var polling = false;
@@ -314,6 +363,7 @@
 
     // ── Who: table and role ──────────────────────────────────────────────────
     function showWho() {
+      stashDrafts();
       var st = S.state, html = '';
       for (var t = 1; t <= st.tables; t++) html += '<button type="button" class="btn" data-table="' + t + '" aria-pressed="' + (S.table === t) + '" aria-label="Table ' + t + '">' + t + '</button>';
       $('tablePick').innerHTML = html;
@@ -344,16 +394,26 @@
     // Steps people add to. Any of them stays open after the room moves on.
     var OPEN_STEPS = ['signals', 'flips', 'flipdots', 'needs', 'vote', 'testdrive'];
     function current() { return S.view || S.stage; }
-    function render() {
+    function renderStageBar() {
       var info = stageInfo(S.stage);
       $('stageBar').hidden = false;
       $('stageBar').innerHTML = '<div><div class="what">Now: ' + esc(info.label) + '</div><p>' + esc(info.phone) + '</p></div>';
+    }
+    function render() {
+      stashDrafts();
+      renderStageBar();
       renderAlso();
+      drawView();
+    }
+    function drawView() {
       var views = { welcome: viewWelcome, signals: viewSignals, flips: viewFlips, flipdots: viewFlipDots, needs: viewNeeds,
         synthesis: viewSynthesis, vote: viewVote, results: viewResults, testdrive: viewTestDrive, close: viewClose };
       $('view').innerHTML = '';
       (views[current()] || viewWelcome)();
+      restoreDrafts();
     }
+    // Redraws a screen of buttons in place (new statements, newly published groups) without moving the page.
+    function redrawKeepingPlace() { var y = window.scrollY; drawView(); window.scrollTo(0, y); }
     function renderAlso() {
       var steps = OPEN_STEPS.filter(function (id) { return id !== 'vote' || (S.state.ballot && S.state.ballot.length); });
       $('also').hidden = false;
@@ -364,6 +424,13 @@
 
     function refreshLists() {
       var v = current();
+      renderAlso();
+      if (v === 'flipdots' && gallerySig() !== S.gallerySig) redrawKeepingPlace();
+      if (v === 'vote' && ballotSig() !== S.ballotSig) {
+        // Published, or published again: keep this person's votes for the groups that are still there.
+        if (S.ballot) { var ids = (S.state.ballot || []).map(function (g) { return g.id; }); Object.keys(S.ballot).forEach(function (id) { if (ids.indexOf(id) === -1) delete S.ballot[id]; }); }
+        redrawKeepingPlace();
+      }
       if (v === 'signals') renderSignalList();
       if (v === 'flips') renderFlipList();
       if (v === 'needs') { renderTopList(); renderCardList(); }
@@ -399,7 +466,7 @@
           S.tokens['s' + res.id] = res.token; Capture.store(K + 'tokens', S.tokens);
           $('sigText').value = ''; $('sigErr').textContent = ''; Capture.toast('Signal added.');
           load(false, true);
-        }).catch(function (e) { $('sigErr').textContent = e.message; }).then(function () { busy($('sigSend'), false, 'Add signal'); $('sigText').focus(); });
+        }).catch(function (e) { sendFailed($('sigErr'), e); }).then(function () { busy($('sigSend'), false, 'Add signal'); if ($('sigText')) $('sigText').focus(); });
       };
       renderSignalList();
     }
@@ -421,9 +488,10 @@
       $('flipSend').onclick = function () { saveFlip(0, $('flipText').value, $('flipSend'), $('flipErr'), function () { $('flipText').value = ''; }); };
       renderFlipList();
     }
-    function renderFlipList() {
+    function renderFlipList(force) {
       var list = $('flipList'); if (!list) return;
-      if (document.activeElement && document.activeElement.dataset && document.activeElement.dataset.editFlip) return;
+      // An open edit stays open, focused or not, until it is saved or cancelled.
+      if (!force && list.querySelector('[data-edit-flip]')) return;
       var flips = (S.state.table && S.state.table.flips) || [];
       list.innerHTML = flips.length ? flips.map(function (f, i) {
         return '<li class="panel" style="display:block"><div style="display:flex;gap:8px"><span class="rank">' + (i + 1) + '</span><span class="text">' + esc(f.text) + '</span></div>' +
@@ -439,17 +507,25 @@
       Capture.run('captureSaveFlip', SESSION_ID, CAPTURE_KEY, S.table, id, text, S.voter).then(function () {
         errEl.textContent = ''; if (done) done(); Capture.toast('Saved.');
         load(false, true);
-      }).catch(function (e) { errEl.textContent = e.message; }).then(function () { busy(btn, false, label); });
+      }).catch(function (e) { sendFailed(errEl, e); }).then(function () { busy(btn, false, label); });
+    }
+    // A send whose answer never came back may still have arrived: show the
+    // list as the server has it, so nobody sends the same thing twice.
+    function sendFailed(errEl, e) {
+      var lost = /connection dropped/i.test(e.message);
+      if (errEl) errEl.textContent = e.message + (lost ? ' It may have gone through: check the list on this page before sending again.' : '');
+      if (lost) load(false, true);
     }
 
     // Gallery dots -------------------------------------------------------------
     function viewFlipDots() {
       var t = T(), gallery = S.state.gallery || [];
       if (!S.dots) S.dots = (S.state.myDots || []).map(function (d) { return d.flipId + ':' + d.color; });
+      S.gallerySig = gallerySig();
       var byTable = {};
       gallery.forEach(function (f) { (byTable[f.table] = byTable[f.table] || []).push(f); });
       var html = '<h2>Gallery dots</h2><p class="muted small">' + esc(t.flipDots.map(function (d) { return d.label; }).join(' · ')) +
-        '. They save as you tap. Tap again to take one back.</p><p id="dotCount" class="small"></p>' +
+        '. They save as you tap. Tap again to take one back.</p><p class="small"><span id="dotCount"></span> <strong id="dotNote" role="status"></strong></p>' +
         '<div class="next-person"><span class="muted small">Sharing this device?</span><button type="button" class="btn btn-small" data-next-person="1">Next person</button></div>';
       Object.keys(byTable).sort(function (a, b) { return a - b; }).forEach(function (tb) {
         html += '<h3 style="font-size:1rem;margin-top:14px">Table ' + tb + '</h3><ol class="list">' + byTable[tb].map(function (f) {
@@ -461,17 +537,38 @@
       });
       if (!gallery.length) html += '<p class="muted">No flip statements yet.</p>';
       panel(html);
-      countDots();
+      countDots(); dotNote(Dots.note);
     }
+    function gallerySig() { return (S.state.gallery || []).map(function (f) { return f.id + ':' + f.text; }).join('|'); }
     function countDots() { var el = $('dotCount'); if (el) el.textContent = S.dots.length + (S.dots.length === 1 ? ' dot placed.' : ' dots placed.'); }
-    var dotTimer = null;
+    // Dots save one at a time, in the order tapped, and keep trying if a save fails.
+    var Dots = { timer: null, waiting: null, sending: false, tries: 0, note: '' };
+    function dotNote(text) { Dots.note = text; var el = $('dotNote'); if (el) el.textContent = text; }
     function saveDots() {
-      clearTimeout(dotTimer);
-      dotTimer = setTimeout(function () {
-        var dots = S.dots.map(function (k) { var p = k.split(':'); return { flipId: Number(p[0]), color: p[1] }; });
-        Capture.run('captureSaveFlipDots', SESSION_ID, CAPTURE_KEY, { voter: S.voter, role: S.role, dots: dots, table: S.table })
-          .then(function () { Capture.toast('Dots saved.'); }).catch(function (e) { Capture.toast(e.message); });
-      }, 600);
+      Dots.waiting = { voter: S.voter, role: S.role, table: S.table,
+        dots: S.dots.map(function (k) { var p = k.split(':'); return { flipId: Number(p[0]), color: p[1] }; }) };
+      Dots.tries = 0;
+      clearTimeout(Dots.timer);
+      Dots.timer = setTimeout(flushDots, 600);
+    }
+    function flushDots() {
+      clearTimeout(Dots.timer);
+      if (!Dots.waiting || Dots.sending) return;
+      var job = Dots.waiting;
+      Dots.waiting = null; Dots.sending = true;
+      Capture.run('captureSaveFlipDots', SESSION_ID, CAPTURE_KEY, job).then(function () {
+        Dots.tries = 0;
+        if (job.voter === S.voter && S.state) S.state.myDots = job.dots;
+        if (!Dots.waiting) { dotNote(''); Capture.toast('Dots saved.'); }
+      }, function (e) {
+        Dots.tries++;
+        if (!Dots.waiting) Dots.waiting = job;
+        if (Dots.tries > 5) { dotNote('Not saved: ' + e.message + ' Tap any dot to try again.'); Dots.waiting = null; }
+        else dotNote('Not saved yet. Trying again…');
+      }).then(function () {
+        Dots.sending = false;
+        if (Dots.waiting) Dots.timer = setTimeout(flushDots, Dots.tries ? Math.min(8000, 1500 * Dots.tries) : 0);
+      });
     }
 
     // Need cards ---------------------------------------------------------------
@@ -546,11 +643,11 @@
       Capture.run('captureSubmitCard', SESSION_ID, CAPTURE_KEY, { table: S.table, flipId: Number(flip.value), fields: fields, level: level.value,
         role: role ? role.value : S.role, sources: Object.keys(S.sources), device: S.voter, readingEntry: S.sources.photo ? S.readingEntry : 0 }).then(function (res) {
         S.tokens['c' + res.id] = res.token; Capture.store(K + 'tokens', S.tokens);
-        $('needText').value = ''; level.checked = false; S.sources = {}; S.readingEntry = 0; err.textContent = '';
+        $('needText').value = ''; level.checked = false; S.drafts.level = ''; S.sources = {}; S.readingEntry = 0; err.textContent = '';
         if ($('photoStatus')) { $('photoStatus').className = 'alert'; $('photoStatus').textContent = ''; }
         Capture.toast('Card ' + res.id + ' sent. Sharing this device? Pass it on.');
         load(false, true);
-      }).catch(function (e) { err.textContent = e.message; }).then(function () { busy($('cardSend'), false, 'Send card'); });
+      }).catch(function (e) { sendFailed(err, e); }).then(function () { busy($('cardSend'), false, 'Send card'); });
     }
     function shrink(file) {
       return new Promise(function (resolve, reject) {
@@ -569,15 +666,18 @@
     function readPhoto() {
       var file = this.files && this.files[0]; this.value = '';
       if (!file) return;
-      var st = $('photoStatus');
+      var st = $('photoStatus'), typedBefore = $('needText').value;
       st.className = 'alert'; st.innerHTML = '<span class="photo-preview"><span class="spinner dark" aria-hidden="true"></span> Reading the card…</span>';
       shrink(file).then(function (dataUrl) {
         return Capture.run('captureReadPhoto', SESSION_ID, CAPTURE_KEY, dataUrl.split(',')[1], 'image/jpeg', S.table, S.voter);
       }).then(function (r) {
         if (r.empty) { st.className = 'alert alert-warn'; st.textContent = 'No writing found. Try again closer, or type it.'; return; }
         S.readingEntry = r.entry || 0;
-        var k = T().fields[0].key;
-        if (r.fields[k]) $('needText').value = r.fields[k];
+        var k = T().fields[0].key, box = $('needText');
+        if (!box) return;
+        st = $('photoStatus') || st;
+        // Words typed while the photo was being read are kept, with the reading after them.
+        if (r.fields[k]) box.value = box.value !== typedBefore && box.value.trim() ? box.value.replace(/\s*$/, ' ') + r.fields[k] : r.fields[k];
         if (r.level) { var el = document.querySelector('input[name="level"][value="' + CSS.escape(r.level) + '"]'); if (el) el.checked = true; }
         S.sources.photo = true;
         var unclear = String(r.fields[k] || '').indexOf('[illegible]') !== -1;
@@ -595,10 +695,12 @@
     // Vote ---------------------------------------------------------------------
     function viewVote() {
       var t = T(), ballot = S.state.ballot;
+      S.ballotSig = ballotSig();
       if (!ballot || !ballot.length) { panel('<h2>Voting opens soon</h2><p>The facilitators are publishing the groups.</p>'); return; }
       if (!S.ballot) {
         S.ballot = {};
         ((S.state.myVote && S.state.myVote.choices) || []).forEach(function (id) { S.ballot[id] = (S.ballot[id] || 0) + 1; });
+        S.sentBallot = S.state.myVote ? ballotKey() : '';
       }
       var html = '<h2>' + esc(t.vote.prompt) + '</h2><p class="muted small">' + esc(t.vote.note) + '</p>';
       t.level.options.forEach(function (o) {
@@ -613,7 +715,8 @@
               '<span class="n" aria-live="polite">' + n + '</span><button type="button" class="btn" data-more="' + esc(g.id) + '" aria-label="One more vote for ' + esc(g.topic) + '">+</button></span></li>';
           }).join('') + '</ol>';
       });
-      html += '<div class="remaining"><strong id="votesLeft"></strong><button type="button" class="btn btn-primary" id="voteSend">Send my votes</button></div>' +
+      html += '<div id="voteErr" class="alert alert-bad" role="alert"></div>' +
+        '<div class="remaining"><strong id="votesLeft"></strong><button type="button" class="btn btn-primary" id="voteSend">' + (S.sentBallot ? 'Update my votes' : 'Send my votes') + '</button></div>' +
         '<div class="next-person"><span class="muted small">Sharing this device? Send your votes, then</span><button type="button" class="btn btn-small" data-next-person="1">Next person</button></div>';
       panel(html);
       votesLeft();
@@ -621,12 +724,21 @@
         var choices = [];
         Object.keys(S.ballot).forEach(function (id) { for (var i = 0; i < S.ballot[id]; i++) choices.push(id); });
         if (!choices.length) return Capture.toast('Add at least one vote.');
+        var label = $('voteSend').textContent, voter = S.voter, role = S.role, key = ballotKey();
         busy($('voteSend'), true, 'Sending…');
-        Capture.run('captureSaveVote', SESSION_ID, CAPTURE_KEY, { voter: S.voter, role: S.role, choices: choices, table: S.table })
-          .then(function () { Capture.toast('Votes saved. You can change them until voting closes.'); })
-          .catch(function (e) { Capture.toast(e.message); }).then(function () { busy($('voteSend'), false, 'Update my votes'); });
+        Capture.run('captureSaveVote', SESSION_ID, CAPTURE_KEY, { voter: voter, role: role, choices: choices, table: S.table })
+          .then(function () {
+            if (voter === S.voter) { S.sentBallot = key; if (S.state) S.state.myVote = { role: role, choices: choices }; }
+            label = 'Update my votes';
+            if ($('voteErr')) $('voteErr').textContent = '';
+            Capture.toast('Votes saved. You can change them until voting closes.');
+          })
+          .catch(function (e) { if ($('voteErr')) $('voteErr').textContent = 'Your votes are not saved yet. ' + e.message; else Capture.toast(e.message); })
+          .then(function () { busy($('voteSend'), false, label); });
       };
     }
+    function ballotSig() { return (S.state.ballot || []).map(function (g) { return g.id + ':' + g.topic + ':' + g.column; }).join('|'); }
+    function ballotKey() { return Object.keys(S.ballot || {}).filter(function (id) { return S.ballot[id]; }).sort().map(function (id) { return id + 'x' + S.ballot[id]; }).join(','); }
     function used() { return Object.keys(S.ballot).reduce(function (n, k) { return n + S.ballot[k]; }, 0); }
     function votesLeft() { var el = $('votesLeft'); if (el) { var n = used(); el.textContent = n + (n === 1 ? ' vote placed' : ' votes placed'); } }
 
@@ -652,20 +764,24 @@
 
     // Test drive ---------------------------------------------------------------
     function viewTestDrive() {
-      var t = T(), a = S.state.table && S.state.table.assignment, td = (S.state.table && S.state.table.testDrive) || {}, notes = td.mine || {};
+      var t = T(), a = S.state.table && S.state.table.assignment, td = (S.state.table && S.state.table.testDrive) || {}, notes = S.myNotes || td.mine || {};
       panel('<h2>Your table’s priority</h2>' + (a ? '<div class="big-topic">' + esc(a.topic) + '</div>' : '<p class="muted">A facilitator will tell you which need your table has.</p>') +
         '<p class="muted small">' + esc(t.testDrive.intro) + '</p>');
       panel('<h2>Your notes</h2>' + t.testDrive.prompts.map(function (p) { return textField('td_' + p.key, p.label, p.hint, t.testDrive.maxLength); }).join('') +
         '<div id="tdErr" class="alert alert-bad" role="alert"></div><button type="button" class="btn btn-primary btn-block" id="tdSend">Save notes</button>' +
         '<p class="muted small">Everyone at your table can save their own notes. Nobody’s notes replace anyone else’s.</p>');
       panel('<h2>Your table’s other notes</h2><div id="otherNotes"></div>');
-      t.testDrive.prompts.forEach(function (p) { $('td_' + p.key).value = notes[p.key] || ''; });
+      t.testDrive.prompts.forEach(function (p) { $('td_' + p.key).value = notes[p.key] || ''; $('td_' + p.key).dataset.saved = notes[p.key] || ''; });
       renderOtherNotes();
       $('tdSend').onclick = function () {
         var out = {}; t.testDrive.prompts.forEach(function (p) { out[p.key] = $('td_' + p.key).value; });
         busy($('tdSend'), true, 'Saving…');
-        Capture.run('captureSaveTestDrive', SESSION_ID, CAPTURE_KEY, S.table, out, S.voter).then(function () { $('tdErr').textContent = ''; Capture.toast('Notes saved.'); })
-          .catch(function (e) { $('tdErr').textContent = e.message; }).then(function () { busy($('tdSend'), false, 'Save notes'); });
+        var voter = S.voter;
+        Capture.run('captureSaveTestDrive', SESSION_ID, CAPTURE_KEY, S.table, out, voter).then(function () {
+          if (voter === S.voter) S.myNotes = out;
+          t.testDrive.prompts.forEach(function (p) { var a = $('td_' + p.key); if (a && a.value === out[p.key]) a.dataset.saved = out[p.key]; });
+          if ($('tdErr')) $('tdErr').textContent = ''; Capture.toast('Notes saved.');
+        }).catch(function (e) { if ($('tdErr')) $('tdErr').textContent = 'Not saved yet. ' + e.message; else Capture.toast(e.message); }).then(function () { busy($('tdSend'), false, 'Save notes'); });
       };
     }
     function renderOtherNotes() {
@@ -690,32 +806,34 @@
     document.addEventListener('click', function (e) {
       var b = e.target.closest('button'); if (!b) return;
       if (b.dataset.mic) return toggleMic(b);
-      if (b.dataset.view !== undefined) { S.view = b.dataset.view === S.stage ? '' : b.dataset.view; S.dots = null; S.ballot = null; render(); window.scrollTo(0, 0); return; }
+      if (b.dataset.view !== undefined) { stashDrafts(); S.view = b.dataset.view === S.stage ? '' : b.dataset.view; render(); window.scrollTo(0, 0); return; }
       if (b.dataset.nextPerson) return nextPerson();
       if (b.dataset.rmSignal) {
-        var sid = b.dataset.rmSignal;
-        return Capture.run('captureRemoveSignal', SESSION_ID, CAPTURE_KEY, Number(sid), S.tokens['s' + sid], S.table, S.voter).then(function () { delete S.tokens['s' + sid]; Capture.store(K + 'tokens', S.tokens); return load(false, true); }).catch(function (x) { Capture.toast(x.message); });
+        var sid = b.dataset.rmSignal; b.disabled = true;
+        return Capture.run('captureRemoveSignal', SESSION_ID, CAPTURE_KEY, Number(sid), S.tokens['s' + sid], S.table, S.voter).then(function () { delete S.tokens['s' + sid]; Capture.store(K + 'tokens', S.tokens); return load(false, true); }).catch(function (x) { b.disabled = false; Capture.toast(x.message); });
       }
       if (b.dataset.rmCard) {
-        var cid = b.dataset.rmCard;
-        return Capture.run('captureRemoveOwnCard', SESSION_ID, CAPTURE_KEY, Number(cid), S.tokens['c' + cid], S.table, S.voter).then(function () { delete S.tokens['c' + cid]; Capture.store(K + 'tokens', S.tokens); Capture.toast('Card removed.'); return load(false, true); }).catch(function (x) { Capture.toast(x.message); });
+        var cid = b.dataset.rmCard; b.disabled = true;
+        return Capture.run('captureRemoveOwnCard', SESSION_ID, CAPTURE_KEY, Number(cid), S.tokens['c' + cid], S.table, S.voter).then(function () { delete S.tokens['c' + cid]; Capture.store(K + 'tokens', S.tokens); Capture.toast('Card removed.'); return load(false, true); }).catch(function (x) { b.disabled = false; Capture.toast(x.message); });
       }
       if (b.dataset.rmFlip) {
-        return Capture.run('captureRemoveFlip', SESSION_ID, CAPTURE_KEY, S.table, Number(b.dataset.rmFlip), S.voter).then(function () { return load(false, true); }).catch(function (x) { Capture.toast(x.message); });
+        b.disabled = true;
+        return Capture.run('captureRemoveFlip', SESSION_ID, CAPTURE_KEY, S.table, Number(b.dataset.rmFlip), S.voter).then(function () { return load(false, true); }).catch(function (x) { b.disabled = false; Capture.toast(x.message); });
       }
       if (b.dataset.edit) {
-        var li = b.closest('li'), f = (S.state.table.flips || []).find(function (x) { return String(x.id) === b.dataset.edit; });
+        var li = b.closest('li'), f = ((S.state.table && S.state.table.flips) || []).find(function (x) { return String(x.id) === b.dataset.edit; });
+        if (!f) return renderFlipList();
         li.innerHTML = '<label class="sr-only" for="ef' + f.id + '">Edit</label><textarea id="ef' + f.id + '" data-edit-flip="1" maxlength="' + T().parent.maxLength + '">' + esc(f.text) + '</textarea>' +
           '<div class="alert alert-bad" role="alert" id="efErr' + f.id + '"></div><div style="display:flex;gap:8px;margin-top:6px"><button type="button" class="btn btn-primary btn-small" data-save-flip="' + f.id + '">Save</button>' +
           '<button type="button" class="btn btn-small" data-cancel-edit="1">Cancel</button></div>';
         $('ef' + f.id).focus();
         return;
       }
-      if (b.dataset.saveFlip) { var id = b.dataset.saveFlip; return saveFlip(Number(id), $('ef' + id).value, b, $('efErr' + id)); }
-      if (b.dataset.cancelEdit) { document.activeElement.blur(); return renderFlipList(); }
+      if (b.dataset.saveFlip) { var id = b.dataset.saveFlip; return saveFlip(Number(id), $('ef' + id).value, b, $('efErr' + id), function () { renderFlipList(true); }); }
+      if (b.dataset.cancelEdit) return renderFlipList(true);
       if (b.dataset.top) {
-        var top = b.getAttribute('aria-pressed') !== 'true';
-        return Capture.run('captureSetFlipTop', SESSION_ID, CAPTURE_KEY, S.table, Number(b.dataset.top), top, S.voter).then(function () { return load(false, true); }).catch(function (x) { Capture.toast(x.message); });
+        var top = b.getAttribute('aria-pressed') !== 'true'; b.disabled = true;
+        return Capture.run('captureSetFlipTop', SESSION_ID, CAPTURE_KEY, S.table, Number(b.dataset.top), top, S.voter).then(function () { return load(false, true); }).catch(function (x) { b.disabled = false; Capture.toast(x.message); });
       }
       if (b.dataset.dot) {
         var k = b.dataset.dot, i = S.dots.indexOf(k);

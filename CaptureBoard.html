@@ -176,7 +176,17 @@
     table.audit { width: 100%; border-collapse: collapse; font-size: .85rem; }
     table.audit th, table.audit td { border-bottom: 1px solid var(--line); padding: 6px; text-align: left; vertical-align: top; }
     table.audit td.wrap { overflow-wrap: anywhere; max-width: 36em; }
+    .linkrow { border-top: 1px solid var(--line); padding-top: 12px; }
+    .linkrow:first-of-type { border-top: 0; padding-top: 0; }
+    .linkhead { display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; }
+    .linkbtns { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
+    .linktext { display: block; font: .8rem/1.4 ui-monospace, Menlo, Consolas, monospace; overflow-wrap: anywhere; user-select: all; -webkit-user-select: all;
+      background: #F4F6F8; border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; color: #17212B; }
+    .qrbox { margin-top: 10px; text-align: center; }
+    .qrbox svg { width: min(72vmin, 420px); height: auto; background: #fff; }
   </style>
+  <!-- QR codes are drawn in the browser by qrcode-generator (MIT). If it can't load, the QR buttons are left out. -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 </head>
 <body>
   <header class="bar">
@@ -612,15 +622,45 @@
     // Settings -----------------------------------------------------------------
     function tabSettings() {
       var b = S.board, l = b.links || {};
+      // Each link can be opened, copied whole, or shown as a QR code to scan: nobody has to select text in a box.
+      var canQr = typeof qrcode === 'function';
       body('<section class="panel section stack"><h2>Links</h2>' +
-        [['Table and voting link (no sign-in)', l.table], ['Projector wall (no sign-in)', l.wall], ['Printable table cards', l.tableCards], ['This board', l.board]].map(function (x) {
-          return x[1] ? '<div><label class="small">' + esc(x[0]) + '</label><input type="text" readonly value="' + esc(x[1]) + '"></div>' : ''; }).join('') +
+        LINKS.map(function (x) {
+          var url = l[x[0]]; if (!url) return '';
+          return '<div class="linkrow"><div class="linkhead"><strong>' + esc(x[1]) + '</strong><span class="muted small">' + esc(x[2]) + '</span></div>' +
+            '<div class="linkbtns"><a class="btn btn-small btn-primary" href="' + esc(url) + '" target="_blank" rel="noopener">Open</a>' +
+            '<button type="button" class="btn btn-small" data-copy-link="' + x[0] + '">Copy link</button>' +
+            (canQr && x[3] ? '<button type="button" class="btn btn-small" data-qr="' + x[0] + '" aria-expanded="' + (S.qr === x[0]) + '">' + (S.qr === x[0] ? 'Hide QR code' : 'Show QR code') + '</button>' : '') + '</div>' +
+            '<code class="linktext" aria-label="' + esc(x[1]) + ' address">' + esc(url) + '</code>' +
+            (canQr && S.qr === x[0] ? '<div class="qrbox">' + qrSvg(url) + '<p class="muted small">Scan with a phone camera.</p></div>' : '') + '</div>';
+        }).join('') +
         '</section><section class="panel section stack"><h2>Exit survey</h2><p class="muted small">Shown on phones and the wall during Close.</p>' +
         '<div><label for="survey">Survey link</label><input type="text" id="survey" placeholder="https://" value="' + esc(b.config.surveyUrl || '') + '"></div>' +
         '<button type="button" class="btn btn-small" id="surveySave">Save survey link</button></section>' +
         '<section class="panel section stack"><h2>AI help</h2><p class="small">' + (b.ai && b.ai.enabled ? 'On. Spent today: $' + b.ai.spentToday.toFixed(2) + ' of a $' + b.ai.budget.toFixed(0) + ' daily budget.' : 'Off.') +
         ' AI suggests groups and reads photos; people confirm everything it suggests. Every call is in the audit trail.</p></section>');
       $('surveySave').onclick = function () { call('captureSetSurveyUrl', SESSION_ID, $('survey').value).then(function () { Capture.toast('Survey link saved.'); }); };
+    }
+
+    // key, name, who it is for, whether a QR code helps
+    var LINKS = [['table', 'Table and voting link', 'For phones and laptops in the room. No sign-in.', true], ['wall', 'Projector wall', 'Counts and topics only. No sign-in.', true],
+      ['tableCards', 'Printable table cards', 'One page per table, each with its own QR code. Facilitators.', false], ['board', 'This board', 'Facilitators, signed in with Google.', false]];
+    function qrSvg(text) {
+      try { var qr = qrcode(0, 'M'); qr.addData(text); qr.make(); return qr.createSvgTag(8, 4); } catch (e) { return ''; }
+    }
+    // Copies with the clipboard where the page is allowed to use it, the older way where it isn't, and as a last resort shows the link to copy by hand.
+    function copyText(text, what) {
+      var ok = function () { Capture.toast(what + ' copied.'); };
+      var older = function () {
+        var a = document.createElement('textarea'), done = false;
+        a.value = text; a.setAttribute('readonly', ''); a.style.position = 'fixed'; a.style.top = '0'; a.style.opacity = '0';
+        document.body.appendChild(a); a.select(); a.setSelectionRange(0, text.length);
+        try { done = document.execCommand('copy'); } catch (e) { done = false; }
+        document.body.removeChild(a);
+        if (done) ok(); else prompt('Copy this link:', text);
+      };
+      try { if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(text).then(ok, older); } catch (e) {}
+      older();
     }
 
     // From paper ---------------------------------------------------------------
@@ -803,9 +843,7 @@
     // ── Events ───────────────────────────────────────────────────────────────
     $('copyLink').onclick = function () {
       var link = S.board && S.board.links && S.board.links.table; if (!link) return;
-      var done = function () { Capture.toast('Table link copied.'); };
-      if (navigator.clipboard) navigator.clipboard.writeText(link).then(done, function () { prompt('Copy the table link:', link); });
-      else prompt('Copy the table link:', link);
+      copyText(link, 'Table link');
     };
 
     document.addEventListener('click', function (e) {
@@ -821,6 +859,8 @@
           .then(function () { S.moving = ''; renderStepper(); });
       }
       if (t.dataset.tab) { S.tab = t.dataset.tab; S.tabChosen = true; if (t.dataset.tab === 'record') S.audit = null; return renderAll(); }
+      if (t.dataset.copyLink) { var cl = LINKS.find(function (x) { return x[0] === t.dataset.copyLink; }), cu = S.board.links && S.board.links[t.dataset.copyLink]; if (cl && cu) copyText(cu, cl[1]); return; }
+      if (t.dataset.qr) { S.qr = S.qr === t.dataset.qr ? '' : t.dataset.qr; return renderAll(); }
       if (t.dataset.paperOpen) return openPaper(t.dataset.paperOpen);
       if (t.dataset.paperClose) { if (S.paper && S.paper.rows.length && !confirm('Leave without adding these rows?')) return; S.paper = null; return renderPaper(); }
       if (t.dataset.paperAddRow) { S.paper.rows.push(blankRow(S.paper.mode)); return renderPaper(); }

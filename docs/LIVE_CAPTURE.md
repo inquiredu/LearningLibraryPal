@@ -71,7 +71,7 @@ Every change writes a row to the session's **Live Audit** tab, in the same lock 
 | Devices (tables and voting) | `/exec?page=capture&session=S-…&k=…` (`&t=3` chooses table 3) | Anyone with the link |
 | Wall | `/exec?page=wall&session=S-…&k=…` | Anyone with the wall link |
 
-The `k` parameter is a random table key made when capture is turned on. Every table and wall call checks it, so the session's public library link cannot be used to send cards. The board shows both links. Laptops use the same table link (the board's **Copy table link**).
+The `k` parameter is a random table key made when capture is turned on. Every table and wall call checks it, so the session's public library link cannot be used to send cards. The board's **Settings & links** tab lists every link with **Open**, **Copy link** and, for the table link and the wall, **Show QR code** (large enough to scan from a laptop held up or a projector). Laptops use the same table link (the board's **Copy table link**).
 
 ## AI skills
 
@@ -204,5 +204,4 @@ Not checked, because it needs a real Google run:
 ## Next ideas
 
 - A second template to prove the pattern, for example exit tickets or "one word for today".
-- A QR code drawn on the board itself.
 - Saving the final groups into the session's library page as a post-event record.

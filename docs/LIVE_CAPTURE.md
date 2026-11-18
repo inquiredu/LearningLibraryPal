@@ -65,7 +65,8 @@ Every change writes a row to the session's **Live Audit** tab, in the same lock 
 
 | Page | URL | Who |
 |---|---|---|
-| Board | `/exec?page=board` (then pick a session) | Authorized facilitators (`AuthService`) |
+| Dashboard | `/exec` on the board deployment | Authorized facilitators. Each session's card shows **Before** (library and skills), **During** (live capture and its stage) and **After** (results), and each one opens its place. A live-capture session leads with **Open board**, **Wall**, **Table cards** and **Copy table link**; any other session offers **Turn on live capture**, which opens the board's setup for it. |
+| Board | `/exec?page=board&session=S-…` (`&tab=record` opens Record & results) | Authorized facilitators (`AuthService`). **← Dashboard** goes back. |
 | Table cards | `/exec?page=tablecards&session=S-…` | Authorized facilitators |
 | Devices (tables and voting) | `/exec?page=capture&session=S-…&k=…` (`&t=3` chooses table 3) | Anyone with the link |
 | Wall | `/exec?page=wall&session=S-…&k=…` | Anyone with the wall link |
@@ -186,7 +187,7 @@ Then open `capture.html`, `board.html` or `wall.html` from that folder in a brow
 
 Checked here, with stand-ins for Google:
 
-- `npm run check` and `npm test`: 79 tests pass. They cover the agenda rules (cards under their own table's statement or none, columns and **?**, the published snapshot, dots and votes with no per-person caps, tallies from devices and paper, ranking and assignment), that stages lock nothing and voting needs published groups, the key and sign-in boundaries, the audit row each change writes (who, before, after; nothing deleted), paper readings (matching, checking, how confirmed rows differ), the dollar budget, the results document's content and layout, photo filing, the wall never carrying anyone's words, the store reading older sheets by header, the AI calls, page rendering and `scripts/poc.sh`.
+- `npm run check` and `npm test`: 84 tests pass. They cover the agenda rules (cards under their own table's statement or none, columns and **?**, the published snapshot, dots and votes with no per-person caps, tallies from devices and paper, ranking and assignment), that stages lock nothing and voting needs published groups, the key and sign-in boundaries, the audit row each change writes (who, before, after; nothing deleted), paper readings (matching, checking, how confirmed rows differ), the dollar budget, the results document's content and layout, photo filing, the wall never carrying anyone's words, the store reading older sheets by header, the AI calls, page rendering and `scripts/poc.sh`.
 - Every stage's device, board and wall page built by `scripts/capture-preview.cjs`, with no script errors. A scripted click-through covered a late signal and a card with no statement while the room was at Test drive, per-device test-drive notes, 12 gallery dots and 5 votes on one device, Next person, a card photo reading, every **From paper** mode (read, edit, untick, add a row, confirm), the Record & results tab and the results document button.
 
 Not checked, because it needs a real Google run:

@@ -34,7 +34,7 @@ What it gives back to MDE:
 
 | What | Where |
 |---|---|
-| Code | branch `claude/need-cards-live-capture` (all pushed). Latest code: `28b2bb0`. `main` has PR #7 (up to `44ebebf`) but not the speed fix or anything after it. |
+| Code | branch `claude/need-cards-live-capture` (all pushed). Latest code: `5e1fe7a`. `main` has PR #7 (up to `44ebebf`) but not the speed fix or anything after it. |
 | How it works | `docs/LIVE_CAPTURE.md` |
 | Proof-of-concept instance | Sean's Google account. Its Sheet is `1wdxMK4y1-VdsMUDQXnBJDszEdczuTqER0Ap87V_LpBs`; `npm run poc` prints the board and public links. |
 | Where `npm run poc` runs | **Sean's Mac**, in `~/Documents/VIBECODE/LearningLibrary/LearningLibraryPal` (a clone of this branch). clasp there is signed in as the POC's owner, and `.clasp.poc.json` and `.poc.json` (git-ignored) point at the POC project `1cdw9cMWVrxaE4aI1xpk2iITZ3By7ZiLyTRFbqKWDsv6WsCLqDZ2hP4m6`. A Claude session on the Mac can run the deploy, after Sean's go. A fresh clone without those two files makes a new POC instead of updating this one. The Codespace is no longer needed. |
@@ -64,7 +64,7 @@ node scripts/check.cjs
 node scripts/capture-preview.cjs /tmp/preview
 ```
 
-79 tests pass as of `28b2bb0`. The preview builds every stage's device, board and wall page with made-up data and a stand-in for Apps Script.
+84 tests pass as of `5e1fe7a`. The preview builds every stage's device, board and wall page with made-up data and a stand-in for Apps Script.
 
 On a Mac, run `npm ci --ignore-scripts` first, and run the tests with `TMPDIR` set to its real path (`TMPDIR=$(cd "${TMPDIR:-/tmp}" && pwd -P) npm test`). Otherwise one `tests/poc.test.cjs` check fails because macOS temp folders are symlinks. CI on Linux is not affected.
 
@@ -72,6 +72,7 @@ On a Mac, run `npm ci --ignore-scripts` first, and run the tests with `TMPDIR` s
 
 | Commit | What |
 |---|---|
+| `5e1fe7a` | **A connected dashboard, and library links that open.** Every session card shows Before / During / After, and every label that names a place opens it (title, status, each step). Live-capture sessions lead with the board, wall, table cards and table link; others offer to turn live capture on. The board links back to the dashboard and can open on a tab. The board header no longer squeezes its title to one letter per line on a phone. **Found while building it:** on the POC, `ScriptApp.getService().getUrl()` returns an address Google answers with "Page Not Found", and the dashboard's Open Library, the stored library links, and the base for New Session and Design were all built from it. Public pages now use the public deployment and facilitator pages the board deployment (`appPublicUrl_`, `appFacilitatorUrl_`); sessions' library links are worked out fresh instead of read from their rows. Any email already sent carries the old link. |
 | `28b2bb0` | **Writes flushed before the lock is let go.** New entry numbers are the highest so far + 1, read under the lock; without a flush, the next writer could read the Sheet before the last write landed, and two tables sending at once could get the same number, and a settings change could save back a stale copy. Google's `Lock.releaseLock()` docs say to flush first. The November 17 rehearsal's stage moves show this happening (see [Not yet proven on Google](#not-yet-proven-on-google)). |
 | `6956560` | A code comment no longer points at Gather. |
 | `140af3e` | **Speed.** The cached snapshot was over Apps Script's 100 KB cache limit, so every device check-in re-read the whole Sheet. It is now cached in pieces and not dropped on writes; whoever just changed something reads fresh. Settings and the session lookup are cached. Measured on a busy stand-in: device check-in 18 → 0 Sheet calls, sending a card 37 → 12, board refresh 19 → 0. |

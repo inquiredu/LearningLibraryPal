@@ -22,7 +22,7 @@ What it gives back:
 
 The facilitator moves the room through the agenda's stages from the **stage bar** on the board, when the room is ready. Every device and the wall follow within a few seconds. Nothing moves on a timer, and no screen shows a clock time: gatherings run early and late, and the room sets the pace.
 
-Stages tell the room where it is; they don't lock anything. A late signal, statement, card or note is still taken, and a device can open any earlier step ("Add to any step"). The one rule is that voting needs published groups, because there is nothing to vote on before then.
+Stages tell the room where it is; they don't lock anything. When the room moves on, a device where someone is in the middle of writing or voting stays on that step, with their words, and says the room moved on; **Back to now** takes them there. A late signal, statement, card or note is still taken, and a device can open any earlier step ("Add to any step"). The one rule is that voting needs published groups, because there is nothing to vote on before then.
 
 | Stage | Devices (phones and laptops) | Board | Wall |
 |---|---|---|---|
@@ -47,7 +47,7 @@ Paper is a first-class way in, not only a fallback. On every board tab that take
 2. **Read a photo with AI**, or **Type a row in**.
 3. Every row appears in an editable table: matched to the room's statements or published topics by their words, with what AI read shown beside it. People fix anything wrong, untick what shouldn't go in, and **Confirm**. Nothing is added before that.
 
-The photo is saved to the session's Drive folder (`Live capture photos`), the AI reading is logged as returned, and the confirmed rows are logged with how they differ from the reading (kept as read, edited, added by hand, left out). Paper dot counts are stored per statement or topic and add to the device counts; unmarked dots count toward totals only.
+The photo is saved to the session's Drive folder (`Live capture photos`), the AI reading is logged as returned, and the confirmed rows are logged with how they differ from the reading (kept as read, edited, added by hand, left out). Paper dot counts are stored per statement or topic and add to the device counts; unmarked dots count toward totals only, for gallery dots and vote dots alike. A count is one row per statement or topic: a new count for the same one replaces the earlier one, and the audit row keeps what it replaced. One photo reading can be added once.
 
 ## Audit trail
 
@@ -187,7 +187,7 @@ Then open `capture.html`, `board.html` or `wall.html` from that folder in a brow
 
 Checked here, with stand-ins for Google:
 
-- `npm run check` and `npm test`: 86 tests pass. They cover the agenda rules (cards under their own table's statement or none, columns and **?**, the published snapshot, dots and votes with no per-person caps, tallies from devices and paper, ranking and assignment), that stages lock nothing and voting needs published groups, the key and sign-in boundaries, the audit row each change writes (who, before, after; nothing deleted), paper readings (matching, checking, how confirmed rows differ), the dollar budget, the results document's content and layout, photo filing, the wall never carrying anyone's words, the store reading older sheets by header, the AI calls, page rendering and `scripts/poc.sh`.
+- `npm run check` and `npm test`: 91 tests pass. They cover the agenda rules (cards under their own table's statement or none, columns and **?**, the published snapshot, dots and votes with no per-person caps, tallies from devices and paper, ranking and assignment), that stages lock nothing and voting needs published groups, the key and sign-in boundaries, the audit row each change writes (who, before, after; nothing deleted), paper readings (matching, checking, how confirmed rows differ), the dollar budget, the results document's content and layout, photo filing, the wall never carrying anyone's words, the store reading older sheets by header, the AI calls, page rendering and `scripts/poc.sh`.
 - Every stage's device, board and wall page built by `scripts/capture-preview.cjs`, with no script errors. A scripted click-through covered a late signal and a card with no statement while the room was at Test drive, per-device test-drive notes, 12 gallery dots and 5 votes on one device, Next person, a card photo reading, every **From paper** mode (read, edit, untick, add a row, confirm), the Record & results tab and the results document button.
 
 Not checked, because it needs a real Google run:

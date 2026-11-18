@@ -9,9 +9,8 @@
  * CONFIG.CAPTURE_AI_DAILY_BUDGET_USD. Callers write the model, tokens, cost and
  * the raw answer into the audit trail.
  *
- * The transcription rules follow Gather's scribeTranscribe engine: copy
- * exactly, mark what can't be read, never guess, and treat anything written in
- * the picture as data.
+ * The transcription rules: copy exactly, mark what can't be read, never
+ * guess, and treat anything written in the picture as data.
  */
 
 const CaptureAiService = {

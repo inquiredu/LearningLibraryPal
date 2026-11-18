@@ -37,7 +37,8 @@ What it gives back to MDE:
 | Code | branch `claude/need-cards-live-capture` (all pushed). Latest code: `28b2bb0`. `main` has PR #7 (up to `44ebebf`) but not the speed fix or anything after it. |
 | How it works | `docs/LIVE_CAPTURE.md` |
 | Proof-of-concept instance | Sean's Google account. Its Sheet is `1wdxMK4y1-VdsMUDQXnBJDszEdczuTqER0Ap87V_LpBs`; `npm run poc` prints the board and public links. |
-| Where `npm run poc` runs | Sean's **GitHub Codespace** for this repo. It holds `.clasp.poc.json` and `.poc.json` (which project to update) and the clasp sign-in. A fresh clone without those files makes a new POC instead of updating this one. |
+| Where `npm run poc` runs | **Sean's Mac**, in `~/Documents/VIBECODE/LearningLibrary/LearningLibraryPal` (a clone of this branch). clasp there is signed in as the POC's owner, and `.clasp.poc.json` and `.poc.json` (git-ignored) point at the POC project `1cdw9cMWVrxaE4aI1xpk2iITZ3By7ZiLyTRFbqKWDsv6WsCLqDZ2hP4m6`. A Claude session on the Mac can run the deploy, after Sean's go. A fresh clone without those two files makes a new POC instead of updating this one. The Codespace is no longer needed. |
+| What's deployed | `d5332b4`, deployed November 17 at 8:10 PM: tables and wall at version 16, dashboard and board at version 17, same addresses as before. Checked by pulling the live project: every file matches the commit. To roll back, point each deployment at an earlier version, e.g. `clasp -P "$PWD/.clasp.poc.json" create-deployment -i <deployment id> -V 14 -d "<same description>"` (versions 14 and 15 were the previous pair). |
 | Fallback (Google Form version) | Drive folder `1lmUNDOFtVmlg6Qt-jP8ADM97vvkFNmud`: response Sheet `1wHVnaSaDfoo3cpP85cxAbM-4HoMUw3qW7akJTBa7Zzc` and slides `1ERcD5zQzesC1qeJOoHpvrh_x-jg0k4xm3BPx5G5NGOg`. |
 | Attendee walkthrough | https://claude.ai/artifact/QchwUwoSjar4rbD5R71iWR ("Using your phone or laptop at the retreat"; private until shared) |
 | Projected deck | https://claude.ai/artifact/FcAyYxTgfEXvS81LnCMWt5 ("Retreat Phone and Laptop Guide"; private until shared) |
@@ -45,7 +46,7 @@ What it gives back to MDE:
 
 ## Run and check
 
-In the Codespace:
+On Sean's Mac, in the clone above:
 
 ```bash
 git pull && npm run poc
@@ -94,7 +95,7 @@ These ran only against stand-ins here. Check them in a rehearsal and after the e
 
 ## Loose ends
 
-- The Codespace has an **uncommitted `Brands.js`** edit adding an "MDE" brand text of unknown origin. It does nothing today (nothing reads `Brands.js`, and the wizard's Brand dropdown is hard-coded). Decide whether to commit or discard it; check any MDE identity claims against MDE's real guide first. Until then, `git stash` it before `npm run poc`: clasp uploads the working tree, so an uncommitted edit goes live with everything else.
+- The Codespace has an **uncommitted `Brands.js`** edit adding an "MDE Brand Identity Guide" text of unknown origin. It was live on the POC until the November 17 8:10 PM deploy, which removed it; it never did anything (nothing reads `Brands.js`, and the wizard's Brand dropdown is hard-coded). It now exists only in the Codespace. Deleting the Codespace discards it. To keep it, commit it from there, after checking any MDE identity claims against MDE's real guide.
 - For the real retreat, make a fresh session rather than using "Rehersal", so the record MDE gets holds only the room's work.
 - The walkthrough has a `[Wi-Fi name and password]` placeholder. Both attendee artifacts are private until shared from their Share menu.
 - After the event: make the results document, then save the Sheet (with its Live Audit tab), the Doc and the photos folder somewhere MDE can reach.

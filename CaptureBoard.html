@@ -264,7 +264,7 @@
     var START_TAB = "__TAB__";
     var $ = function (id) { return document.getElementById(id); };
     var esc = Capture.esc;
-    var S = { board: null, groups: [], selected: null, dirty: 0, saving: false, saveTimer: null, tab: '', tabChosen: false, lastStage: '', tableFilter: 'all', paper: null, audit: null, report: '' };
+    var S = { board: null, groups: [], selected: null, dirty: 0, saving: false, saveTimer: null, savePromise: Promise.resolve(), saveFailed: false, seq: 0, moving: '', missed: 0, tab: '', tabChosen: false, lastStage: '', tableFilter: 'all', paper: null, audit: null, report: '' };
     var STAGE_TAB = { welcome: 'settings', signals: 'signals', flips: 'flips', flipdots: 'flips', needs: 'cards', synthesis: 'cards', vote: 'results', results: 'results', testdrive: 'testdrive', close: 'record' };
     var TABS = [['signals', 'Signals'], ['flips', 'Flip statements'], ['cards', 'Cards & groups'], ['results', 'Vote & results'], ['testdrive', 'Test drive'], ['record', 'Record & results'], ['settings', 'Settings & links']];
     // Which kind of paper each tab adds from, first choice first.
@@ -293,20 +293,34 @@
     function adopt(board) {
       S.board = board;
       $('title').textContent = board.enabled ? board.config.title + ' · ' + board.sessionName : board.sessionName;
-      if (!board.enabled) return renderSetup();
+      // The turn-on form is drawn once, so a check-in doesn't put back what someone typed in it.
+      if (!board.enabled) { if (!$('setupForm')) renderSetup(); return; }
       if (!S.dirty && !S.saving) {
         var pending = S.groups.filter(function (g) { return g.isNew && !g.cardIds.length; });
         S.groups = board.groups.map(function (g) { return { id: g.id, topic: g.topic, cardIds: g.cardIds.slice(), rank: g.rank, columnOverride: g.columnOverride || '' }; }).concat(pending);
       }
       if (board.config.stage !== S.lastStage) { S.lastStage = board.config.stage; if (!S.tabChosen) S.tab = STAGE_TAB[board.config.stage] || 'cards'; }
+      // Redrawing keeps a long list where the facilitator had scrolled it.
+      var feed = document.querySelector('.feed'), at = feed ? feed.scrollTop : 0;
       renderAll();
+      feed = document.querySelector('.feed'); if (feed && at) feed.scrollTop = at;
     }
 
+    // S.seq goes up with everything the board itself does, so a check-in that
+    // left before an action and came back after it is recognised as older.
     function refresh() {
+      var seq = S.seq;
       return Capture.run('captureGetBoard', SESSION_ID).then(function (board) {
+        S.missed = 0;
+        if ($('pageError').dataset.poll) { $('pageError').textContent = ''; delete $('pageError').dataset.poll; }
+        if (seq !== S.seq) return;
         var a = document.activeElement, typing = a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA' || a.tagName === 'SELECT');
-        if (typing || S.dirty || S.saving || (S.paper && S.paper.open)) { S.board = board; renderStepper(); return; }
+        var paperShown = S.paper && S.paper.open && (TAB_PAPER[S.tab] || []).indexOf(S.paper.mode) !== -1;
+        if (typing || S.dirty || S.saving || paperShown) { S.board = board; renderStepper(); return; }
         adopt(board);
+      }, function (err) {
+        S.missed = (S.missed || 0) + 1;
+        if (S.missed >= 2) { $('pageError').textContent = 'This board is not updating: ' + err.message; $('pageError').dataset.poll = '1'; }
       });
     }
 
@@ -320,7 +334,7 @@
           '<button class="btn btn-primary" type="submit">Turn on</button></form>';
         $('setupForm').onsubmit = function (e) {
           e.preventDefault();
-          Capture.run('captureEnable', SESSION_ID, $('tpl').value, Number($('tbl').value), $('ttl').value).then(function (b) { adopt(b); Capture.poll(refresh, 6000); }).catch(showError);
+          Capture.run('captureEnable', SESSION_ID, $('tpl').value, Number($('tbl').value), $('ttl').value).then(function (b) { S.seq++; adopt(b); }).catch(showError);
         };
       }).catch(showError);
     }
@@ -336,7 +350,14 @@
     function roleSplit(list) { return T().roles.map(function (r) { return esc(r.label) + ' ' + list.filter(function (x) { return x.role === r.code; }).length; }).join(' · '); }
     function call(name) {
       var args = Array.prototype.slice.call(arguments);
-      return Capture.run.apply(null, args).then(function (b) { adopt(b); return b; }).catch(function (e) { Capture.toast(e.message); throw e; });
+      S.seq++;
+      return Capture.run.apply(null, args).then(function (b) {
+        S.seq++;
+        // Someone typing the next number is not interrupted by the answer to the last one.
+        var a = document.activeElement, typing = a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA') && a.type !== 'checkbox';
+        if (typing) { S.board = b; renderStepper(); } else adopt(b);
+        return b;
+      }).catch(function (e) { Capture.toast(e.message); throw e; });
     }
 
     // ── Layout ───────────────────────────────────────────────────────────────
@@ -359,7 +380,9 @@
       var b = S.board;
       $('stepper').hidden = false;
       $('stepper').innerHTML = T().stages.map(function (s) {
-        return '<button type="button" class="step" data-stage="' + esc(s.id) + '"' + (b.config.stage === s.id ? ' aria-current="step"' : '') + '><span class="l">' + esc(s.label) + '</span></button>';
+        // While a move is on its way the bar shows where the room is going and takes no more clicks.
+        var here = (S.moving || b.config.stage) === s.id;
+        return '<button type="button" class="step" data-stage="' + esc(s.id) + '"' + (here ? ' aria-current="step"' : '') + (S.moving ? ' disabled' : '') + '><span class="l">' + esc(s.label) + (S.moving === s.id ? '…' : '') + '</span></button>';
       }).join('');
     }
 
@@ -470,13 +493,30 @@
         '<div class="gchips">' + g.cardIds.map(chip).join('') + '</div><div class="gfoot">' + moveHere(g.id) + '<span></span><button type="button" class="btn btn-quiet btn-small" data-delete="' + esc(g.id) + '">Remove group</button></div></article>';
     }
 
-    function changed() { S.dirty++; clearTimeout(S.saveTimer); S.saveTimer = setTimeout(save, 700); }
+    function changed() { S.dirty++; S.seq++; clearTimeout(S.saveTimer); S.saveTimer = setTimeout(save, 700); }
+    // Resolves when every edit so far is saved, or when a save has failed
+    // (S.dirty is then still set, and the save is tried again shortly).
     function save() {
-      if (S.saving) { S.saveTimer = setTimeout(save, 400); return Promise.resolve(); }
-      var version = S.dirty; S.saving = true;
+      if (S.saving) return S.savePromise.then(function () { return S.dirty && !S.saveFailed ? save() : null; });
+      if (!S.dirty) return Promise.resolve();
+      clearTimeout(S.saveTimer);
+      var version = S.dirty; S.saving = true; S.saveFailed = false; S.seq++;
       var payload = S.groups.map(function (g, i) { return { id: g.id, topic: g.topic, cardIds: g.cardIds, rank: i + 1, columnOverride: g.columnOverride || '' }; });
-      return Capture.run('captureSaveGroups', SESSION_ID, payload).then(function (b) { S.board = b; S.saving = false; if (S.dirty === version) S.dirty = 0; })
-        .catch(function (e) { S.saving = false; Capture.toast('Not saved: ' + e.message); });
+      S.savePromise = Capture.run('captureSaveGroups', SESSION_ID, payload).then(function (b) {
+        S.board = b; S.saving = false; S.seq++;
+        if (S.dirty === version) { S.dirty = 0; return null; }
+        return save();
+      }, function (e) {
+        S.saving = false; S.saveFailed = true;
+        Capture.toast('Groups not saved yet: ' + e.message + ' Trying again.');
+        clearTimeout(S.saveTimer); S.saveTimer = setTimeout(save, 3000);
+      });
+      return S.savePromise;
+    }
+    // Publishing and posters use the groups as saved, so the last edit must be in first.
+    function saved() {
+      clearTimeout(S.saveTimer);
+      return save().then(function () { if (S.dirty) throw new Error('The last change to the groups is not saved yet. Try again in a moment.'); });
     }
     function move(cardId, target) {
       S.groups.forEach(function (g) { g.cardIds = g.cardIds.filter(function (id) { return id !== cardId; }); });
@@ -494,7 +534,8 @@
     function suggest() {
       if (S.groups.length && !confirm('Replace the current groups with a new AI draft?')) return;
       var btn = $('suggestBtn'); btn.disabled = true; btn.textContent = 'Drafting…';
-      Capture.run('captureSuggestGroups', SESSION_ID).then(function (b) { S.dirty = 0; adopt(b); Capture.toast('AI draft ready. Rename, move and re-column as you like, then publish.'); })
+      S.seq++;
+      Capture.run('captureSuggestGroups', SESSION_ID).then(function (b) { S.dirty = 0; S.seq++; adopt(b); Capture.toast('AI draft ready. Rename, move and re-column as you like, then publish.'); })
         .catch(function (e) { Capture.toast(e.message); }).then(function () { var x = $('suggestBtn'); if (x) { x.disabled = false; x.textContent = 'Suggest groups'; } });
     }
     function publish() {
@@ -504,14 +545,15 @@
         if (!confirm(S.board.voters.total + ' people have voted. Publish again and keep votes for groups that still exist?')) return;
         clear = confirm('Also clear all votes and start the vote over?');
       }
-      clearTimeout(S.saveTimer);
-      (S.dirty ? save() : Promise.resolve()).then(function () { return call('capturePublish', SESSION_ID, clear); })
-        .then(function () { Capture.toast('Published. Move to the Vote stage when you’re ready.'); }).catch(function () {});
+      var btn = $('publishBtn'); if (btn) btn.disabled = true;
+      saved().then(function () { return call('capturePublish', SESSION_ID, clear).catch(function () { throw null; }); })
+        .then(function () { Capture.toast('Published. Move to the Vote stage when you’re ready.'); })
+        .catch(function (e) { if (e) Capture.toast('Not published. ' + e.message); })
+        .then(function () { var x = $('publishBtn'); if (x) x.disabled = false; });
     }
     function posters() {
       var btn = $('postersBtn'); btn.disabled = true; btn.textContent = 'Making…';
-      clearTimeout(S.saveTimer);
-      (S.dirty ? save() : Promise.resolve()).then(function () { return Capture.run('captureMakePosters', SESSION_ID); })
+      saved().then(function () { return Capture.run('captureMakePosters', SESSION_ID); })
         .then(function (r) { $('posters').innerHTML = '<div class="alert alert-good">Posters are ready. <a href="' + esc(r.url) + '" target="_blank" rel="noopener">Open the slides</a> to print.</div>'; })
         .catch(function (e) { $('posters').innerHTML = '<div class="alert alert-bad">' + esc(e.message) + '</div>'; })
         .then(function () { btn.disabled = false; btn.textContent = 'Make posters'; });
@@ -627,7 +669,7 @@
         (p.error ? '<div class="alert alert-bad" role="alert">' + esc(p.error) + '</div>' : '') +
         (p.entry ? '<div class="alert ' + (p.confidence === 'high' ? 'alert-good' : 'alert-warn') + '">Read with ' + esc(p.confidence || 'low') + ' confidence' + (p.note ? ': ' + esc(p.note) : '.') +
           (p.photo ? ' <a href="' + esc(p.photo) + '" target="_blank" rel="noopener">Open the photo</a>' : '') + '</div>' : '') +
-        (p.rows.length ? reviewTable(p) + '<div class="chips"><button type="button" class="btn btn-primary" data-paper-confirm="1">Confirm and add ' + p.rows.filter(function (r) { return r.include !== false; }).length + '</button></div>' : '') +
+        (p.rows.length ? reviewTable(p) + '<div class="chips"><button type="button" class="btn btn-primary" data-paper-confirm="1"' + (p.adding ? ' disabled>Adding…' : '>Confirm and add ' + p.rows.filter(function (r) { return r.include !== false; }).length) + '</button></div>' : '') +
         '</section>';
       area.innerHTML = html;
     }
@@ -690,7 +732,9 @@
       });
     }
     function readPaperPhoto(file) {
-      var p = S.paper; p.busy = true; p.error = ''; renderPaper();
+      var p = S.paper;
+      if (p.rows.length && !confirm('Reading a photo replaces the ' + p.rows.length + (p.rows.length === 1 ? ' row' : ' rows') + ' here. Confirm those first if you want to keep them. Replace them?')) return;
+      p.busy = true; p.error = ''; renderPaper();
       shrinkPhoto(file).then(function (dataUrl) {
         return Capture.run('captureReadPaper', SESSION_ID, p.mode, p.table, dataUrl.split(',')[1], 'image/jpeg', p.hints);
       }).then(function (r) {
@@ -701,11 +745,17 @@
     }
     function confirmPaper() {
       var p = S.paper;
-      var btn = document.querySelector('[data-paper-confirm]'); if (btn) { btn.disabled = true; btn.textContent = 'Adding…'; }
+      if (!p || p.adding) return; // one Confirm at a time, however the panel is redrawn meanwhile
+      p.adding = true; p.error = ''; S.seq++; renderPaper();
       Capture.run('captureConfirmPaper', SESSION_ID, p.mode, p.rows, p.entry).then(function (b) {
-        S.paper = null; adopt(b);
+        if (S.paper === p) S.paper = null;
+        S.seq++; adopt(b);
         Capture.toast('Added ' + b.added.count + ' from paper. Audit entry ' + b.added.entry + '.');
-      }).catch(function (e) { p.error = e.message; renderPaper(); });
+      }).catch(function (e) {
+        p.adding = false;
+        p.error = e.message + (/connection dropped/i.test(e.message) ? ' The rows may have been added: look at the list below before confirming again.' : '');
+        renderPaper(); refresh();
+      });
     }
     function setPaperField(i, field, el) {
       var r = S.paper.rows[i]; if (!r) return;
@@ -714,6 +764,8 @@
       var path = field.split('.'), o = r;
       for (var k = 0; k < path.length - 1; k++) o = o[path[k]] = o[path[k]] || {};
       o[path[path.length - 1]] = v;
+      // A card moved to another table can't stay under the first table's statement.
+      if (field === 'table' && S.paper.mode === 'cards') r.flipId = 0;
       if (field === 'include' || field === 'table') renderPaper();
     }
 
@@ -760,10 +812,13 @@
       var t = e.target.closest('button'); if (!t || !S.board || !S.board.enabled) return;
       if (t.dataset.stage) {
         var to = t.dataset.stage;
-        if (to === S.board.config.stage) return;
+        if (S.moving || to === S.board.config.stage) return;
         if (to === 'vote' && !S.board.published) { if (!confirm('Nothing is published yet, so phones will say voting opens soon. Move to Vote anyway?')) return; }
         S.tabChosen = false;
-        return call('captureSetStage', SESSION_ID, to).then(function () { Capture.toast('Phones and the wall moved to ' + t.querySelector('.l').textContent + '.'); }).catch(function () {});
+        var label = t.querySelector('.l').textContent;
+        S.moving = to; renderStepper();
+        return call('captureSetStage', SESSION_ID, to).then(function () { Capture.toast('Phones and the wall moved to ' + label + '.'); }).catch(function () {})
+          .then(function () { S.moving = ''; renderStepper(); });
       }
       if (t.dataset.tab) { S.tab = t.dataset.tab; S.tabChosen = true; if (t.dataset.tab === 'record') S.audit = null; return renderAll(); }
       if (t.dataset.paperOpen) return openPaper(t.dataset.paperOpen);
@@ -794,7 +849,7 @@
     document.addEventListener('change', function (e) {
       var d = e.target.dataset || {};
       if (S.paper && e.target.id === 'paperPhoto') { var f = e.target.files && e.target.files[0]; e.target.value = ''; if (f) readPaperPhoto(f); return; }
-      if (S.paper && e.target.id === 'paperTable') { S.paper.table = Number(e.target.value) || 1; S.paper.rows.forEach(function (r) { if (r.table !== undefined) r.table = S.paper.table; }); return renderPaper(); }
+      if (S.paper && e.target.id === 'paperTable') { S.paper.table = Number(e.target.value) || 1; S.paper.rows.forEach(function (r) { if (r.table !== undefined) { if (S.paper.mode === 'cards' && r.table !== S.paper.table) r.flipId = 0; r.table = S.paper.table; } }); return renderPaper(); }
       if (d.prow !== undefined && S.paper) return setPaperField(Number(d.prow), d.pf, e.target);
       if (d.colFor) { var g = S.groups.find(function (x) { return x.id === d.colFor; }); if (g) { g.columnOverride = e.target.value; renderGroups(); changed(); } return; }
       if (d.paper) {

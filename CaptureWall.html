@@ -295,8 +295,11 @@
       $('view').innerHTML = (views[w.stage] || views.welcome)(w);
     }
 
+    var drawn = false;
     Capture.poll(function () {
-      return Capture.run('captureGetWall', SESSION_ID, CAPTURE_KEY).then(draw).catch(function (err) { $('view').innerHTML = '<p class="error">' + esc(err.message) + '</p>'; });
+      // A missed check-in leaves the last picture up; the message shows only when there is nothing to show yet.
+      return Capture.run('captureGetWall', SESSION_ID, CAPTURE_KEY).then(function (w) { drawn = true; draw(w); })
+        .catch(function (err) { if (!drawn) $('view').innerHTML = '<p class="error">' + esc(err.message) + '</p>'; });
     }, 5000);
   </script>
 </body>

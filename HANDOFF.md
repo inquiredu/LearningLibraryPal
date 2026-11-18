@@ -1,3 +1,5 @@
+> **Live capture (November 2026):** start with [docs/HANDOFF_LIVE_CAPTURE.md](docs/HANDOFF_LIVE_CAPTURE.md) on branch `claude/need-cards-live-capture`.
+
 > Historical handoff from March 2026. Some planned features below were subsequently implemented. Use README.md and docs/REVIVAL.md for current setup, security and remaining work.
 
 # Learning Library Content Engine — Handoff (March 11, 2026)

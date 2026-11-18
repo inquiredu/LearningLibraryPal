@@ -31,6 +31,7 @@ const CaptureStore = {
   CONFIG_SHEET: 'Live Capture',
   SNAPSHOT_SECONDS: 5,
   CONFIG_SECONDS: 120,
+  GENERATION_SECONDS: 21600,
   CHUNK: 90000,
   HEADER_COLOR: '#003865',
   CELL_MAX: 45000,
@@ -90,32 +91,39 @@ const CaptureStore = {
   JSON_KEYS: ['published', 'paperDots', 'assign', 'paperFlipDots'],
   CONFIG_KEYS: ['template', 'tables', 'key', 'title', 'stage', 'published', 'publishedAt', 'paperDots', 'tallyMode', 'assign', 'surveyUrl', 'paperFlipDots'],
 
-  getConfig: function(sessionId) {
+  /**
+   * Settings come from the cache when the cached copy is current. Each write
+   * gives the settings a new generation; a cached copy is used only while it
+   * carries the current one. So a device that read the Sheet just before a
+   * stage move, and cached what it read just after, can't put the old stage
+   * back: its copy carries the old generation and the next reader ignores it.
+   */
+  cachedConfig_: function(sessionId, peek) {
     const cache = CacheService.getScriptCache();
-    const hit = cache.get('capture_cfg_' + sessionId);
-    if (hit) { try { return JSON.parse(hit); } catch (e) {} }
+    const cfgKey = 'capture_cfg_' + sessionId, genKey = 'capture_cfgv_' + sessionId, offKey = 'capture_off_' + sessionId;
+    let got = {};
+    try { got = cache.getAll(peek ? [cfgKey, genKey, offKey] : [cfgKey, genKey]) || {}; } catch (e) { got = {}; }
+    const gen = typeof got[genKey] === 'string' ? got[genKey] : '';
+    if (typeof got[cfgKey] === 'string') {
+      try { const hit = JSON.parse(got[cfgKey]); if (hit && hit.c && hit.v === gen) return hit.c; } catch (e) {}
+    }
+    if (peek && got[offKey] === 'off:' + gen) return null;
     const config = this.readConfig_(sessionId);
-    if (config) { try { cache.put('capture_cfg_' + sessionId, JSON.stringify(config), this.CONFIG_SECONDS); } catch (e) {} }
+    try {
+      if (config) cache.put(cfgKey, JSON.stringify({ v: gen, c: config }), this.CONFIG_SECONDS);
+      else if (peek) cache.put(offKey, 'off:' + gen, this.CONFIG_SECONDS);
+    } catch (e) {}
     return config;
   },
+
+  getConfig: function(sessionId) { return this.cachedConfig_(sessionId, false); },
 
   /**
    * getConfig for the dashboard, which asks about every session: also
    * remembers for a while that a session has no live capture, so the
    * dashboard doesn't open that session's spreadsheet on every load.
    */
-  peekConfig: function(sessionId) {
-    const cache = CacheService.getScriptCache();
-    const hit = cache.get('capture_cfg_' + sessionId);
-    if (hit) { try { return JSON.parse(hit); } catch (e) {} }
-    if (cache.get('capture_off_' + sessionId)) return null;
-    const config = this.readConfig_(sessionId);
-    try {
-      if (config) cache.put('capture_cfg_' + sessionId, JSON.stringify(config), this.CONFIG_SECONDS);
-      else cache.put('capture_off_' + sessionId, '1', this.CONFIG_SECONDS);
-    } catch (e) {}
-    return config;
-  },
+  peekConfig: function(sessionId) { return this.cachedConfig_(sessionId, true); },
 
   readConfig_: function(sessionId) {
     const sheet = this.db(sessionId).getSheetByName(this.CONFIG_SHEET);
@@ -151,16 +159,23 @@ const CaptureStore = {
       if (this.JSON_KEYS.indexOf(k) !== -1) return [k, v ? JSON.stringify(v) : ''];
       return [k, captureSheetSafe_(v === undefined || v === null ? '' : v)];
     }));
-    sheet.clearContents();
+    // Written over the old rows, never cleared first, so a device reading at
+    // that instant can't find the settings empty.
     sheet.getRange(1, 1, rows.length, 2).setValues(rows);
+    const last = sheet.getLastRow();
+    if (last > rows.length) sheet.getRange(rows.length + 1, 1, last - rows.length, 2).clearContent();
     sheet.getRange(1, 1, 1, 2).setBackground(this.HEADER_COLOR).setFontColor('#FFFFFF').setFontWeight('bold');
-    // Write through, so a stage change reaches every device on its next check-in.
+    // Commit, then start a new generation and cache the new settings under it,
+    // so a stage change reaches every device on its next check-in. Anyone who
+    // sees the new generation reads a Sheet that already has this write.
+    try { SpreadsheetApp.flush(); } catch (e) {}
     const cache = CacheService.getScriptCache();
-    try { cache.remove('capture_cfg_' + sessionId); cache.remove('capture_off_' + sessionId); } catch (e) {}
+    const gen = Utilities.getUuid();
+    try { cache.put('capture_cfgv_' + sessionId, gen, this.GENERATION_SECONDS); cache.remove('capture_off_' + sessionId); } catch (e) {}
     // The dashboard shows each session's stage and links: let it see this change on its next load.
     try { if (typeof DASHBOARD_CACHE_KEY_ === 'string') cache.remove(DASHBOARD_CACHE_KEY_); } catch (e) {}
     const fresh = this.readConfig_(sessionId);
-    if (fresh) { try { cache.put('capture_cfg_' + sessionId, JSON.stringify(fresh), this.CONFIG_SECONDS); } catch (e) {} }
+    if (fresh) { try { cache.put('capture_cfg_' + sessionId, JSON.stringify({ v: gen, c: fresh }), this.CONFIG_SECONDS); } catch (e) {} }
   },
 
   /**

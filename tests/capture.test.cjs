@@ -838,6 +838,41 @@ test('settings are cached, and a change reaches the cache at once', () => {
   assert.equal(c.eval('CaptureStore.getConfig("S-1").stage'), 'results', 'a stage change is seen on the very next check-in');
 });
 
+test('a device that read the settings just before a stage move cannot put the old stage back', () => {
+  const grid = { 'Live Capture': [['Setting', 'Value'], ['template', 'needCards'], ['tables', 6], ['stage', 'needs'], ['leftover', 'x'], ['', ''], ['', ''], ['', ''], ['', ''], ['', ''], ['', ''], ['', ''], ['', ''], ['stale', 'row']] };
+  const c = storeContext(grid);
+  // The device's check-in misses the cache and reads the Sheet; the facilitator's
+  // move lands before the device caches what it read.
+  c.eval(`(() => {
+    const read = CaptureStore.readConfig_; let once = true;
+    CaptureStore.readConfig_ = function(id) {
+      const seen = read.call(this, id);
+      if (once) { once = false; this.as("f", "needs").updateConfig(id, () => ({ stage: "results" })); }
+      return seen;
+    };
+  })()`);
+  assert.equal(c.eval('CaptureStore.getConfig("S-1").stage'), 'needs', 'that one check-in was already on its way');
+  assert.equal(c.eval('CaptureStore.getConfig("S-1").stage'), 'results', 'the next check-in has the move');
+  assert.equal(c.eval('CaptureStore.peekConfig("S-1").stage'), 'results');
+  const rows = grid['Live Capture'].filter(r => r[0]);
+  assert.deepEqual(rows.map(r => r[0]), ['Setting'].concat([...c.eval('CaptureStore.CONFIG_KEYS')]), 'settings are written over the old rows and leftovers cleared');
+});
+
+test('a dashboard that looked just before live capture was turned on does not keep saying it is off', () => {
+  const grid = {};
+  const c = storeContext(grid);
+  c.eval(`(() => {
+    const read = CaptureStore.readConfig_; let once = true;
+    CaptureStore.readConfig_ = function(id) {
+      const seen = read.call(this, id);
+      if (once) { once = false; this.as("f", "").enable(id, "needCards", 6, "Retreat"); }
+      return seen;
+    };
+  })()`);
+  assert.equal(c.eval('CaptureStore.peekConfig("S-1")'), null);
+  assert.equal(plain(c.eval('CaptureStore.peekConfig("S-1")')).stage, 'welcome');
+});
+
 test('test-drive notes are kept per device, so two people at a table never overwrite each other', () => {
   const grid = {};
   const c = storeContext(grid);
@@ -965,7 +1000,7 @@ test('a grouping draft is repaired; cards the model left out stay for the team t
 });
 
 test('choosing a live-capture event in the wizard turns capture on with the table count', () => {
-  const enabled = [];
+  const enabled = [], actors = [];
   const c = load(['Config.js', 'AuthService.js', 'StorageService.js', 'CaptureTemplates.js', 'CaptureLogic.js', 'CaptureApi.js', 'Code.js', 'WebApp.js'], {
     Session: { getActiveUser: () => ({ getEmail: () => 'owner@example.org' }), getEffectiveUser: () => ({ getEmail: () => 'owner@example.org' }) },
     PropertiesService: { getScriptProperties: () => ({ getProperty: key => (key === 'OWNER_EMAIL' ? 'owner@example.org' : null) }) },
@@ -973,11 +1008,13 @@ test('choosing a live-capture event in the wizard turns capture on with the tabl
     CacheService: { getScriptCache: () => ({ remove() {} }) },
     ScriptApp: { getService: () => ({ getUrl: () => 'https://script.google.com/macros/s/ONE/exec' }) },
     SessionService: { setupSession: () => ({ sessionId: 'S-new', folderUrl: 'f', dbUrl: 'd' }) },
-    CaptureStore: { enable: (sid, tpl, tables, title) => { enabled.push([sid, tpl, tables, title]); return { key: KEY, tables, template: tpl, title }; } }
+    CaptureStore: { as: actor => { actors.push(actor); },
+      enable: (sid, tpl, tables, title) => { enabled.push([sid, tpl, tables, title]); return { key: KEY, tables, template: tpl, title }; } }
   });
   assert.equal(c.processWizardSubmit({ name: 'Library night', theme: 't' }).capture, undefined);
   const live = c.processWizardSubmit({ name: 'Retreat', theme: 't', captureTemplate: 'needCards', captureTables: 6 });
   assert.deepEqual(enabled[0], ['S-new', 'needCards', 6, 'Retreat']);
+  assert.deepEqual(actors, ['owner@example.org'], 'the audit trail names who turned it on');
   assert.match(live.capture.board, /page=board&session=S-new$/);
   c.processWizardSubmit({ name: 'x', theme: 't', captureTemplate: 'notATemplate' });
   assert.equal(enabled.length, 1);

@@ -53,6 +53,7 @@ function processWizardSubmit(params) {
   // A live-capture event turns capture on for the new session right away.
   const template = params && params.captureTemplate;
   if (template && CAPTURE_TEMPLATES[template]) {
+    captureAsFacilitator_('');
     const config = CaptureStore.enable(result.sessionId, template, params.captureTables, params.name);
     result.capture = captureLinks_(result.sessionId, config);
   }

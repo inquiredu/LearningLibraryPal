@@ -68,7 +68,9 @@ function mock(sc) {
 <script>
 (function () {
   var sc = ${JSON.stringify(sc)};
-  var tpl = CAPTURE_TEMPLATES.needCards;
+  // Add #flow=cards to a preview page's address to see the need-cards-only flow.
+  var FLOW = /flow=cards/.test(location.hash) ? 'cards' : 'full';
+  var tpl = captureTemplateFor_({ template: 'needCards', flow: FLOW });
   var ids = tpl.stages.map(function (s) { return s.id; });
   var at = function (s) { return ids.indexOf(sc.stage) >= ids.indexOf(s); };
   var config = { template: 'needCards', tables: 6, key: '${KEY}', title: 'AI in K-12: Needs and Priorities', stage: sc.stage,
@@ -104,7 +106,7 @@ function mock(sc) {
     { table: 3, device: 'paper-1', groupId: 'g3', topic: 'AI policy and guidelines', source: 'paper', notes: { change: 'Plain language for families.', add: '', cut: '', beyond: 'State funding to help districts write policy.' } }] : [];
 
   function results() { var t = captureTally_(tpl, config.published || [], votes, config.paperDots, config.tallyMode); return captureResults_(tpl, config.published || [], t, config.tables, config.assign); }
-  function pub() { return JSON.parse(JSON.stringify({ name: tpl.name, noun: tpl.noun, intro: tpl.intro, roles: tpl.roles, stages: tpl.stages, signal: tpl.signal, parent: tpl.parent,
+  function pub() { return JSON.parse(JSON.stringify({ flow: FLOW, flows: Object.keys(tpl.flows).map(function (k) { return { id: k, label: tpl.flows[k].label, summary: tpl.flows[k].summary }; }), name: tpl.name, noun: tpl.noun, intro: tpl.intro, roles: tpl.roles, stages: tpl.stages, signal: tpl.signal, parent: tpl.parent,
     flipDots: tpl.flipDots, fields: tpl.fields, level: { label: tpl.level.label, levers: tpl.level.levers, options: tpl.level.options },
     routes: tpl.routes, vote: tpl.vote, testDrive: tpl.testDrive })); }
   function voters() { var o = { total: votes.length }; tpl.roles.forEach(function (r) { o[r.code] = votes.filter(function (v) { return v.role === r.code; }).length; }); return o; }
@@ -125,7 +127,7 @@ function mock(sc) {
       var st = { title: config.title, tables: config.tables, stage: config.stage, aiPhotos: true, template: pub() };
       var dots = captureTallyFlipDots_(tpl, flipDots, config.paperFlipDots);
       if (table) {
-        var a = config.published && at('results') ? results().assignments.find(function (x) { return x.table === table; }) : null;
+        var a = FLOW !== 'cards' && config.published && at('results') ? results().assignments.find(function (x) { return x.table === table; }) : null;
         var mineTd = testDrive.find(function (x) { return x.table === table && x.device === voter; });
         st.table = { number: table,
           flips: flips.filter(function (f) { return f.table === table && !f.hidden; }).map(function (f) { return { id: f.id, text: f.text, top: f.top, dots: dots[f.id] || {} }; }),
@@ -135,7 +137,7 @@ function mock(sc) {
           testDrive: { mine: mineTd ? mineTd.notes : null, others: testDrive.filter(function (x) { return x.table === table && x !== mineTd; }).map(function (x) { return x.notes; }) } };
       }
       st.gallery = flips.filter(function (f) { return !f.hidden; }); st.myDots = flipDots.filter(function (d) { return d.voter === voter; });
-      if (config.published) { st.ballot = config.published.map(function (g) { return { id: g.id, topic: g.topic, column: g.column, contested: g.contested, tableCount: g.tableCount }; });
+      if (config.published && FLOW !== 'cards') { st.ballot = config.published.filter(function (g) { return g.route !== 'parking'; }).map(function (g) { return { id: g.id, topic: g.topic, column: g.column, contested: g.contested, tableCount: g.tableCount }; });
         var mine = votes.find(function (v) { return v.voter === voter; }); st.myVote = mine ? { role: mine.role, choices: mine.choices } : null; }
       if (config.published && at('results')) st.results = results();
       if (config.stage === 'close') st.surveyUrl = config.surveyUrl;
@@ -163,7 +165,7 @@ function mock(sc) {
       var byRole = function (list) { var o = { total: list.length }; tpl.roles.forEach(function (r) { o[r.code] = list.filter(function (x) { return x.role === r.code; }).length; }); return o; };
       var levels = {}; tpl.level.options.forEach(function (o) { levels[o.code] = live.filter(function (c) { return c.level === o.code; }).length; });
       var w = { title: config.title, stage: config.stage, tables: config.tables,
-        template: { stages: tpl.stages, roles: tpl.roles, levelOptions: tpl.level.options, routes: tpl.routes, flipDots: tpl.flipDots, parent: { plural: tpl.parent.plural }, vote: { prompt: tpl.vote.prompt } },
+        template: { flow: FLOW, stages: tpl.stages, roles: tpl.roles, levelOptions: tpl.level.options, routes: tpl.routes, flipDots: tpl.flipDots, parent: { plural: tpl.parent.plural }, vote: { prompt: tpl.vote.prompt } },
         signals: { byRole: byRole(signals), perTable: per(signals) }, flips: { total: flips.length, perTable: per(flips) }, flipDots: byRole(flipDots),
         cards: { total: live.length, perTable: per(live), levels: levels, byRole: byRole(live) }, voters: voters() };
       if (config.published && at('vote')) w.topics = config.published.map(function (g) { return { topic: g.topic, column: g.column, contested: g.contested, tableCount: g.tableCount }; });
@@ -183,6 +185,7 @@ function mock(sc) {
     captureSetTallyMode: function (s, m) { config.tallyMode = m; return board(); },
     captureSetAssignment: function (s, t, id) { if (id) config.assign[t] = id; else delete config.assign[t]; return board(); },
     captureSetSurveyUrl: function (s, u) { config.surveyUrl = u; return board(); },
+    captureSetFlow: function (s, f) { location.hash = f === 'cards' ? 'flow=cards' : ''; location.reload(); return board(); },
     captureSetFacilitatorLink: function (s, mode) { config.facilitatorKey = mode === 'new' ? Array.from({ length: 32 }, function () { return Math.floor(Math.random() * 16).toString(16); }).join('') : ''; return board(); },
     captureMakePosters: function () { return { url: '#posters' }; },
     captureReadPaper: function (s, mode, table) {

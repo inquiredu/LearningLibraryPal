@@ -171,7 +171,7 @@
       <p class="muted small" style="margin-top:4px">This device remembers your choices. You can change them later.</p>
       <h3 style="font-size:1rem;margin-top:16px">Which table are you at?</h3>
       <div class="grid-buttons" id="tablePick"></div>
-      <h3 style="font-size:1rem;margin-top:16px">Are you a student or an adult?</h3>
+      <h3 id="roleAsk" style="font-size:1rem;margin-top:16px">Are you a student or an adult?</h3>
       <div class="roles" id="rolePick"></div>
       <button type="button" class="btn btn-primary btn-block" id="whoDone" style="margin-top:16px">Continue</button>
     </section>
@@ -278,6 +278,8 @@
     }
 
     function T() { return S.state.template; }
+    // With need cards only, a table just opens the form: nobody is asked who they are first.
+    function cardsOnly() { return S.state.template.flow === 'cards'; }
     function roleLabel(code) { var r = T().roles.find(function (x) { return x.code === code; }); return r ? r.label : ''; }
     function stageInfo(id) { return T().stages.find(function (s) { return s.id === id; }) || { label: id, phone: '' }; }
 
@@ -342,7 +344,7 @@
         $('title').textContent = state.title;
         if (S.table > state.tables) S.table = 0;
         if (PRESET_TABLE && PRESET_TABLE <= state.tables) Capture.store(K + 'table', PRESET_TABLE);
-        if (!S.table || !S.role) return showWho();
+        if (!S.table || (!cardsOnly() && !S.role)) return showWho();
         afterWho();
       }).catch(function (err) {
         if (/table link/i.test(err.message)) { $('title').textContent = 'Link not working'; $('pageError').textContent = err.message; return; }
@@ -357,7 +359,7 @@
     function afterWho() {
       $('who').hidden = true;
       $('whoBtn').hidden = false;
-      $('whoBtn').textContent = 'Table ' + S.table + ' · ' + roleLabel(S.role) + ' · change';
+      $('whoBtn').textContent = 'Table ' + S.table + (S.role ? ' · ' + roleLabel(S.role) : '') + ' · change';
       load(true).then(function () { if (!polling) { polling = true; Capture.poll(function () { return load(false); }, 8000); } });
     }
 
@@ -370,6 +372,7 @@
       $('rolePick').innerHTML = st.template.roles.map(function (r) {
         return '<button type="button" class="btn" data-role="' + esc(r.code) + '" aria-pressed="' + (S.role === r.code) + '">' + esc(r.label) + '</button>';
       }).join('');
+      $('roleAsk').hidden = $('rolePick').hidden = cardsOnly();
       $('who').hidden = false; $('stageBar').hidden = true; $('also').hidden = true; $('view').innerHTML = ''; $('whoBtn').hidden = true;
     }
     $('tablePick').onclick = function (e) {
@@ -384,7 +387,7 @@
     };
     $('whoDone').onclick = function () {
       if (!S.table) return Capture.toast('Choose your table.');
-      if (!S.role) return Capture.toast('Choose student or adult.');
+      if (!S.role && !cardsOnly()) return Capture.toast('Choose student or adult.');
       Capture.store(K + 'table', S.table); Capture.store(K + 'role', S.role);
       afterWho();
     };
@@ -415,8 +418,11 @@
     // Redraws a screen of buttons in place (new statements, newly published groups) without moving the page.
     function redrawKeepingPlace() { var y = window.scrollY; drawView(); window.scrollTo(0, y); }
     function renderAlso() {
-      var steps = OPEN_STEPS.filter(function (id) { return id !== 'vote' || (S.state.ballot && S.state.ballot.length); });
-      $('also').hidden = false;
+      var has = T().stages.map(function (s) { return s.id; });
+      var steps = OPEN_STEPS.filter(function (id) { return has.indexOf(id) !== -1 && (id !== 'vote' || (S.state.ballot && S.state.ballot.length)); });
+      // Nothing else to add to: no bar.
+      $('also').hidden = !steps.length || (steps.length === 1 && steps[0] === current());
+      if ($('also').hidden) { $('also').innerHTML = ''; return; }
       $('also').innerHTML = '<span class="muted">Add to any step:</span>' + steps.map(function (id) {
         return '<button type="button" class="btn" data-view="' + id + '"' + (current() === id ? ' aria-current="page"' : '') + '>' + esc(stageInfo(id).label) + '</button>';
       }).join('') + (S.view && S.view !== S.stage ? '<button type="button" class="btn btn-quiet" data-view="">Back to now</button>' : '');
@@ -433,7 +439,7 @@
       }
       if (v === 'signals') renderSignalList();
       if (v === 'flips') renderFlipList();
-      if (v === 'needs') { renderTopList(); renderCardList(); }
+      if (v === 'needs') { renderTopList(); renderFlipList(); renderCardList(); }
       if (v === 'testdrive') renderOtherNotes();
       if (v === 'results') viewResults();
     }
@@ -574,20 +580,30 @@
     // Need cards ---------------------------------------------------------------
     function viewNeeds() {
       var t = T();
-      panel('<h2>Your table’s ' + esc(t.parent.plural) + '</h2><p class="muted small">Mark your top one or two, using the gallery dots.</p><ol class="list" id="topList"></ol>');
+      if (cardsOnly()) {
+        // The table's flip statement is written right here, once; every card goes under it.
+        var p = t.parent;
+        panel('<h2>Your table’s ' + esc(p.label.toLowerCase()) + '</h2><p class="muted small">' + esc(p.hint) + ' Write it once; your need cards go under it. Anyone at the table can fix it.</p>' +
+          '<ol class="list" id="flipList"></ol>' + textField('flipText', 'Add a ' + p.label.toLowerCase(), '', p.maxLength) +
+          '<div id="flipErr" class="alert alert-bad" role="alert"></div><button type="button" class="btn btn-block" id="flipSend">Save ' + esc(p.label.toLowerCase()) + '</button>');
+        $('flipSend').onclick = function () { saveFlip(0, $('flipText').value, $('flipSend'), $('flipErr'), function () { $('flipText').value = ''; }); };
+        renderFlipList();
+      } else {
+        panel('<h2>Your table’s ' + esc(t.parent.plural) + '</h2><p class="muted small">Mark your top one or two, using the gallery dots.</p><ol class="list" id="topList"></ol>');
+      }
       var levels = t.level.options.map(function (o) {
         return '<label class="opt"><input type="radio" name="level" value="' + esc(o.code) + '"><span class="code">' + esc(o.code) + '</span><span><strong>' + esc(o.label) + '</strong><span class="hint">' + esc(o.hint) + '</span></span></label>';
       }).join('');
       var roles = t.roles.map(function (r) {
         return '<label class="opt" style="padding:8px 12px"><input type="radio" name="cardRole" value="' + esc(r.code) + '"' + (r.code === S.role ? ' checked' : '') + '><span>' + esc(r.label) + '</span></label>';
-      }).join('');
+      }).join('') + '<label class="opt" style="padding:8px 12px"><input type="radio" name="cardRole" value=""' + (S.role ? '' : ' checked') + '><span>Our table</span></label>';
       var f = t.fields[0];
       panel('<h2>Add a ' + esc(t.noun) + '</h2><p class="muted small">' + esc(t.intro) + '</p>' +
         '<fieldset><legend>Which ' + esc(t.parent.label.toLowerCase()) + ' is this card for?</legend><div class="opts" id="flipPick"></div></fieldset>' +
         (S.state.aiPhotos ? '<div class="photo"><input type="file" id="photoInput" accept="image/*" capture="environment" class="sr-only"><label for="photoInput" class="btn btn-block" style="margin:0">Read a photo of the card</label><span class="hint">On a phone this opens the camera; on a laptop, choose a photo file.</span><div id="photoStatus" class="alert" aria-live="polite"></div></div>' : '') +
         textField('needText', f.label, f.hint, f.maxLength) +
         '<fieldset><legend>' + esc(t.level.label) + '</legend><p class="hint">' + esc(t.level.levers) + '</p><div class="opts">' + levels + '</div></fieldset>' +
-        '<fieldset><legend>Written by</legend><div class="opts" style="grid-template-columns:1fr 1fr">' + roles + '</div></fieldset>' +
+        '<fieldset><legend>Written by</legend><div class="opts" style="grid-template-columns:repeat(3,1fr)">' + roles + '</div></fieldset>' +
         '<div id="cardErr" class="alert alert-bad" role="alert"></div><button type="button" class="btn btn-primary btn-block" id="cardSend">Send card</button>');
       panel('<h2>Table ' + S.table + '’s cards</h2><ol class="list" id="cardList"></ol>');
       if ($('photoInput')) $('photoInput').addEventListener('change', readPhoto);
@@ -614,6 +630,8 @@
       var box = $('flipPick'); if (!box) return;
       var flips = (S.state.table && S.state.table.flips) || [];
       var chosen = (document.querySelector('input[name="flipId"]:checked') || {}).value;
+      // A statement just written with a card stays chosen for the table's next card.
+      if (S.pickFlip && flips.some(function (f) { return f.id === S.pickFlip; })) { chosen = String(S.pickFlip); S.pickFlip = 0; }
       var ordered = flips.filter(function (f) { return f.top; }).concat(flips.filter(function (f) { return !f.top; }));
       box.innerHTML = ordered.map(function (f, i) {
         var checked = chosen ? String(f.id) === chosen : i === 0;
@@ -625,7 +643,7 @@
       renderFlipPick();
       var cards = (S.state.table && S.state.table.cards) || [];
       list.innerHTML = cards.length ? cards.map(function (c) {
-        return '<li class="panel"><span class="level">' + esc(c.level) + '</span><span class="text">' + esc(c.text) + '</span><span class="meta">' + esc(roleLabel(c.role)) + ' · #' + c.id + '</span>' +
+        return '<li class="panel"><span class="level">' + esc(c.level) + '</span><span class="text">' + esc(c.text) + '</span><span class="meta">' + (roleLabel(c.role) ? esc(roleLabel(c.role)) + ' · ' : '') + '#' + c.id + '</span>' +
           (S.tokens['c' + c.id] ? '<button type="button" class="btn btn-quiet btn-small" data-rm-card="' + c.id + '">Remove</button>' : '') + '</li>';
       }).join('') : '<li class="muted">No cards yet.</li>';
     }
@@ -635,13 +653,18 @@
       var role = document.querySelector('input[name="cardRole"]:checked');
       var need = $('needText').value.trim();
       var err = $('cardErr');
-      if (!flip) { err.textContent = 'Choose which ' + T().parent.label.toLowerCase() + ' this card is for, or none.'; return; }
+      // A flip statement typed but not yet saved is saved first, and the card goes under it.
+      var typedFlip = cardsOnly() && $('flipText') ? $('flipText').value.trim() : '';
+      if (!flip && !typedFlip) { err.textContent = 'Choose which ' + T().parent.label.toLowerCase() + ' this card is for, or none.'; return; }
       if (!need) { err.textContent = 'Write the need.'; $('needText').focus(); return; }
       if (!level) { err.textContent = 'Choose G, G+ or B.'; return; }
       var fields = {}; fields[T().fields[0].key] = need;
       busy($('cardSend'), true, 'Sending…');
-      Capture.run('captureSubmitCard', SESSION_ID, CAPTURE_KEY, { table: S.table, flipId: Number(flip.value), fields: fields, level: level.value,
-        role: role ? role.value : S.role, sources: Object.keys(S.sources), device: S.voter, readingEntry: S.sources.photo ? S.readingEntry : 0 }).then(function (res) {
+      var under = typedFlip
+        ? Capture.run('captureSaveFlip', SESSION_ID, CAPTURE_KEY, S.table, 0, typedFlip, S.voter).then(function (r) { if ($('flipText')) $('flipText').value = ''; S.drafts.flipText = ''; S.pickFlip = r.id; return r.id; })
+        : Promise.resolve(Number(flip.value));
+      under.then(function (flipId) { return Capture.run('captureSubmitCard', SESSION_ID, CAPTURE_KEY, { table: S.table, flipId: flipId, fields: fields, level: level.value,
+        role: role ? role.value : S.role, sources: Object.keys(S.sources), device: S.voter, readingEntry: S.sources.photo ? S.readingEntry : 0 }); }).then(function (res) {
         S.tokens['c' + res.id] = res.token; Capture.store(K + 'tokens', S.tokens);
         $('needText').value = ''; level.checked = false; S.drafts.level = ''; S.sources = {}; S.readingEntry = 0; err.textContent = '';
         if ($('photoStatus')) { $('photoStatus').className = 'alert'; $('photoStatus').textContent = ''; }
@@ -689,12 +712,14 @@
     // Synthesis ----------------------------------------------------------------
     function viewSynthesis() {
       var n = ((S.state.table && S.state.table.cards) || []).length;
-      panel('<h2>Thank you</h2><p>Your table sent ' + n + ' card' + (n === 1 ? '' : 's') + '. The synthesis team is grouping the needs into G, G+ and B. Voting opens here when they publish.</p><p class="muted small">Still have a card to add? Use Need cards above.</p>');
+      panel('<h2>Thank you</h2><p>Your table sent ' + n + ' card' + (n === 1 ? '' : 's') + '. The team is grouping the needs into G, G+ and B. ' +
+        (cardsOnly() ? 'They go up as posters for the gallery walk next.' : 'Voting opens here when they publish.') + '</p><p class="muted small">Still have a card to add? Use Need cards above.</p>');
     }
 
     // Vote ---------------------------------------------------------------------
     function viewVote() {
       var t = T(), ballot = S.state.ballot;
+      if (cardsOnly()) { S.ballotSig = ballotSig(); panel('<h2>Gallery walk</h2><p>The needs are up as posters around the room. Put your dots on the ones that need to be addressed first.</p><p class="muted small">Still have a card to add? Use Need cards above.</p>'); return; }
       S.ballotSig = ballotSig();
       if (!ballot || !ballot.length) { panel('<h2>Voting opens soon</h2><p>The facilitators are publishing the groups.</p>'); return; }
       if (!S.ballot) {

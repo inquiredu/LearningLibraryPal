@@ -377,7 +377,9 @@
       if (b.links) { $('wallLink').href = b.links.wall; $('cardsLink').href = b.links.tableCards; }
       $('wallLink').hidden = $('cardsLink').hidden = $('copyLink').hidden = !b.links;
       renderStepper();
-      var tabs = '<div class="tabs" role="tablist">' + TABS.map(function (t) {
+      var shown = tabsShown();
+      if (!shown.some(function (t) { return t[0] === S.tab; })) S.tab = STAGE_TAB[b.config.stage] && shown.some(function (t) { return t[0] === STAGE_TAB[b.config.stage]; }) ? STAGE_TAB[b.config.stage] : 'cards';
+      var tabs = '<div class="tabs" role="tablist">' + shown.map(function (t) {
         return '<button type="button" class="tab" role="tab" data-tab="' + t[0] + '" aria-selected="' + (S.tab === t[0]) + '">' + t[1] + '</button>';
       }).join('') + '</div>';
       var body = { signals: tabSignals, flips: tabFlips, cards: tabCards, results: tabResults, testdrive: tabTestDrive, record: tabRecord, settings: tabSettings }[S.tab] || tabCards;
@@ -386,6 +388,10 @@
       renderPaper();
     }
 
+    // With need cards only, the board shows the tabs that flow uses.
+    function tabsShown() {
+      return T().flow === 'cards' ? TABS.filter(function (t) { return ['cards', 'results', 'record', 'settings'].indexOf(t[0]) !== -1; }) : TABS;
+    }
     function renderStepper() {
       var b = S.board;
       $('stepper').hidden = false;
@@ -557,7 +563,7 @@
       }
       var btn = $('publishBtn'); if (btn) btn.disabled = true;
       saved().then(function () { return call('capturePublish', SESSION_ID, clear).catch(function () { throw null; }); })
-        .then(function () { Capture.toast('Published. Move to the Vote stage when you’re ready.'); })
+        .then(function () { Capture.toast(T().flow === 'cards' ? 'Published. Make the posters, then move to Gallery walk.' : 'Published. Move to the Vote stage when you’re ready.'); })
         .catch(function (e) { if (e) Capture.toast('Not published. ' + e.message); })
         .then(function () { var x = $('publishBtn'); if (x) x.disabled = false; });
     }
@@ -631,7 +637,12 @@
         (b.viaLink ? '' : '<div class="linkbtns">' + (l.facilitator
           ? '<button type="button" class="btn btn-small" data-flink="new">Replace with a new link</button><button type="button" class="btn btn-small" data-flink="off">Turn the link off</button>'
           : '<button type="button" class="btn btn-primary" data-flink="new">Make the facilitator link</button>') + '</div>') + '</section>';
-      body((b.viaLink && !l.facilitator ? '' : hand) + '<section class="panel section stack"><h2>Links</h2>' +
+      // Which steps the room works through. Switching changes the stage bar and what devices show; nothing sent is touched.
+      var flows = T().flows || [], steps = flows.length < 2 ? '' : '<section class="panel section stack"><h2>Steps</h2>' +
+        '<p class="small">The room is on <strong>' + esc((flows.find(function (f) { return f.id === T().flow; }) || {}).label || '') + '</strong>: ' + T().stages.map(function (x) { return esc(x.label); }).join(' → ') + '.</p>' +
+        '<div class="linkbtns">' + flows.filter(function (f) { return f.id !== T().flow; }).map(function (f) {
+          return '<button type="button" class="btn btn-small" data-flow="' + esc(f.id) + '">Switch to ' + esc(f.label.toLowerCase()) + '</button><span class="muted small" style="align-self:center">' + esc(f.summary) + '</span>'; }).join('') + '</div></section>';
+      body((b.viaLink && !l.facilitator ? '' : hand) + steps + '<section class="panel section stack"><h2>Links</h2>' +
         LINKS.map(function (x) {
           var url = l[x[0]]; if (!url || (x[0] === 'board' && b.viaLink)) return '';
           return '<div class="linkrow"><div class="linkhead"><strong>' + esc(x[1]) + '</strong><span class="muted small">' + esc(x[2]) + '</span></div>' +
@@ -753,7 +764,7 @@
             }).join('') + '</div>'];
         }
         if (p.mode === 'votes') {
-          cells = [sel('groupId', i, [['', 'Choose a topic']].concat((b.published || []).map(function (g) { return [g.id, g.topic]; })), r.groupId) +
+          cells = [sel('groupId', i, [['', 'Choose a topic']].concat((b.published || []).filter(function (g) { return g.route !== 'parking'; }).map(function (g) { return [g.id, g.topic]; })), r.groupId) +
             (r.topic ? '<div class="read-as">Read as: “' + esc(r.topic) + '”' + '</div>' : '')]
             .concat(t.roles.map(function (x) { return num(x.code, i, r[x.code], x.label + ' dots'); }))
             .concat([num('unmarked', i, r.unmarked, 'Dots not marked student or adult')]);
@@ -867,6 +878,11 @@
       }
       if (t.dataset.tab) { S.tab = t.dataset.tab; S.tabChosen = true; if (t.dataset.tab === 'record') S.audit = null; return renderAll(); }
       if (t.dataset.copyLink) { var cl = LINKS.find(function (x) { return x[0] === t.dataset.copyLink; }), cu = S.board.links && S.board.links[t.dataset.copyLink]; if (cl && cu) copyText(cu, cl[1]); return; }
+      if (t.dataset.flow) {
+        if (!confirm('Switch the steps? The stage bar, every device and the wall change with it. Nothing already sent is lost.')) return;
+        t.disabled = true; S.tabChosen = false;
+        return call('captureSetFlow', SESSION_ID, t.dataset.flow).then(function () { Capture.toast('Steps changed.'); }).catch(function () { t.disabled = false; });
+      }
       if (t.dataset.flink) {
         var fm = t.dataset.flink, had = S.board.links && S.board.links.facilitator;
         if (fm === 'off' && !confirm('Turn the facilitator link off? Anyone using it is locked out of the board straight away.')) return;

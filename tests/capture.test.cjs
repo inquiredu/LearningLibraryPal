@@ -734,6 +734,36 @@ test('each live-capture page is self-contained: one inline script that defines C
   }
 });
 
+test('need cards only is the default: four steps, a card needs no student or adult, and dots go on posters', () => {
+  const c = logic();
+  const cardsFlow = c.eval('captureTemplateFor_({ template: "needCards", flow: "cards" })');
+  assert.deepEqual([...cardsFlow.stages.map(s => s.id)], ['needs', 'synthesis', 'vote', 'results']);
+  assert.deepEqual([cardsFlow.stages[2].label, cardsFlow.flow], ['Gallery walk', 'cards']);
+  assert.equal(c.eval('captureTemplateFor_({ template: "needCards", flow: "full" })').stages.length, 10, 'the full agenda is one switch away');
+  assert.equal(c.eval('captureTemplateFor_({ template: "needCards" })').flow, 'full');
+  c.flips = [flip(1, 3, 'Right now x, but we want y')];
+  c.input = { table: 3, flipId: 1, level: 'G', fields: { need: 'Clear rules' } };
+  assert.equal(c.eval(`captureValidateCard_(${T}, input, 6, flips)`).role, '', 'a table\'s card can go in with nobody marked on it');
+  // A table device in the cards flow: no ballot, no table priority; the board switches flows.
+  const published = [{ id: 'g1', topic: 'Rules', column: 'G', route: 'vote', contested: false, tableCount: 2, cardCount: 2, cardIds: [] },
+    { id: 'p1', topic: 'Funding', column: 'B', route: 'parking', contested: false, tableCount: 1, cardCount: 1, cardIds: [] }];
+  const cardsRoom = apiContext({ email: 'owner@example.org', config: { flow: 'cards', stage: 'vote', published } });
+  const phone = plain(cardsRoom.c.captureGetPhoneState('S-1', KEY, 1, VOTER));
+  assert.deepEqual([phone.template.flow, phone.template.stages.length, phone.ballot], ['cards', 4, undefined]);
+  assert.equal(plain(cardsRoom.c.captureGetWall('S-1', KEY)).template.flow, 'cards');
+  assert.throws(() => cardsRoom.c.captureSetStage('S-1', 'signals'), /Unknown stage/, 'steps outside the flow are not on the bar');
+  const board = plain(cardsRoom.c.captureSetFlow('S-1', 'full'));
+  assert.deepEqual([board.config.flow, cardsRoom.cfg.stage], ['full', 'vote']);
+  cardsRoom.cfg.stage = 'testdrive';
+  cardsRoom.c.captureSetFlow('S-1', 'cards');
+  assert.deepEqual([cardsRoom.cfg.flow, cardsRoom.cfg.stage, cardsRoom.cfg.tallyMode], ['cards', 'needs', 'paper'], 'a step the flow lacks becomes its first; poster dots are counted');
+  assert.throws(() => cardsRoom.c.captureSetFlow('S-1', 'other'), /need cards only or the full agenda/);
+  // The full agenda: devices vote, but never on the parking lot.
+  const fullRoom = apiContext({ config: { flow: 'full', stage: 'vote', published } });
+  assert.deepEqual(plain(fullRoom.c.captureGetPhoneState('S-1', KEY, 1, VOTER)).ballot.map(g => g.id), ['g1'], 'B groups are the parking lot, not something to vote on');
+  assert.throws(() => fullRoom.c.captureSaveVote('S-1', KEY, { voter: VOTER, role: 'S', choices: ['p1'] }), /at least one/);
+});
+
 test('one facilitator link runs a session\'s board with no sign-in, and only that', () => {
   const FKEY = 'ab'.repeat(16);
   // No link yet, nobody signed in: the board stays shut, with or without a made-up key.
@@ -843,7 +873,8 @@ test('the dashboard asks the Sheet once whether a session has live capture, and 
   assert.equal(c.eval('CaptureStore.peekConfig("S-1")'), null);
   assert.equal(reads, 1, 'a session without live capture is remembered as off');
   c.eval('CaptureStore.enable("S-1", "needCards", 6, "Retreat")');
-  assert.equal(plain(c.eval('CaptureStore.peekConfig("S-1")')).stage, 'welcome', 'turning it on clears the remembered "off"');
+  const on = plain(c.eval('CaptureStore.peekConfig("S-1")'));
+  assert.deepEqual([on.flow, on.stage, on.tallyMode], ['cards', 'needs', 'paper'], 'turning it on clears the remembered "off"; a new session starts on need cards, counting poster dots');
 });
 
 test('writes reach the Sheet before the lock is let go, so the next writer numbers from them', () => {
@@ -988,7 +1019,7 @@ test('a dashboard that looked just before live capture was turned on does not ke
     };
   })()`);
   assert.equal(c.eval('CaptureStore.peekConfig("S-1")'), null);
-  assert.equal(plain(c.eval('CaptureStore.peekConfig("S-1")')).stage, 'welcome');
+  assert.equal(plain(c.eval('CaptureStore.peekConfig("S-1")')).stage, 'needs');
 });
 
 test('test-drive notes are kept per device, so two people at a table never overwrite each other', () => {

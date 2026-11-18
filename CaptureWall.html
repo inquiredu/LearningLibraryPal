@@ -251,7 +251,10 @@
         return '<div class="welcome"><p class="big" style="font-size:2.4em">The synthesis team is grouping ' + w.cards.total + ' needs.</p><p class="sub">Into G, G+ and B, marking where tables disagreed. Voting opens on your phone or laptop when they publish.</p></div>';
       },
       vote: function (w) {
-        var html = '<div style="display:grid;gap:3vh"><p class="big" style="font-size:2em">' + esc(w.template.vote.prompt) + '</p><div class="row"><span class="kv sub">Voted so far<strong>' + w.voters.total + '</strong></span>' + roles(w, w.voters) + '</div>';
+        // With need cards only, the dots go on posters: the wall shows the question and the topics, not a device count.
+        var html = '<div style="display:grid;gap:3vh"><p class="big" style="font-size:2em">' + esc(w.template.vote.prompt) + '</p>' + (w.template.flow === 'cards'
+          ? '<p class="sub">Gallery walk: put your dots on the posters around the room.</p>'
+          : '<div class="row"><span class="kv sub">Voted so far<strong>' + w.voters.total + '</strong></span>' + roles(w, w.voters) + '</div>');
         if (w.topics) html += '<div class="cols">' + w.template.levelOptions.map(function (o) {
           var items = w.topics.filter(function (t) { return t.column === o.code; });
           return '<div class="col"><h2><span class="code" data-route="' + o.route + '">' + esc(o.code) + '</span>' + esc(o.label) + '</h2><ul class="topics">' +

@@ -35,6 +35,25 @@ const CAPTURE_TEMPLATES = {
       { id: 'close', label: 'Close', phone: 'Thank you.' }
     ],
 
+    // The room works through "Need cards only" unless a facilitator turns the
+    // full agenda on. It is the activity as it was first asked for: each table
+    // enters its need cards, the team groups them with AI's help, the groups go
+    // up as posters for a gallery walk with dot stickers, and the room hears
+    // the ranking. Everything else in this template is still there, one switch away.
+    flows: {
+      cards: {
+        label: 'Need cards only',
+        summary: 'Need cards, grouping, gallery walk, read-out.',
+        stages: [
+          { id: 'needs', label: 'Need cards', phone: 'Write your table’s flip statement, then one need per card.' },
+          { id: 'synthesis', label: 'Grouping', phone: 'The team is grouping the needs.' },
+          { id: 'vote', label: 'Gallery walk', phone: 'Add your dots to the posters around the room.' },
+          { id: 'results', label: 'Read-out', phone: 'See the ranked priorities.' }
+        ]
+      },
+      full: { label: 'Full agenda', summary: 'Adds signals, the flip, gallery dots on flip statements, voting on devices, the test drive and the close.' }
+    },
+
     signal: {
       label: 'Signal',
       hint: 'Something you’ve noticed about AI: in school, outside school, or in the news. One per entry.',
@@ -141,6 +160,17 @@ function captureTemplate_(id) {
   const template = CAPTURE_TEMPLATES[id];
   if (!template) throw new Error('Unknown capture template.');
   return template;
+}
+
+/**
+ * The template as a session is running it: with the stages of its flow.
+ * `flow` on the result is 'cards' or 'full'.
+ */
+function captureTemplateFor_(config) {
+  const template = captureTemplate_(config && config.template);
+  const cards = template.flows && template.flows.cards;
+  if (config && config.flow === 'cards' && cards) return Object.assign({}, template, { stages: cards.stages, flow: 'cards' });
+  return Object.assign({}, template, { flow: 'full' });
 }
 
 function captureStageIds_(template) {

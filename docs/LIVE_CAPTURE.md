@@ -18,7 +18,18 @@ What it gives back:
 4. **The parking lot**: needs guidance alone can't meet (funding, training, policy).
 5. **A results document** made from the record in one click, and an **audit trail** anyone can use to check that the outcomes match what people sent.
 
-## Need Cards, following the retreat agenda
+## Need cards only (how a session starts)
+
+A new session runs the activity as it was first asked for, in four steps: **Need cards → Grouping → Gallery walk → Read-out**. The facilitator's one-page guide is [RUN_SHEET_NEED_CARDS.md](RUN_SHEET_NEED_CARDS.md).
+
+- **Need cards.** One person at a table scans the table's QR code and is on the form: the table's flip statement, written once on that page; then a card at a time (the need, and G, G+ or B). Nobody is asked who they are. "Written by: Student / Adult / Our table" is an optional mark on a card.
+- **Grouping.** The team asks AI for a draft, sees each group's table count and G / G+ / B mix, and finishes the grouping by hand. Publishing freezes it; **Make posters** prints one poster per G and G+ group and parking-lot pages for B.
+- **Gallery walk.** People put dots on the posters. Devices and the wall say so; devices get no ballot. The team types the dot counts in, or reads them from a photo.
+- **Read-out.** The G and G+ priorities, ranked by dots.
+
+**Settings & links → Steps → Switch to full agenda** brings back everything below (signals, the flip as its own step, gallery dots on flip statements, voting on devices, the test drive, the close). Switching changes the stage bar, the board's tabs and what devices show; nothing already sent is touched. The parking lot (B) is never on a ballot in either flow.
+
+## Need Cards, following the retreat agenda (the full agenda)
 
 The facilitator moves the room through the agenda's stages from the **stage bar** on the board, when the room is ready. Every device and the wall follow within a few seconds. Nothing moves on a timer, and no screen shows a clock time: gatherings run early and late, and the room sets the pace.
 
@@ -201,7 +212,7 @@ Then open `capture.html`, `board.html` or `wall.html` from that folder in a brow
 
 Checked here, with stand-ins for Google:
 
-- `npm run check` and `npm test`: 92 tests pass. They cover the agenda rules (cards under their own table's statement or none, columns and **?**, the published snapshot, dots and votes with no per-person caps, tallies from devices and paper, ranking and assignment), that stages lock nothing and voting needs published groups, the key and sign-in boundaries, the audit row each change writes (who, before, after; nothing deleted), paper readings (matching, checking, how confirmed rows differ), the dollar budget, the results document's content and layout, photo filing, the wall never carrying anyone's words, the store reading older sheets by header, the AI calls, page rendering and `scripts/poc.sh`.
+- `npm run check` and `npm test`: 93 tests pass. They cover the agenda rules (cards under their own table's statement or none, columns and **?**, the published snapshot, dots and votes with no per-person caps, tallies from devices and paper, ranking and assignment), that stages lock nothing and voting needs published groups, the key and sign-in boundaries, the audit row each change writes (who, before, after; nothing deleted), paper readings (matching, checking, how confirmed rows differ), the dollar budget, the results document's content and layout, photo filing, the wall never carrying anyone's words, the store reading older sheets by header, the AI calls, page rendering and `scripts/poc.sh`.
 - Every stage's device, board and wall page built by `scripts/capture-preview.cjs`, with no script errors. A scripted click-through covered a late signal and a card with no statement while the room was at Test drive, per-device test-drive notes, 12 gallery dots and 5 votes on one device, Next person, a card photo reading, every **From paper** mode (read, edit, untick, add a row, confirm), the Record & results tab and the results document button.
 
 Not checked, because it needs a real Google run:

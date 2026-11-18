@@ -20,6 +20,7 @@ What it gives back to MDE:
 
 ## Decisions Sean made (keep them)
 
+- **Jeff's flow is the default (November 18).** Sean's direction: care for Jeff by making what he asked for work first time in the shape he asked, and keep the larger aims only where they cost the room nothing. Don't put steps back in front of the card form.
 - **Nothing is timed.** Stages show no clock times; the facilitator moves the room on when it's ready.
 - **No governors.** No caps on votes, dots or statements; "3 votes each" is guidance the room keeps. Shared devices use **Next person**. Stages lock nothing; only voting needs published groups.
 - **Phones and laptops**, and **paper is a first-class way in**: a photo of a poster is read by Gemini, people check and edit every row, then confirm.
@@ -34,7 +35,7 @@ What it gives back to MDE:
 
 | What | Where |
 |---|---|
-| Code | branch `claude/need-cards-live-capture` (all pushed). Latest code: the facilitator-link commit (see the table below), which is **six commits ahead of what is deployed** (`b2aca1d`); see [Fixed in code, not deployed](#fixed-in-code-not-deployed). `main` has PR #7 (up to `44ebebf`) but not the speed fix or anything after it. |
+| Code | branch `claude/need-cards-live-capture` (all pushed). Latest code: the need-cards-only commit (see the table below), which is **ahead of what is deployed** (`b2aca1d`); see [Fixed in code, not deployed](#fixed-in-code-not-deployed). `main` has PR #7 (up to `44ebebf`) but not the speed fix or anything after it. |
 | How it works | `docs/LIVE_CAPTURE.md` |
 | Proof-of-concept instance | Sean's Google account. Its Sheet is `1wdxMK4y1-VdsMUDQXnBJDszEdczuTqER0Ap87V_LpBs`; `npm run poc` prints the board and public links. |
 | Where `npm run poc` runs | **Sean's Mac**, in `~/Documents/VIBECODE/LearningLibrary/LearningLibraryPal` (a clone of this branch). clasp there is signed in as the POC's owner, and `.clasp.poc.json` and `.poc.json` (git-ignored) point at the POC project `1cdw9cMWVrxaE4aI1xpk2iITZ3By7ZiLyTRFbqKWDsv6WsCLqDZ2hP4m6`. A Claude session on the Mac can run the deploy, after Sean's go. A fresh clone without those two files makes a new POC instead of updating this one. The Codespace is no longer needed. |
@@ -64,7 +65,7 @@ node scripts/check.cjs
 node scripts/capture-preview.cjs /tmp/preview
 ```
 
-92 tests pass as of the facilitator-link commit. The preview builds every stage's device, board and wall page with made-up data and a stand-in for Apps Script.
+93 tests pass as of the need-cards-only commit. The preview builds every stage's device, board and wall page with made-up data and a stand-in for Apps Script.
 
 On a Mac, run `npm ci --ignore-scripts` first, and run the tests with `TMPDIR` set to its real path (`TMPDIR=$(cd "${TMPDIR:-/tmp}" && pwd -P) npm test`). Otherwise one `tests/poc.test.cjs` check fails because macOS temp folders are symlinks. CI on Linux is not affected.
 
@@ -72,7 +73,8 @@ On a Mac, run `npm ci --ignore-scripts` first, and run the tests with `TMPDIR` s
 
 | Commit | What |
 |---|---|
-| after the links commit | **One facilitator link.** A session's owner makes one address (board → Settings & links) that runs that session's board with no Google sign-in, because Google often won't tell the script who a signed-in facilitator is. Anyone who has it can run the room; it opens one session only, and the owner can replace it or turn it off. Details in `docs/LIVE_CAPTURE.md`, "The facilitator link". Not yet run on Google. |
+| newest | **Need cards only is the default.** Measured against Jeff's original message (one form per table: table, flip statement, need, G/G+/B; AI-suggested groups with table counts; humans finalize; posters for a gallery walk with dot voting on G/G+), the ten-stage agenda made a table pass four screens to reach his form. A new session now runs four steps: Need cards, Grouping, Gallery walk, Read-out. A table device opens straight on the form, the flip statement is written there once, student/adult is an optional mark on a card, dots go on posters and are typed or photographed in, and B is never on a ballot. The full agenda is one switch away (Settings & links, Steps). `docs/RUN_SHEET_NEED_CARDS.md` is the page to give Jeff. Existing sessions also start in this flow after deploy. |
+| `8328d39` | **One facilitator link.** A session's owner makes one address (board → Settings & links) that runs that session's board with no Google sign-in, because Google often won't tell the script who a signed-in facilitator is. Anyone who has it can run the room; it opens one session only, and the owner can replace it or turn it off. Details in `docs/LIVE_CAPTURE.md`, "The facilitator link". Not yet run on Google. |
 | `e012664` | **Links people can use.** The board's Settings & links tab showed each long address in a one-line box that cut it off. Each link now has Open, Copy link (works where the page frame blocks the clipboard) and, for the table link and the wall, a large QR code; the address is shown whole. |
 | `7ac0940` | **The board publishes what it shows and can't double-send.** Publish and posters wait for the last group edit to save (Publish could freeze the groups one edit behind); a failed group save retries; one click on the stage bar is one move, and the bar takes no more clicks until it is answered; Confirm from paper can't run twice; typing paper dot counts isn't interrupted; an older check-in can't overwrite newer state; the wall keeps its last picture when a check-in fails. |
 | `e46c777` | **Counts and the results document match what the room did.** Each AI draft of groups gets its own ids (a second draft reused `g1`, `g2`…, so kept votes, paper dots and assignments moved to other topics). Paper vote dots nobody could mark student or adult count toward the total and have a field on the board. Two paper rows for one topic are refused; one reading is added once. The results document ranks ties as the board does, leaves out cards hidden after publishing, and keeps each test-drive note with the priority it was written about. Text Sheets would convert ("1:1", "24/7", an all-digit device id) is stored as written. AI cost is always recorded. |

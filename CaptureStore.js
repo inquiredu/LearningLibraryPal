@@ -89,7 +89,7 @@ const CaptureStore = {
   // ─── Settings ─────────────────────────────────────────────────────────────
 
   JSON_KEYS: ['published', 'paperDots', 'assign', 'paperFlipDots'],
-  CONFIG_KEYS: ['template', 'tables', 'key', 'title', 'stage', 'published', 'publishedAt', 'paperDots', 'tallyMode', 'assign', 'surveyUrl', 'paperFlipDots', 'facilitatorKey'],
+  CONFIG_KEYS: ['template', 'tables', 'key', 'title', 'stage', 'published', 'publishedAt', 'paperDots', 'tallyMode', 'assign', 'surveyUrl', 'paperFlipDots', 'facilitatorKey', 'flow'],
 
   /**
    * Settings come from the cache when the cached copy is current. Each write
@@ -132,10 +132,13 @@ const CaptureStore = {
     sheet.getDataRange().getValues().slice(1).forEach(row => { if (row[0]) map[String(row[0])] = row[1]; });
     if (!map.template) return null;
     const json = (v, fallback) => { try { return v ? JSON.parse(String(v)) : fallback; } catch (e) { return fallback; } };
-    const template = CAPTURE_TEMPLATES[String(map.template)];
+    // Need cards only is how a session runs unless someone turned the full agenda on.
+    const flow = String(map.flow) === 'full' ? 'full' : 'cards';
+    const template = CAPTURE_TEMPLATES[String(map.template)] ? captureTemplateFor_({ template: String(map.template), flow: flow }) : null;
     const stages = template ? captureStageIds_(template) : [];
     return {
       template: String(map.template),
+      flow: flow,
       tables: Number(map.tables) || CAPTURE_DEFAULTS.TABLES,
       key: String(map.key || ''),
       title: String(map.title || ''),
@@ -208,7 +211,8 @@ const CaptureStore = {
     }
     return this.withLock_(() => {
       const existing = this.readConfig_(sessionId) || {};
-      const config = Object.assign({ stage: template.stages[0].id, tallyMode: 'phone', paperDots: {}, paperFlipDots: {}, assign: {}, published: null, publishedAt: '', surveyUrl: '' }, existing, {
+      // A new session starts on need cards only, counting the dots people put on the posters.
+      const config = Object.assign({ flow: 'cards', stage: (template.flows && template.flows.cards ? template.flows.cards.stages : template.stages)[0].id, tallyMode: template.flows && template.flows.cards ? 'paper' : 'phone', paperDots: {}, paperFlipDots: {}, assign: {}, published: null, publishedAt: '', surveyUrl: '' }, existing, {
         template: template.id,
         tables: count,
         key: existing.key || Utilities.getUuid().replace(/-/g, '').slice(0, 20),

@@ -122,7 +122,7 @@ function captureDashboardInfo_(sessionId) {
   const board = base ? base + '?page=board&session=' + encodeURIComponent(sessionId) : '';
   let config = null;
   try { config = CaptureStore.peekConfig(sessionId); } catch (e) { config = null; }
-  const template = config ? CAPTURE_TEMPLATES[config.template] : null;
+  const template = config && CAPTURE_TEMPLATES[config.template] ? captureTemplateFor_(config) : null;
   if (!config || !template) return { on: false, board: board };
   const stages = template.stages;
   const at = Math.max(0, stages.findIndex(s => s.id === config.stage));
@@ -168,7 +168,7 @@ function captureRequireKey_(sessionId, key) {
   captureValidateKeyFormat_(String(key || ''));
   const config = CaptureStore.getConfig(sessionId);
   if (!config || config.key !== key) throw new Error('This table link is not active. Ask a facilitator for the link.');
-  return { config: config, template: captureTemplate_(config.template) };
+  return { config: config, template: captureTemplateFor_(config) };
 }
 
 /** Names a device in the audit trail by its table and the start of its random id. */
@@ -182,6 +182,8 @@ function captureAsDevice_(ctx, table, device) {
 function capturePublicTemplate_(template) {
   return {
     name: template.name,
+    flow: template.flow || 'full',
+    flows: template.flows ? Object.keys(template.flows).map(k => ({ id: k, label: template.flows[k].label, summary: template.flows[k].summary })) : [],
     noun: template.noun,
     intro: template.intro,
     roles: template.roles,
@@ -199,6 +201,11 @@ function capturePublicTemplate_(template) {
     vote: template.vote,
     testDrive: template.testDrive
   };
+}
+
+/** What people vote on: the published groups guidance can address, never the parking lot. */
+function captureVotable_(published) {
+  return (published || []).filter(g => g.route !== 'parking');
 }
 
 function captureStageAtOrAfter_(template, stage, from) {
@@ -256,7 +263,7 @@ function captureGetPhoneState(sessionId, key, table, voter, fresh) {
   };
   if (tableNo) {
     const dots = captureTallyFlipDots_(t, snap.flipDots, c.paperFlipDots);
-    const assignment = captureStageAtOrAfter_(t, c.stage, 'results') && c.published ? captureTableGroup_(ctx, snap, tableNo) : null;
+    const assignment = t.flow !== 'cards' && captureStageAtOrAfter_(t, c.stage, 'results') && c.published ? captureTableGroup_(ctx, snap, tableNo) : null;
     const notes = snap.testDrive.filter(n => n.table === tableNo);
     const mine = me ? notes.find(n => n.device === me) : null;
     state.table = {
@@ -270,8 +277,9 @@ function captureGetPhoneState(sessionId, key, table, voter, fresh) {
   }
   state.gallery = snap.flips.filter(f => !f.hidden).map(f => ({ id: f.id, table: f.table, text: f.text }));
   state.myDots = me ? snap.flipDots.filter(d => d.voter === me).map(d => ({ flipId: d.flipId, color: d.color })) : [];
-  if (c.published) {
-    state.ballot = c.published.map(g => ({ id: g.id, topic: g.topic, column: g.column, contested: g.contested, tableCount: g.tableCount }));
+  // With need cards only, people vote with dots on the posters, so devices get no ballot.
+  if (c.published && t.flow !== 'cards') {
+    state.ballot = captureVotable_(c.published).map(g => ({ id: g.id, topic: g.topic, column: g.column, contested: g.contested, tableCount: g.tableCount }));
     const mine = me ? snap.votes.find(v => v.voter === me) : null;
     state.myVote = mine ? { role: mine.role, choices: mine.choices } : null;
   }
@@ -380,7 +388,7 @@ function captureReadPhoto(sessionId, key, base64, mimeType, table, device) {
 function captureSaveVote(sessionId, key, input) {
   const ctx = captureRequireKey_(sessionId, key);
   if (!ctx.config.published) throw new Error('Voting opens when the facilitators publish the groups.');
-  const vote = captureValidateVote_(ctx.template, ctx.config.published, input);
+  const vote = captureValidateVote_(ctx.template, captureVotable_(ctx.config.published), input);
   captureAsDevice_(ctx, input && input.table, vote.voter);
   CaptureStore.saveVote(sessionId, vote);
   return { saved: vote.choices.length };
@@ -413,7 +421,7 @@ function captureGetWall(sessionId, key) {
   const wall = {
     title: c.title,
     stage: c.stage,
-    template: { stages: t.stages, roles: t.roles, levelOptions: t.level.options.map(o => ({ code: o.code, label: o.label, route: o.route })),
+    template: { flow: t.flow || 'full', stages: t.stages, roles: t.roles, levelOptions: t.level.options.map(o => ({ code: o.code, label: o.label, route: o.route })),
       routes: t.routes, flipDots: t.flipDots, parent: { plural: t.parent.plural }, vote: { prompt: t.vote.prompt } },
     tables: c.tables,
     signals: { byRole: byRole(signals), perTable: perTable(signals) },
@@ -464,7 +472,7 @@ function captureBoardContext_(sessionId) {
   sessionId = captureFacilitatorAuth_(sessionId);
   const config = CaptureStore.getConfig(sessionId);
   if (!config) throw new Error('Turn on live capture for this session first.');
-  const template = captureTemplate_(config.template);
+  const template = captureTemplateFor_(config);
   captureAsFacilitator_(config.stage, sessionId);
   return { config: config, template: template };
 }
@@ -476,7 +484,7 @@ function captureGetBoard(sessionId, fresh) {
   if (!session) throw new Error('Session not found.');
   const config = CaptureStore.getConfig(sessionId);
   if (!config) return { sessionId: sessionId, sessionName: session.name, enabled: false };
-  const template = captureTemplate_(config.template);
+  const template = captureTemplateFor_(config);
   const ctx = { config: config, template: template };
   const snap = CaptureStore.snapshot(sessionId, template, !!fresh);
   const live = snap.cards.filter(c => !c.hidden);
@@ -490,7 +498,7 @@ function captureGetBoard(sessionId, fresh) {
     enabled: true,
     viaLink: !!CAPTURE_VIA_LINK_[sessionId],
     sheetUrl: String(session.dbUrl || ''),
-    config: { title: config.title, tables: config.tables, stage: config.stage, tallyMode: config.tallyMode,
+    config: { title: config.title, tables: config.tables, flow: config.flow === 'cards' ? 'cards' : 'full', stage: config.stage, tallyMode: config.tallyMode,
       surveyUrl: config.surveyUrl, publishedAt: config.publishedAt, paperDots: config.paperDots, paperFlipDots: config.paperFlipDots, assign: config.assign },
     template: capturePublicTemplate_(template),
     paperModes: Object.keys(CAPTURE_PAPER_MODES_).map(k => ({ id: k, label: CAPTURE_PAPER_MODES_[k].label, table: CAPTURE_PAPER_MODES_[k].table })),
@@ -614,6 +622,25 @@ function captureSetAssignment(sessionId, table, groupId) {
 }
 
 /**
+ * Which steps the room works through: 'cards' (need cards, grouping, gallery
+ * walk, read-out) or 'full' (the whole agenda). Nothing already sent is
+ * touched; a stage the new flow doesn't have becomes its first one.
+ */
+function captureSetFlow(sessionId, flow) {
+  sessionId = captureFacilitatorAuth_(sessionId);
+  const ctx = captureBoardContext_(sessionId);
+  if (flow !== 'cards' && flow !== 'full') throw new Error('Choose need cards only or the full agenda.');
+  const stages = captureStageIds_(captureTemplateFor_({ template: ctx.config.template, flow: flow }));
+  CaptureStore.updateConfig(sessionId, c => {
+    const change = { flow: flow, stage: stages.indexOf(c.stage) !== -1 ? c.stage : stages[0] };
+    // Need cards only counts the dots on the posters; the full agenda keeps whatever was chosen.
+    if (flow === 'cards') change.tallyMode = 'paper';
+    return change;
+  }, { action: 'Steps changed', item: 'settings', before: c => c.flow || 'full', after: n => n.flow });
+  return captureGetBoard(sessionId, true);
+}
+
+/**
  * Makes, replaces or turns off the session's facilitator link. Only someone
  * signed in as the owner or a listed facilitator can do this, never someone
  * who came in by the link itself. mode: 'new' | 'off'.
@@ -666,7 +693,7 @@ function captureReadPaper(sessionId, mode, table, base64, mimeType, hints) {
   const t = CAPTURE_PAPER_MODES_[mode].table ? captureValidTable_(table, ctx.config.tables) : 0;
   const snap = CaptureStore.snapshot(sessionId, ctx.template);
   const data = String(base64 || ''), mime = String(mimeType || '');
-  const readCtx = { table: t, flips: snap.flips, published: ctx.config.published || [] };
+  const readCtx = { table: t, flips: snap.flips, published: captureVotable_(ctx.config.published) };
   const res = CaptureAiService.readPaper(ctx.template, mode, data, mime, hints, readCtx);
   const reading = captureCleanPaperReading_(ctx.template, mode, res.raw, readCtx);
   let photo = '';
@@ -686,7 +713,7 @@ function captureConfirmPaper(sessionId, mode, rows, readingEntry) {
   const ctx = captureBoardContext_(sessionId);
   capturePaperMode_(mode);
   const snap = CaptureStore.snapshot(sessionId, ctx.template, true);
-  const clean = captureValidatePaperRows_(ctx.template, mode, rows, { tables: ctx.config.tables, flips: snap.flips, published: ctx.config.published || [] });
+  const clean = captureValidatePaperRows_(ctx.template, mode, rows, { tables: ctx.config.tables, flips: snap.flips, published: captureVotable_(ctx.config.published) });
   let reading = null, aiRows = [];
   const n = Number(readingEntry);
   if (Number.isInteger(n) && n > 0) {
@@ -760,7 +787,7 @@ function captureGetTableCardsData(sessionId) {
   if (!session) throw new Error('Session not found.');
   const config = CaptureStore.getConfig(sessionId);
   if (!config) throw new Error('Turn on live capture for this session first.');
-  const template = captureTemplate_(config.template);
+  const template = captureTemplateFor_(config);
   const links = captureLinks_(sessionId, config);
   if (!links.table) throw new Error('Deploy the web app first, so the table link exists.');
   return { title: config.title, sessionName: session.name, tables: config.tables, noun: template.noun, tableLink: links.table };

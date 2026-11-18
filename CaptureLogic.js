@@ -106,7 +106,8 @@ function captureValidateCard_(template, input, tableCount, flips) {
   const codes = template.level.options.map(o => o.code);
   const level = String(input.level || '');
   if (codes.indexOf(level) === -1) throw new Error('Choose ' + codes.join(', ') + '.');
-  const role = captureValidRole_(template, input.role);
+  // A card can be the whole table's, with no student or adult marked on it.
+  const role = input.role === '' || input.role === null || input.role === undefined ? '' : captureValidRole_(template, input.role);
   const sources = Array.isArray(input.sources) ? input.sources : [input.source];
   const used = CAPTURE_SOURCES_.filter(s => sources.indexOf(s) !== -1);
   return { table: table, flipId: flip ? flipId : 0, fields: fields, level: level, role: role, source: used.length ? used.join('+') : 'typed' };

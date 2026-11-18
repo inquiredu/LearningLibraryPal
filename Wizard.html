@@ -5,7 +5,7 @@
   <meta charset="UTF-8">
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;800&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
   <style>
-    :root { --navy:#0B2B46; --cyan:#5DCDF5; --bg:#F0F4F8; --border:#DDE4ED; --text:#2C3E50; --muted:#7F8FA4; --green:#155724; --green-bg:#D4EDDA; }
+    :root { --navy:#003865; --cyan:#78BE21; --bg:#F0F4F8; --border:#DDE4ED; --text:#2C3E50; --muted:#7F8FA4; --green:#155724; --green-bg:#D4EDDA; }
     * { box-sizing:border-box; margin:0; padding:0; }
     body { font-family:'Open Sans',sans-serif; background:#fff; color:var(--text); }
 
@@ -30,7 +30,7 @@
       width:100%; padding:9px 11px; border:1.5px solid var(--border); border-radius:6px;
       font-family:'Open Sans',sans-serif; font-size:0.88rem; color:var(--text); transition:border-color 0.15s; background:#fff;
     }
-    .form-group input:focus, .form-group select:focus, .form-group textarea:focus { outline:none; border-color:var(--cyan); }
+    .form-group input:focus, .form-group select:focus, .form-group textarea:focus { outline:none; border-color:var(--navy); }
     .form-group textarea { min-height:72px; resize:vertical; }
     .hint { font-size:0.73rem; color:var(--muted); margin-top:4px; line-height:1.4; }
 
@@ -54,7 +54,7 @@
     /* Link URL input row */
     .link-row { display:flex; gap:6px; align-items:center; background:var(--bg); border:1px solid var(--border); border-radius:7px; padding:8px 10px; }
     .link-row input { flex:1; padding:5px 8px; border:1px solid var(--border); border-radius:4px; font-size:0.82rem; background:#fff; }
-    .link-row input:focus { outline:none; border-color:var(--cyan); }
+    .link-row input:focus { outline:none; border-color:var(--navy); }
     .link-row select { padding:5px 6px; border:1px solid var(--border); border-radius:4px; font-size:0.75rem; background:#fff; flex-shrink:0; }
     .link-rows { display:flex; flex-direction:column; gap:6px; margin-top:8px; }
 
@@ -72,7 +72,7 @@
     .link-list { list-style:none; text-align:left; background:var(--bg); border-radius:8px; padding:12px 16px; }
     .link-list li { margin-bottom:8px; }
     .link-list a { color:var(--navy); font-weight:700; font-size:0.85rem; text-decoration:none; display:flex; align-items:center; gap:6px; }
-    .link-list a:hover { color:var(--cyan); }
+    .link-list a:hover { color:var(--navy); }
 
   </style>
 </head>
@@ -96,7 +96,7 @@
       </div>
       <div class="form-group">
         <label>Theme / Core Question *</label>
-        <textarea id="w_theme" placeholder="What is this session really exploring? 1-3 sentences. The more specific, the better Gemini can build your brief, Gems, and inquiry questions."></textarea>
+        <textarea id="w_theme" placeholder="What is this session really exploring? 1-3 sentences. The more specific, the better Gemini can build your brief, skills, and inquiry questions."></textarea>
       </div>
       <div class="form-group">
         <label for="w_eventType">Event type</label>
@@ -104,7 +104,7 @@
           <option value="">Learning library session</option>
           <option value="needCards">Live capture: Need Cards (tables send cards from phones)</option>
         </select>
-        <div class="hint">Live capture turns on the table phone page, facilitator board, projector wall and printable table cards for this session.</div>
+        <div class="hint">Live capture turns on the table page for phones and laptops, facilitator board, projector wall and printable table cards for this session.</div>
       </div>
       <div class="form-group" id="w_tablesGroup" hidden>
         <label for="w_tables">Number of tables</label>
@@ -161,7 +161,7 @@
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
         <button class="btn btn-dark btn-sm" id="w-browseBtn" onclick="wStartDriveNav()">Browse My Drive</button>
         <span style="font-size:0.75rem;color:var(--muted);">or</span>
-        <span onclick="wToggleFolderUrl()" style="font-size:0.75rem;color:var(--cyan);cursor:pointer;text-decoration:underline;text-underline-offset:2px;">paste a folder URL</span>
+        <span onclick="wToggleFolderUrl()" style="font-size:0.75rem;color:var(--navy);cursor:pointer;text-decoration:underline;text-underline-offset:2px;">paste a folder URL</span>
       </div>
       <div id="w-urlFallback" style="display:none;margin-bottom:8px;display:flex;gap:6px;">
         <input type="url" id="w-folderUrl" placeholder="Paste Drive folder URL..." style="flex:1;padding:7px 10px;border:1.5px solid var(--border);border-radius:6px;font-family:'Open Sans',sans-serif;font-size:0.82rem;background:#fff;">
@@ -408,7 +408,7 @@
       var bcHtml = result.path.map(function(seg, i) {
         var isLast = i === result.path.length - 1;
         if (isLast) return '<span style="font-weight:700;color:var(--navy);">' + esc(seg.name) + '</span>';
-        return '<span onclick="wNavToFolder(\'' + esc(seg.id) + '\')" style="cursor:pointer;color:var(--cyan);text-decoration:underline;text-underline-offset:2px;">' + esc(seg.name) + '</span>';
+        return '<span onclick="wNavToFolder(\'' + esc(seg.id) + '\')" style="cursor:pointer;color:var(--navy);text-decoration:underline;text-underline-offset:2px;">' + esc(seg.name) + '</span>';
       }).join('<span style="margin:0 3px;color:var(--muted);">›</span>');
       bc.innerHTML = bcHtml;
 

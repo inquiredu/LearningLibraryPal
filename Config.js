@@ -41,8 +41,10 @@ const CONFIG = {
   /**
    * Public routes that skip domain authentication entirely.
    * The 'library' page is always public so shared session links work for anyone.
+   * 'capture' (table entry) and 'wall' (projector) are public pages too, but
+   * every call they make also requires the session's live-capture table key.
    */
-  PUBLIC_PAGES: ['library'],
+  PUBLIC_PAGES: ['library', 'capture', 'wall'],
 
   // ── Display timezone ──────────────────────────────────────────────────────
 
@@ -65,5 +67,22 @@ const CONFIG = {
 
   // Override in Initial Setup without editing source.
   GEMINI_MODEL: 'gemini-3.8-flash',
+
+  // ── Live capture ──────────────────────────────────────────────────────────
+
+  /**
+   * Most live capture may spend on AI per day, in US dollars, across all
+   * sessions (photo and poster readings plus grouping suggestions). Each call's
+   * cost comes from the tokens Gemini reports and the prices below. 0 turns
+   * live-capture AI off.
+   */
+  CAPTURE_AI_DAILY_BUDGET_USD: 100,
+
+  /**
+   * Gemini prices in US dollars per million tokens, used only to keep within
+   * the budget above. Check them against your Google AI Studio billing; these
+   * are set high on purpose, so the budget errs on the safe side.
+   */
+  CAPTURE_AI_PRICES_PER_MILLION: { input: 1.5, output: 7.5 },
 
 };

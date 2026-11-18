@@ -657,7 +657,7 @@
           <li><strong>Overview &amp; Objectives</strong> — See the session summary and what you'll explore.</li>
           <li><strong>Inquiry Questions</strong> — Provocative questions to guide your thinking.</li>
           <li><strong>Resources</strong> — Articles, videos, slides, and meeting links curated for this session.</li>
-          <li><strong>Gems</strong> — AI-generated conversation starters and expert perspectives.</li>
+          <li><strong>AI skills</strong> — instructions written for this session that you can copy into Claude, Gemini, ChatGPT or another assistant.</li>
           <li><strong>NotebookLM</strong> — Deep-dive research prompts for independent exploration.</li>
           <li><strong>Checklist</strong> — Track your progress as you move through the material.</li>
         </ol>
@@ -689,7 +689,7 @@
             <span class="nav-badge" id="nav-badge-resources">–</span>
           </a>
           <a class="nav-item" href="javascript:void(0)" onclick="scrollToSection('gems')" data-section="gems">
-            <span class="nav-icon">💎</span> AI Gems
+            <span class="nav-icon">🧰</span> AI Skills
             <span class="nav-badge" id="nav-badge-gems">–</span>
           </a>
           <div class="nav-spacer"></div>
@@ -785,8 +785,8 @@
         <!-- Gems -->
         <section class="section" id="gems">
           <div class="section-heading" onclick="toggleSection(this.closest('.section'))">
-            <div class="section-heading-icon">💎</div>
-            <h2>AI Learning Gems</h2>
+            <div class="section-heading-icon">🧰</div>
+            <h2>AI Skills</h2>
             <div class="section-heading-end">
               <span class="count" id="gemsCount"></span>
               <span class="section-toggle">›</span>
@@ -914,7 +914,7 @@
       renderQuestions(brief.inquiryQuestions || []);
       renderMeetings(data.meetings || []);
       renderResources(data.resources || []);
-      renderGems(data.gems || []);
+      renderGems(data.gems || [], data.skillUsage || []);
       renderNotebookLM(data.notebookLM || {});
       renderChecklist(data.checklist || []);
 
@@ -1305,59 +1305,58 @@
     }
 
     // ── Gems ──────────────────────────────────────────────────────────────────
-    function renderGems(gems) {
+    function renderGems(gems, usage) {
+      // Skills (formerly Gems): platform-neutral instructions for any AI assistant.
       var grid = document.getElementById('gemsGrid');
       document.getElementById('gemsCount').textContent = gems.length;
       document.getElementById('nav-badge-gems').textContent = gems.length;
 
       if (!gems.length) {
-        grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><strong>No Gems yet</strong>Run "Generate Gems" from the dashboard to create AI learning companions.</div>';
+        grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1"><strong>No AI skills yet</strong>Use "Generate Skills" from the dashboard to write them for this session.</div>';
         return;
       }
+      usage = usage || [];
+      var usageHtml = usage.map(function(u) {
+        return '<li><strong>' + esc(u.where) + ':</strong> ' + esc(u.how) + '</li>';
+      }).join('');
 
-      gems.forEach(function(gem) {
+      gems.forEach(function(skill) {
         var card = document.createElement('div');
         card.className = 'gem-card';
-        var drawerId = 'drawer-' + gem.id;
-        var instrId  = 'instr-'  + gem.id;
-
-        var instruction = gem.systemInstruction || gem.systemPrompt || '';
-        var stepsHtml = (gem.setupSteps || []).map(function(s, i) {
-          return '<li>' + esc(s) + '</li>';
-        }).join('');
-        var startersHtml = (gem.starterQueries || []).slice(0, 3).map(function(q) {
+        var safeId = String(skill.id || 'skill').replace(/[^a-z0-9-]/gi, '');
+        var drawerId = 'drawer-' + safeId;
+        var instrId  = 'instr-'  + safeId;
+        var startersHtml = (skill.starterPrompts || []).slice(0, 3).map(function(q) {
           return '<div class="gem-starter-item">' + esc(q) + '</div>';
         }).join('');
-        var hasLink = !!(gem.link);
+        var materialsHtml = (skill.materials || []).map(function(m) { return '<li>' + esc(m) + '</li>'; }).join('');
 
         card.innerHTML =
           '<div class="gem-card-top">' +
-            '<div class="gem-emoji-wrap">' + (gem.emoji || '💎') + '</div>' +
             '<div class="gem-meta">' +
-              '<div class="gem-name">' + esc(gem.name || '') + '</div>' +
-              '<div class="gem-role">' + esc(gem.role || '') + '</div>' +
+              '<div class="gem-name">' + esc(skill.name || '') + '</div>' +
+              '<div class="gem-role">' + esc(skill.description || '') + '</div>' +
             '</div>' +
           '</div>' +
-          (gem.persona ? '<div class="gem-persona">' + esc(gem.persona) + '</div>' : '') +
+          (skill.purpose ? '<div class="gem-persona" style="font-style:normal">' + esc(skill.purpose) + '</div>' : '') +
           (startersHtml
-            ? '<div class="gem-starters"><div class="gem-starters-label">Conversation Starters</div>' + startersHtml + '</div>'
+            ? '<div class="gem-starters"><div class="gem-starters-label">Try asking</div>' + startersHtml + '</div>'
             : '') +
           '<div class="gem-card-footer">' +
-            (hasLink
-              ? '<a class="gem-open-btn" href="' + esc(gem.link) + '" target="_blank">Open Gem →</a>'
-              : '<span class="gem-open-btn disabled">Coming Soon</span>') +
-            (instruction
-              ? '<button class="gem-instr-btn" onclick="toggleDrawer(\'' + drawerId + '\', this)">⚙ Setup</button>'
+            (skill.link ? '<a class="gem-open-btn" href="' + esc(skill.link) + '" target="_blank" rel="noopener">Open →</a>' : '') +
+            (skill.markdown
+              ? '<button class="gem-instr-btn" onclick="toggleDrawer(\'' + drawerId + '\', this)">Use this skill</button>'
               : '') +
           '</div>' +
-          (instruction
+          (skill.markdown
             ? '<div class="gem-instr-drawer" id="' + drawerId + '">' +
-                '<div class="drawer-label">System Instruction</div>' +
+                '<div class="drawer-label">The skill (works in any AI assistant)</div>' +
                 '<div class="instr-block-wrap">' +
-                  '<div class="gem-instr-block" id="' + instrId + '">' + esc(instruction) + '</div>' +
+                  '<div class="gem-instr-block" id="' + instrId + '" style="white-space:pre-wrap">' + esc(skill.markdown) + '</div>' +
                   '<button class="instr-copy-btn" onclick="copyInstr(\'' + instrId + '\', this)">📋 Copy</button>' +
                 '</div>' +
-                (stepsHtml ? '<div class="drawer-label" style="margin-top:8px;">Setup Steps</div><ol class="gem-steps">' + stepsHtml + '</ol>' : '') +
+                (materialsHtml ? '<div class="drawer-label" style="margin-top:8px;">Add these session materials</div><ul class="gem-steps" style="list-style:disc">' + materialsHtml + '</ul>' : '') +
+                (usageHtml ? '<div class="drawer-label" style="margin-top:8px;">How to use it</div><ul class="gem-steps" style="list-style:disc">' + usageHtml + '</ul>' : '') +
               '</div>'
             : '');
 
@@ -1368,7 +1367,8 @@
     function toggleDrawer(id, btn) {
       var drawer = document.getElementById(id);
       var isOpen = drawer.classList.toggle('open');
-      btn.textContent = isOpen ? '⚙ Hide' : '⚙ Setup';
+      btn.textContent = isOpen ? 'Hide' : 'Use this skill';
+      btn.setAttribute('aria-expanded', String(isOpen));
     }
 
     function copyInstr(elemId, btn) {
@@ -1663,7 +1663,7 @@
         { id: 'overview',    label: '🌐 Overview' },
         { id: 'questions',   label: '❓ Questions' },
         { id: 'resources',   label: '📚 Resources' },
-        { id: 'gems',        label: '💎 Gems' },
+        { id: 'gems',        label: '🧰 AI Skills' },
         { id: 'notebooklm', label: '🔬 NotebookLM' },
         { id: 'checklist',  label: '✅ Checklist' }
       ];

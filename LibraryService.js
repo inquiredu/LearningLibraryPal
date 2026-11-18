@@ -68,7 +68,9 @@ const LibraryService = {
       meetings: meetings,
       resources: resources,
       preReading: preReading,
-      gems: gems,
+      // Skills (formerly Gems), each with its SKILL.md text and how to use it in any assistant.
+      gems: gems.map(s => Object.assign({}, s, { markdown: skillsToMarkdown_(s, session.name) })),
+      skillUsage: SKILL_USAGE,
       notebookLM: {
         resources: notebookLMResources,
         starterPrompt: brief.notebookLMStarterPrompt || '',
@@ -123,8 +125,8 @@ const LibraryService = {
     if (gems.length > 0) {
       items.push({
         id: 'use-gem',
-        label: 'Explore the Deep Researcher Gem',
-        detail: 'Use the prompt in the Gems Workshop to go deeper before the session',
+        label: 'Try one of the session\u2019s AI skills',
+        detail: 'Copy a skill from the AI Skills section into Claude, Gemini, ChatGPT or another assistant',
         done: false
       });
     }

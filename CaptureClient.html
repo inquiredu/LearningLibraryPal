@@ -1,0 +1,59 @@
+<script>
+  /* Shared browser helpers for the live-capture pages. */
+  var Capture = (function () {
+    function run(name) {
+      var args = Array.prototype.slice.call(arguments, 1);
+      return new Promise(function (resolve, reject) {
+        var runner = google.script.run
+          .withSuccessHandler(resolve)
+          .withFailureHandler(function (err) { reject(new Error(friendly(err))); });
+        runner[name].apply(runner, args);
+      });
+    }
+
+    function friendly(err) {
+      var message = String(err && err.message || err || '');
+      message = message.replace(/^(Exception|Error):\s*/i, '');
+      if (!message || /NetworkError|failed to fetch/i.test(message)) return 'The connection dropped. Check the Wi-Fi and try again.';
+      return message;
+    }
+
+    function esc(value) {
+      return String(value == null ? '' : value).replace(/[&<>"']/g, function (ch) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch];
+      });
+    }
+
+    var toastTimer = null;
+    function toast(message) {
+      var el = document.getElementById('toast');
+      if (!el) return;
+      el.textContent = message;
+      el.hidden = false;
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(function () { el.hidden = true; }, 3200);
+    }
+
+    /** Calls fn now and every ms while the page is visible; never overlaps. */
+    function poll(fn, ms) {
+      var busy = false;
+      function tick() {
+        if (document.hidden || busy) return;
+        busy = true;
+        Promise.resolve().then(fn).catch(function () {}).then(function () { busy = false; });
+      }
+      tick();
+      setInterval(tick, ms);
+      document.addEventListener('visibilitychange', function () { if (!document.hidden) tick(); });
+    }
+
+    function store(key, value) {
+      try {
+        if (value === undefined) return JSON.parse(localStorage.getItem(key) || 'null');
+        localStorage.setItem(key, JSON.stringify(value));
+      } catch (e) { return null; }
+    }
+
+    return { run: run, esc: esc, toast: toast, poll: poll, store: store, friendly: friendly };
+  })();
+</script>

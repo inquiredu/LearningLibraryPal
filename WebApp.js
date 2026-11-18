@@ -42,6 +42,19 @@ function doGet(e) {
     }
   }
 
+  if (page === 'capture' || page === 'wall' || page === 'board' || page === 'tablecards') {
+    try {
+      return captureRoute_(page, e);
+    } catch (err) {
+      const message = String(err && err.message || 'This link is not available.').replace(/[<>&"]/g, '');
+      return HtmlService.createHtmlOutput(
+        '<main style="font:18px/1.5 system-ui,sans-serif;max-width:32rem;margin:15vh auto;padding:0 16px">' +
+        '<h1 style="font-size:1.4rem">This link isn’t working</h1><p>' + message + '</p></main>')
+        .setTitle('Link not available')
+        .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+    }
+  }
+
   if (page === 'wizard') {
     return HtmlService.createHtmlOutputFromFile('Wizard')
       .setTitle('New Session — Learning Library')
@@ -586,16 +599,16 @@ function unauthorizedPage_() {
     '<title>Access Restricted — ' + CONFIG.APP_NAME + '</title>' +
     '<style>' +
       'body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;' +
-        'background:#0B2B46;font-family:"Google Sans",Arial,sans-serif;}' +
-      '.card{background:rgba(255,255,255,0.05);border:1px solid rgba(93,205,245,0.2);' +
+        'background:#003865;font-family:"Google Sans",Arial,sans-serif;}' +
+      '.card{background:rgba(255,255,255,0.05);border:1px solid rgba(120,190,33,0.3);' +
         'border-radius:16px;padding:40px 44px;max-width:420px;text-align:center;}' +
-      '.eyebrow{font-size:0.7rem;font-weight:800;letter-spacing:0.14em;color:#5DCDF5;' +
+      '.eyebrow{font-size:0.7rem;font-weight:800;letter-spacing:0.14em;color:#78BE21;' +
         'text-transform:uppercase;margin-bottom:16px;}' +
       'h1{font-size:1.4rem;font-weight:800;color:#fff;margin:0 0 12px;}' +
       'p{font-size:0.87rem;color:rgba(255,255,255,0.6);line-height:1.6;margin:0 0 24px;}' +
-      'a{display:inline-block;background:#5DCDF5;color:#0B2B46;font-weight:800;' +
+      'a{display:inline-block;background:#78BE21;color:#003865;font-weight:800;' +
         'font-size:0.85rem;padding:10px 24px;border-radius:8px;text-decoration:none;}' +
-      'a:hover{background:#84dafc;}' +
+      'a:hover{background:#8FD13A;}' +
     '</style></head><body>' +
     '<div class="card">' +
       '<div class="eyebrow">' + CONFIG.APP_NAME + '</div>' +

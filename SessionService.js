@@ -196,7 +196,7 @@ const SessionService = {
     const sessionFolderName = `${sessionName} [${sessionId}]`;
     const sessionFolder = rootFolder.createFolder(sessionFolderName);
 
-    ['00_Admin', '01_Research', '02_Drafts', '03_Gems', '04_Final'].forEach(name => {
+    ['00_Admin', '01_Research', '02_Drafts', '03_Skills', '04_Final'].forEach(name => {
       sessionFolder.createFolder(name);
     });
 

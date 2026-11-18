@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <style>
+    /* shared:CaptureStyles */
+  :root {
+    --ink: #17212B;
+    --muted: #4F5D6B;
+    /* State of Minnesota brand: Minnesota Blue and Minnesota Green. */
+    --navy: #003865;
+    --navy-2: #0D4E80;
+    --cyan: #78BE21;
+    --ground: #F4F6F8;
+    --surface: #FFFFFF;
+    --line: #D5DCE3;
+    --line-strong: #9AA7B4;
+    --focus: #1565C0;
+    --good: #1E6B3A;
+    --good-bg: #E6F2EA;
+    --warn: #8A4B00;
+    --warn-bg: #FFF3E0;
+    --bad: #A1261B;
+    --bad-bg: #FCEBEA;
+    --radius: 10px;
+    --shadow: 0 1px 2px rgba(11, 43, 70, .08), 0 2px 8px rgba(11, 43, 70, .06);
+    --font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; font: 17px/1.5 var(--font); color: var(--ink); background: var(--ground); }
+  h1, h2, h3 { line-height: 1.2; margin: 0; }
+  h1 { font-size: 1.35rem; }
+  h2 { font-size: 1.1rem; }
+  p { margin: 0; }
+  a { color: var(--focus); }
+  ::selection { background: #CDE9F8; }
+  :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+  .num { font-variant-numeric: tabular-nums; }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .muted { color: var(--muted); }
+  .small { font-size: .875rem; }
+
+  .bar { background: var(--navy); color: #fff; padding: 12px 16px; display: flex; align-items: center; gap: 12px; }
+  .bar h1 { font-size: 1.05rem; font-weight: 700; flex: 1; min-width: 0; overflow-wrap: anywhere; }
+  .bar .tag { font-size: .8rem; letter-spacing: .04em; text-transform: uppercase; color: #CFE3F2; }
+
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px;
+    padding: 10px 16px; border-radius: 8px; border: 1px solid transparent; font: 600 1rem/1.2 var(--font);
+    cursor: pointer; text-decoration: none; background: var(--surface); color: var(--navy); border-color: var(--line-strong); }
+  .btn:hover { border-color: var(--navy); }
+  .btn[disabled] { opacity: .55; cursor: not-allowed; }
+  .btn-primary { background: var(--navy); color: #fff; border-color: var(--navy); }
+  .btn-primary:hover { background: var(--navy-2); }
+  .btn-quiet { background: transparent; border-color: transparent; color: var(--navy); text-decoration: underline; text-underline-offset: 3px; padding-inline: 6px; }
+  .btn-on-dark { background: transparent; color: #fff; border-color: rgba(255,255,255,.5); }
+  .btn-small { min-height: 36px; padding: 6px 10px; font-size: .875rem; }
+  .btn-block { width: 100%; }
+
+  .panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); }
+  label, .label { display: block; font-weight: 650; margin-bottom: 4px; }
+  .hint { display: block; color: var(--muted); font-size: .9rem; margin-bottom: 6px; }
+  textarea, input[type=text], input[type=number], select {
+    width: 100%; font: 1rem/1.4 var(--font); color: var(--ink); background: #fff;
+    border: 1px solid var(--line-strong); border-radius: 8px; padding: 10px 12px; }
+  textarea { min-height: 88px; resize: vertical; }
+  textarea:focus, input:focus, select:focus { border-color: var(--focus); }
+
+  .alert { border-radius: 8px; padding: 10px 12px; font-size: .95rem; }
+  .alert-bad { background: var(--bad-bg); color: var(--bad); }
+  .alert-good { background: var(--good-bg); color: var(--good); }
+  .alert-warn { background: var(--warn-bg); color: var(--warn); }
+  .alert:empty { display: none; }
+
+  .level { display: inline-flex; align-items: center; justify-content: center; min-width: 2.4em; padding: 1px 7px;
+    border-radius: 6px; font-weight: 700; font-size: .85rem; border: 1px solid var(--line-strong); background: #fff; color: var(--navy); }
+  .level[data-route="parking"] { border-style: dashed; color: var(--warn); border-color: #C88A3A; }
+
+  .spinner { width: 18px; height: 18px; border-radius: 50%; border: 3px solid rgba(255,255,255,.4); border-top-color: #fff; animation: spin .9s linear infinite; }
+  .spinner.dark { border-color: rgba(0,56,101,.2); border-top-color: var(--navy); }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); max-width: calc(100% - 32px);
+    background: var(--ink); color: #fff; padding: 12px 16px; border-radius: 10px; box-shadow: var(--shadow); z-index: 50; }
+  .toast[hidden] { display: none; }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+  }
+  @media print { .bar, .btn, .toast { display: none !important; } body { background: #fff; } }
+  /* /shared:CaptureStyles */
+  </style>
+  <style>
+    body { background: var(--navy); color: #fff; font-size: clamp(18px, 1.6vw, 30px); min-height: 100vh; }
+    .wall { display: grid; grid-template-rows: auto 1fr auto; min-height: 100vh; padding: 2.5vh 4vw 2vh; gap: 2.5vh; }
+    .wall-head { display: flex; align-items: baseline; gap: 2vw; flex-wrap: wrap; }
+    .wall-head h1 { font-size: 1.9em; font-weight: 750; flex: 1; min-width: 0; }
+    .stage { color: var(--cyan); font-weight: 700; }
+    .big { font-size: 4.2em; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+    .sub { color: #CFE3F2; }
+    .tables { display: grid; grid-template-columns: repeat(auto-fit, minmax(7em, 1fr)); gap: 2vw; align-content: start; }
+    .table { border-top: 3px solid rgba(255,255,255,.25); padding-top: .6em; }
+    .table h2 { font-size: .9em; font-weight: 650; color: #CFE3F2; display: flex; justify-content: space-between; }
+    .dots { display: flex; flex-wrap: wrap; gap: .4em; margin-top: .6em; }
+    .dot { width: 1.3em; height: 1.3em; border-radius: 50%; background: var(--cyan); animation: pop .5s ease-out both; }
+    @keyframes pop { from { transform: scale(0); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    .row { display: flex; gap: 3vw; flex-wrap: wrap; align-items: baseline; }
+    .kv strong { font-size: 1.6em; margin-left: .2em; font-variant-numeric: tabular-nums; }
+    .code { display: inline-block; border: 2px solid #CFE3F2; border-radius: .3em; padding: 0 .35em; font-weight: 800; }
+    .code[data-route="parking"] { border-style: dashed; }
+    .cols { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3vw; align-items: start; }
+    .col h2 { font-size: 1em; display: flex; gap: .5em; align-items: center; margin-bottom: .6em; }
+    .topics { list-style: none; margin: 0; padding: 0; display: grid; gap: 1.1vh; }
+    .topics li { border-bottom: 1px solid rgba(255,255,255,.15); padding-bottom: .9vh; }
+    .topics .name { font-weight: 700; overflow-wrap: anywhere; }
+    .topics .n { color: var(--cyan); font-weight: 800; margin-right: .4em; font-variant-numeric: tabular-nums; }
+    .contested { color: #FFD38A; font-weight: 800; margin-left: .3em; }
+    .bar2 { display: flex; height: .55em; border-radius: .3em; overflow: hidden; margin-top: .35em; background: rgba(255,255,255,.12); }
+    .bar2 span:first-child { background: var(--cyan); }
+    .bar2 span:last-child { background: #FFD38A; }
+    .legend { display: flex; gap: 1.5em; color: #CFE3F2; font-size: .8em; }
+    .legend i { display: inline-block; width: .8em; height: .8em; border-radius: 2px; margin-right: .3em; vertical-align: middle; }
+    .assign { display: grid; grid-template-columns: repeat(auto-fit, minmax(12em, 1fr)); gap: 2vw; }
+    .assign div { border-top: 3px solid var(--cyan); padding-top: .5em; }
+    .assign .t { color: #CFE3F2; font-size: .85em; }
+    .assign .p { font-weight: 800; font-size: 1.15em; overflow-wrap: anywhere; }
+    .qr { width: 32vh; max-width: 100%; background: #fff; padding: 1vh; border-radius: 1vh; }
+    .qr svg { width: 100%; height: auto; display: block; }
+    .foot { color: #CFE3F2; font-size: .75em; }
+    .error { background: var(--bad-bg); color: var(--bad); padding: 1em; border-radius: 8px; }
+    .welcome { display: grid; gap: 3vh; align-content: center; }
+  </style>
+  <!-- The close slide draws its survey QR code with qrcode-generator (MIT) when it loads; otherwise it shows the link. -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+</head>
+<body>
+  <div class="wall">
+    <header class="wall-head">
+      <h1 id="title">Live wall</h1>
+      <span class="stage" id="stage" aria-live="polite"></span>
+    </header>
+    <main id="view" aria-live="polite"></main>
+    <footer class="foot">Phones and laptops add what tables write, and paper is entered too. Facilitators group it; AI only drafts. The wall never shows anyone’s card text.</footer>
+  </div>
+  <script>
+    /* shared:CaptureClient */
+  /* Shared browser helpers for the live-capture pages. */
+  var Capture = (function () {
+    function run(name) {
+      var args = Array.prototype.slice.call(arguments, 1);
+      return new Promise(function (resolve, reject) {
+        var runner = google.script.run
+          .withSuccessHandler(resolve)
+          .withFailureHandler(function (err) { reject(new Error(friendly(err))); });
+        runner[name].apply(runner, args);
+      });
+    }
+
+    function friendly(err) {
+      var message = String(err && err.message || err || '');
+      message = message.replace(/^(Exception|Error):\s*/i, '');
+      if (!message || /NetworkError|failed to fetch/i.test(message)) return 'The connection dropped. Check the Wi-Fi and try again.';
+      return message;
+    }
+
+    function esc(value) {
+      return String(value == null ? '' : value).replace(/[&<>"']/g, function (ch) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch];
+      });
+    }
+
+    var toastTimer = null;
+    function toast(message) {
+      var el = document.getElementById('toast');
+      if (!el) return;
+      el.textContent = message;
+      el.hidden = false;
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(function () { el.hidden = true; }, 3200);
+    }
+
+    /** Calls fn now and every ms while the page is visible; never overlaps. */
+    function poll(fn, ms) {
+      var busy = false;
+      function tick() {
+        if (document.hidden || busy) return;
+        busy = true;
+        Promise.resolve().then(fn).catch(function () {}).then(function () { busy = false; });
+      }
+      tick();
+      setInterval(tick, ms);
+      document.addEventListener('visibilitychange', function () { if (!document.hidden) tick(); });
+    }
+
+    function store(key, value) {
+      try {
+        if (value === undefined) return JSON.parse(localStorage.getItem(key) || 'null');
+        localStorage.setItem(key, JSON.stringify(value));
+      } catch (e) { return null; }
+    }
+
+    return { run: run, esc: esc, toast: toast, poll: poll, store: store, friendly: friendly };
+  })();
+  /* /shared:CaptureClient */
+
+    var SESSION_ID = "__SESSION_ID__";
+    var CAPTURE_KEY = "__CAPTURE_KEY__";
+    var $ = function (id) { return document.getElementById(id); };
+    var esc = Capture.esc;
+    var shown = {};
+
+    function dots(n, key) {
+      var out = '';
+      for (var d = 0; d < n; d++) { var k = key + ':' + d; out += '<span class="dot" style="' + (shown[k] ? 'animation:none' : '') + '"></span>'; shown[k] = true; }
+      return out;
+    }
+    function perTable(list, key) {
+      return '<div class="tables">' + list.map(function (n, i) {
+        return '<section class="table"><h2><span>Table ' + (i + 1) + '</span><span class="num">' + n + '</span></h2><div class="dots" aria-hidden="true">' + dots(Math.min(n, 30), key + (i + 1)) + '</div></section>';
+      }).join('') + '</div>';
+    }
+    function roles(w, counts) {
+      return '<div class="row">' + w.template.roles.map(function (r) { return '<span class="kv sub">' + esc(r.label) + 's<strong>' + (counts[r.code] || 0) + '</strong></span>'; }).join('') + '</div>';
+    }
+    function stageInfo(w) { return w.template.stages.find(function (s) { return s.id === w.stage; }) || { label: w.stage }; }
+
+    var views = {
+      welcome: function (w) {
+        return '<div class="welcome"><p class="big" style="font-size:2.6em">Scan the QR code on your table, or open the link you were sent.</p><p class="sub">Pick your table and whether you’re a student or an adult. Keep the page open; it follows the room.</p></div>';
+      },
+      signals: function (w) {
+        return '<div style="display:grid;gap:4vh"><div class="row"><span class="big">' + w.signals.byRole.total + '</span><span class="sub">signals so far</span></div>' + roles(w, w.signals.byRole) + perTable(w.signals.perTable, 's') + '</div>';
+      },
+      flips: function (w) {
+        return '<div style="display:grid;gap:4vh"><div class="row"><span class="big">' + w.flips.total + '</span><span class="sub">' + esc(w.template.parent.plural) + '</span></div>' + perTable(w.flips.perTable, 'f') + '</div>';
+      },
+      flipdots: function (w) {
+        return '<div style="display:grid;gap:4vh"><div class="row"><span class="big">' + w.flipDots.total + '</span><span class="sub">gallery dots placed on devices</span></div>' + roles(w, w.flipDots) +
+          '<div class="legend">' + w.template.flipDots.map(function (d) { return '<span>' + esc(d.label) + '</span>'; }).join(' · ') + '</div></div>';
+      },
+      needs: function (w) {
+        return '<div style="display:grid;gap:4vh"><div class="row"><span class="big">' + w.cards.total + '</span><span class="sub">need cards</span></div>' +
+          '<div class="row">' + w.template.levelOptions.map(function (o) { return '<span class="kv sub"><span class="code" data-route="' + o.route + '">' + esc(o.code) + '</span> ' + esc(o.label) + '<strong>' + (w.cards.levels[o.code] || 0) + '</strong></span>'; }).join('') + '</div>' +
+          roles(w, w.cards.byRole) + perTable(w.cards.perTable, 'c') + '</div>';
+      },
+      synthesis: function (w) {
+        return '<div class="welcome"><p class="big" style="font-size:2.4em">The synthesis team is grouping ' + w.cards.total + ' needs.</p><p class="sub">Into G, G+ and B, marking where tables disagreed. Voting opens on your phone or laptop when they publish.</p></div>';
+      },
+      vote: function (w) {
+        var html = '<div style="display:grid;gap:3vh"><p class="big" style="font-size:2em">' + esc(w.template.vote.prompt) + '</p><div class="row"><span class="kv sub">Voted so far<strong>' + w.voters.total + '</strong></span>' + roles(w, w.voters) + '</div>';
+        if (w.topics) html += '<div class="cols">' + w.template.levelOptions.map(function (o) {
+          var items = w.topics.filter(function (t) { return t.column === o.code; });
+          return '<div class="col"><h2><span class="code" data-route="' + o.route + '">' + esc(o.code) + '</span>' + esc(o.label) + '</h2><ul class="topics">' +
+            items.map(function (t) { return '<li><span class="name">' + esc(t.topic) + '</span>' + (t.contested ? '<span class="contested" title="tag disputed">?</span>' : '') + '</li>'; }).join('') + '</ul></div>';
+        }).join('') + '</div>';
+        return html + '</div>';
+      },
+      results: function (w) {
+        if (!w.results) return views.vote(w);
+        var roleA = w.template.roles[0], roleB = w.template.roles[1];
+        return '<div style="display:grid;gap:3vh"><div class="legend"><span><i style="background:var(--cyan)"></i>' + esc(roleA.label) + 's</span><span><i style="background:#FFD38A"></i>' + esc(roleB.label) + 's</span></div><div class="cols">' +
+          w.results.columns.map(function (col) {
+            return '<div class="col"><h2><span class="code" data-route="' + col.route + '">' + esc(col.code) + '</span>' + esc(col.label) + (col.route === 'parking' ? ' <span class="sub" style="font-weight:400">' + esc(w.template.routes.parking) + '</span>' : '') + '</h2><ol class="topics">' +
+              col.items.slice(0, 8).map(function (i) {
+                var a = i[roleA.code] || 0, b = i[roleB.code] || 0, tot = Math.max(1, a + b);
+                return '<li><span class="n">' + i.rank + '</span><span class="name">' + esc(i.topic) + '</span>' + (i.contested ? '<span class="contested">?</span>' : '') +
+                  '<span class="sub" style="float:right;font-variant-numeric:tabular-nums">' + i.total + '</span><div class="bar2" aria-hidden="true"><span style="width:' + (a / tot * 100) + '%"></span><span style="width:' + (b / tot * 100) + '%"></span></div></li>';
+              }).join('') + '</ol></div>';
+          }).join('') + '</div></div>';
+      },
+      testdrive: function (w) {
+        if (!w.results) return views.synthesis(w);
+        return '<div style="display:grid;gap:4vh"><p class="big" style="font-size:2em">Guidance test drive</p><div class="assign">' + w.results.assignments.map(function (a) {
+          return '<div><div class="t">Table ' + a.table + '</div><div class="p">' + esc(a.topic || '–') + '</div></div>';
+        }).join('') + '</div></div>';
+      },
+      close: function (w) {
+        var qr = '';
+        if (w.surveyUrl && typeof qrcode === 'function') {
+          try { var q = qrcode(0, 'M'); q.addData(w.surveyUrl); q.make(); qr = '<div class="qr">' + q.createSvgTag(8, 2) + '</div>'; } catch (e) { qr = ''; }
+        }
+        return '<div class="welcome"><p class="big" style="font-size:2.6em">Thank you.</p>' +
+          (w.surveyUrl ? '<p class="sub">Exit survey: scan, or open it from your capture page.</p>' + (qr || '<p style="overflow-wrap:anywhere">' + esc(w.surveyUrl) + '</p>') : '') + '</div>';
+      }
+    };
+
+    function draw(w) {
+      $('title').textContent = w.title;
+      var s = stageInfo(w);
+      $('stage').textContent = s.label;
+      $('view').innerHTML = (views[w.stage] || views.welcome)(w);
+    }
+
+    Capture.poll(function () {
+      return Capture.run('captureGetWall', SESSION_ID, CAPTURE_KEY).then(draw).catch(function (err) { $('view').innerHTML = '<p class="error">' + esc(err.message) + '</p>'; });
+    }, 5000);
+  </script>
+</body>
+</html>

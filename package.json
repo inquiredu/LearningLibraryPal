@@ -9,7 +9,8 @@
     "open": "clasp open-container",
     "open:script": "clasp open-script",
     "test": "node --test tests/*.test.cjs",
-    "check": "node scripts/check.cjs"
+    "check": "node scripts/check.cjs",
+    "poc": "bash ./scripts/poc.sh"
   },
   "keywords": [
     "apps-script",

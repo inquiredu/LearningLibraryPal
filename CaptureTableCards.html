@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <style>
+    /* shared:CaptureStyles */
+  :root {
+    --ink: #17212B;
+    --muted: #4F5D6B;
+    /* State of Minnesota brand: Minnesota Blue and Minnesota Green. */
+    --navy: #003865;
+    --navy-2: #0D4E80;
+    --cyan: #78BE21;
+    --ground: #F4F6F8;
+    --surface: #FFFFFF;
+    --line: #D5DCE3;
+    --line-strong: #9AA7B4;
+    --focus: #1565C0;
+    --good: #1E6B3A;
+    --good-bg: #E6F2EA;
+    --warn: #8A4B00;
+    --warn-bg: #FFF3E0;
+    --bad: #A1261B;
+    --bad-bg: #FCEBEA;
+    --radius: 10px;
+    --shadow: 0 1px 2px rgba(11, 43, 70, .08), 0 2px 8px rgba(11, 43, 70, .06);
+    --font: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; font: 17px/1.5 var(--font); color: var(--ink); background: var(--ground); }
+  h1, h2, h3 { line-height: 1.2; margin: 0; }
+  h1 { font-size: 1.35rem; }
+  h2 { font-size: 1.1rem; }
+  p { margin: 0; }
+  a { color: var(--focus); }
+  ::selection { background: #CDE9F8; }
+  :focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+  .num { font-variant-numeric: tabular-nums; }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .muted { color: var(--muted); }
+  .small { font-size: .875rem; }
+
+  .bar { background: var(--navy); color: #fff; padding: 12px 16px; display: flex; align-items: center; gap: 12px; }
+  .bar h1 { font-size: 1.05rem; font-weight: 700; flex: 1; min-width: 0; overflow-wrap: anywhere; }
+  .bar .tag { font-size: .8rem; letter-spacing: .04em; text-transform: uppercase; color: #CFE3F2; }
+
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px;
+    padding: 10px 16px; border-radius: 8px; border: 1px solid transparent; font: 600 1rem/1.2 var(--font);
+    cursor: pointer; text-decoration: none; background: var(--surface); color: var(--navy); border-color: var(--line-strong); }
+  .btn:hover { border-color: var(--navy); }
+  .btn[disabled] { opacity: .55; cursor: not-allowed; }
+  .btn-primary { background: var(--navy); color: #fff; border-color: var(--navy); }
+  .btn-primary:hover { background: var(--navy-2); }
+  .btn-quiet { background: transparent; border-color: transparent; color: var(--navy); text-decoration: underline; text-underline-offset: 3px; padding-inline: 6px; }
+  .btn-on-dark { background: transparent; color: #fff; border-color: rgba(255,255,255,.5); }
+  .btn-small { min-height: 36px; padding: 6px 10px; font-size: .875rem; }
+  .btn-block { width: 100%; }
+
+  .panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); }
+  label, .label { display: block; font-weight: 650; margin-bottom: 4px; }
+  .hint { display: block; color: var(--muted); font-size: .9rem; margin-bottom: 6px; }
+  textarea, input[type=text], input[type=number], select {
+    width: 100%; font: 1rem/1.4 var(--font); color: var(--ink); background: #fff;
+    border: 1px solid var(--line-strong); border-radius: 8px; padding: 10px 12px; }
+  textarea { min-height: 88px; resize: vertical; }
+  textarea:focus, input:focus, select:focus { border-color: var(--focus); }
+
+  .alert { border-radius: 8px; padding: 10px 12px; font-size: .95rem; }
+  .alert-bad { background: var(--bad-bg); color: var(--bad); }
+  .alert-good { background: var(--good-bg); color: var(--good); }
+  .alert-warn { background: var(--warn-bg); color: var(--warn); }
+  .alert:empty { display: none; }
+
+  .level { display: inline-flex; align-items: center; justify-content: center; min-width: 2.4em; padding: 1px 7px;
+    border-radius: 6px; font-weight: 700; font-size: .85rem; border: 1px solid var(--line-strong); background: #fff; color: var(--navy); }
+  .level[data-route="parking"] { border-style: dashed; color: var(--warn); border-color: #C88A3A; }
+
+  .spinner { width: 18px; height: 18px; border-radius: 50%; border: 3px solid rgba(255,255,255,.4); border-top-color: #fff; animation: spin .9s linear infinite; }
+  .spinner.dark { border-color: rgba(0,56,101,.2); border-top-color: var(--navy); }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); max-width: calc(100% - 32px);
+    background: var(--ink); color: #fff; padding: 12px 16px; border-radius: 10px; box-shadow: var(--shadow); z-index: 50; }
+  .toast[hidden] { display: none; }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+  }
+  @media print { .bar, .btn, .toast { display: none !important; } body { background: #fff; } }
+  /* /shared:CaptureStyles */
+  </style>
+  <style>
+    main { max-width: 1100px; margin: 0 auto; padding: 16px; }
+    .tools { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
+    .tools p { flex: 1; min-width: 240px; }
+    .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+    .tcard { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 24px; text-align: center; display: grid; gap: 12px; justify-items: center; }
+    .tcard .event { font-size: 1rem; color: var(--muted); letter-spacing: .04em; text-transform: uppercase; }
+    .tcard .num { font-size: 4.5rem; font-weight: 800; line-height: 1; color: var(--navy); }
+    .tcard .qr { width: 220px; max-width: 100%; aspect-ratio: 1; display: grid; place-items: center; }
+    .tcard .qr svg { width: 100%; height: auto; display: block; }
+    .tcard .qr-missing { font-size: .85rem; color: var(--warn); background: var(--warn-bg); border-radius: 8px; padding: 10px; overflow-wrap: anywhere; text-align: left; }
+    .tcard ol { text-align: left; margin: 0; padding-left: 1.3em; display: grid; gap: 4px; font-size: 1.05rem; }
+    .tcard .scan { font-weight: 700; font-size: 1.2rem; }
+    @media print {
+      @page { size: letter portrait; margin: 0.6in; }
+      main { padding: 0; max-width: none; }
+      .tools, .bar, #pageError { display: none !important; }
+      .cards { display: block; }
+      .tcard { border: 0; border-radius: 0; padding: 0; break-after: page; page-break-after: always; min-height: 9.4in; align-content: center; gap: .3in; }
+      .tcard:last-child { break-after: auto; page-break-after: auto; }
+      .tcard .event { font-size: 18pt; }
+      .tcard .num { font-size: 96pt; }
+      .tcard .qr { width: 3.6in; }
+      .tcard .scan { font-size: 22pt; }
+      .tcard ol { font-size: 16pt; }
+    }
+  </style>
+  <!-- QR codes are drawn in the browser by qrcode-generator (MIT). If it can't load, each card shows its link instead. -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+</head>
+<body>
+  <header class="bar">
+    <div style="flex:1;min-width:0">
+      <div class="tag">Table cards</div>
+      <h1 id="title">Loading…</h1>
+    </div>
+  </header>
+  <main>
+    <div id="pageError" class="alert alert-bad" role="alert"></div>
+    <div class="tools" id="tools" hidden>
+      <p class="muted">One page per table. Each QR code opens the capture page with that table already chosen. Scan one to check it before you print.</p>
+      <button type="button" class="btn btn-primary" id="printBtn">Print table cards</button>
+    </div>
+    <div class="cards" id="cards"></div>
+  </main>
+  <script>
+    /* shared:CaptureClient */
+  /* Shared browser helpers for the live-capture pages. */
+  var Capture = (function () {
+    function run(name) {
+      var args = Array.prototype.slice.call(arguments, 1);
+      return new Promise(function (resolve, reject) {
+        var runner = google.script.run
+          .withSuccessHandler(resolve)
+          .withFailureHandler(function (err) { reject(new Error(friendly(err))); });
+        runner[name].apply(runner, args);
+      });
+    }
+
+    function friendly(err) {
+      var message = String(err && err.message || err || '');
+      message = message.replace(/^(Exception|Error):\s*/i, '');
+      if (!message || /NetworkError|failed to fetch/i.test(message)) return 'The connection dropped. Check the Wi-Fi and try again.';
+      return message;
+    }
+
+    function esc(value) {
+      return String(value == null ? '' : value).replace(/[&<>"']/g, function (ch) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch];
+      });
+    }
+
+    var toastTimer = null;
+    function toast(message) {
+      var el = document.getElementById('toast');
+      if (!el) return;
+      el.textContent = message;
+      el.hidden = false;
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(function () { el.hidden = true; }, 3200);
+    }
+
+    /** Calls fn now and every ms while the page is visible; never overlaps. */
+    function poll(fn, ms) {
+      var busy = false;
+      function tick() {
+        if (document.hidden || busy) return;
+        busy = true;
+        Promise.resolve().then(fn).catch(function () {}).then(function () { busy = false; });
+      }
+      tick();
+      setInterval(tick, ms);
+      document.addEventListener('visibilitychange', function () { if (!document.hidden) tick(); });
+    }
+
+    function store(key, value) {
+      try {
+        if (value === undefined) return JSON.parse(localStorage.getItem(key) || 'null');
+        localStorage.setItem(key, JSON.stringify(value));
+      } catch (e) { return null; }
+    }
+
+    return { run: run, esc: esc, toast: toast, poll: poll, store: store, friendly: friendly };
+  })();
+  /* /shared:CaptureClient */
+
+    var SESSION_ID = "__SESSION_ID__";
+    var $ = function (id) { return document.getElementById(id); };
+
+    function qrSvg(text) {
+      if (typeof qrcode !== 'function') return '';
+      try {
+        var qr = qrcode(0, 'M');
+        qr.addData(text);
+        qr.make();
+        return qr.createSvgTag(8, 4);
+      } catch (e) { return ''; }
+    }
+
+    Capture.run('captureGetTableCardsData', SESSION_ID).then(function (d) {
+      $('title').textContent = d.title + ' · ' + d.sessionName;
+      var html = '';
+      for (var t = 1; t <= d.tables; t++) {
+        var link = d.tableLink + '&t=' + t;
+        var svg = qrSvg(link);
+        html += '<section class="tcard" aria-label="Table ' + t + '">' +
+          '<div class="event">' + Capture.esc(d.title) + '</div>' +
+          '<div class="num">Table ' + t + '</div>' +
+          '<div class="qr">' + (svg || '<p class="qr-missing">The QR code couldn’t be drawn. Use this link: ' + Capture.esc(link) + '</p>') + '</div>' +
+          '<div class="scan">Scan to join Table ' + t + '</div>' +
+          '<ol><li>Pick student or adult. Your table is already set.</li><li>Keep the page open. It follows the room, and earlier steps stay open.</li><li>On a laptop? Use the link the facilitators shared. Sharing a device? Tap Next person before the next person votes.</li></ol>' +
+          '</section>';
+      }
+      $('cards').innerHTML = html;
+      $('tools').hidden = false;
+      $('printBtn').onclick = function () { window.print(); };
+    }).catch(function (err) {
+      $('title').textContent = 'Table cards';
+      $('pageError').textContent = err.message;
+    });
+  </script>
+</body>
+</html>

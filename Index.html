@@ -8,8 +8,9 @@
   <title>Learning Library Content Engine</title>
   <style>
     :root {
-      --navy:   #0B2B46;
-      --cyan:   #5DCDF5;
+      /* State of Minnesota brand: Minnesota Blue, with Minnesota Green on dark and as a fill. */
+      --navy:   #003865;
+      --cyan:   #78BE21;
       --white:  #FFFFFF;
       --bg:     #F0F4F8;
       --border: #DDE4ED;
@@ -31,7 +32,8 @@
     .btn:active { transform: translateY(0); }
     .btn-primary { background: var(--cyan); color: var(--navy); }
     .btn-dark    { background: var(--navy); color: var(--white); }
-    .btn-outline { background: transparent; color: var(--cyan); border: 1.5px solid var(--cyan); }
+    .btn-outline { background: transparent; color:var(--navy); border: 1.5px solid var(--navy); }
+    .header .btn-outline { color: var(--cyan); border-color: var(--cyan); }
     .btn-ghost   { background: transparent; color: var(--muted); border: 1px solid var(--border); font-weight: 600; }
     .btn-ghost:hover { color: var(--navy); border-color: var(--navy); opacity: 1; }
     .btn-sm { padding: 6px 12px; font-size: 0.78rem; }
@@ -71,7 +73,7 @@
       background: var(--bg); border: 1px solid var(--border);
       border-radius: 10px; padding: 8px 6px; margin-right: 18px;
     }
-    .sc-date-month { font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--cyan); }
+    .sc-date-month { font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color:var(--navy); }
     .sc-date-day   { font-family: 'Montserrat', sans-serif; font-size: 1.55rem; font-weight: 800; color: var(--navy); line-height: 1.1; }
     .sc-date-dow   { font-size: 0.6rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 2px; }
     .sc-date-raw   { font-size: 0.65rem; font-weight: 700; color: var(--muted); line-height: 1.3; }
@@ -99,7 +101,7 @@
     .sc-step-line.done { background: #28a745; }
 
     /* Status badge */
-    .status-badge { padding: 3px 10px; border-radius: 20px; font-size: 0.68rem; font-weight: 700; white-space: nowrap; flex-shrink: 0; background: rgba(11,43,70,0.08); color: var(--navy); }
+    .status-badge { padding: 3px 10px; border-radius: 20px; font-size: 0.68rem; font-weight: 700; white-space: nowrap; flex-shrink: 0; background: rgba(0,56,101,0.08); color: var(--navy); }
     .status-badge.ready { background: #D4EDDA; color: #155724; }
     .status-badge.gems  { background: #e0f4ff; color: #0074b7; }
 
@@ -129,7 +131,7 @@
     @keyframes spin { to { transform: rotate(360deg); } }
 
     /* ── Modals ── */
-    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(11,43,70,0.75); z-index: 1000; align-items: center; justify-content: center; }
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,56,101,0.75); z-index: 1000; align-items: center; justify-content: center; }
     .modal-overlay.open { display: flex; }
     .modal { background: var(--white); border-radius: 12px; width: 90%; max-width: 600px; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
     .modal-header { padding: 20px 24px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
@@ -140,14 +142,14 @@
     .form-group { margin-bottom: 16px; }
     .form-group label { display: block; font-size: 0.82rem; font-weight: 700; color: var(--navy); margin-bottom: 6px; }
     .form-group input, .form-group textarea { width: 100%; padding: 9px 12px; border: 1.5px solid var(--border); border-radius: 6px; font-family: 'Open Sans', sans-serif; font-size: 0.88rem; color: var(--text); transition: border-color 0.15s; }
-    .form-group input:focus, .form-group textarea:focus { outline: none; border-color: var(--cyan); }
+    .form-group input:focus, .form-group textarea:focus { outline: none; border-color:var(--navy); }
     .form-group textarea { min-height: 200px; resize: vertical; }
     .draft-loading { text-align: center; padding: 30px; color: var(--muted); font-size: 0.9rem; }
 
     /* ── People modal tabs ── */
     .people-tabs { display: flex; border-bottom: 2px solid var(--border); padding: 0 24px; }
     .people-tab { padding: 10px 18px; border: none; background: transparent; color: var(--muted); font-family: 'Open Sans', sans-serif; font-size: 0.85rem; font-weight: 600; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: color 0.15s, border-color 0.15s; }
-    .people-tab.active { color: var(--navy); border-bottom-color: var(--cyan); }
+    .people-tab.active { color: var(--navy); border-bottom-color:var(--navy); }
     .people-tab:hover { color: var(--navy); }
 
     /* ── Newsletter visual editor modal ── */
@@ -155,7 +157,7 @@
     .nl-meta-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
     .nl-meta-row label { width: 58px; flex-shrink: 0; font-size: 0.78rem; font-weight: 700; color: var(--navy); margin: 0; }
     .nl-meta-row input { flex: 1; padding: 6px 10px; border: 1.5px solid var(--border); border-radius: 6px; font-size: 0.82rem; font-family: inherit; outline: none; }
-    .nl-meta-row input:focus { border-color: var(--cyan); }
+    .nl-meta-row input:focus { border-color:var(--navy); }
     .nl-ve-body { background: #F5F7FA; padding: 8px; border-radius: 8px; margin-top: 4px; }
     .nl-ve-hint { font-size: 0.7rem; color: var(--muted); margin: 0 0 8px; text-align: center; }
     .nl-ve-label { font-size: 8.5px; font-weight: 700; letter-spacing: 1.4px; text-transform: uppercase; color: #BCC5CF; margin: 14px 0 4px 2px; display: block; }
@@ -168,10 +170,10 @@
     .nl-bullet-del { background: none; border: none; color: #BCC5CF; cursor: pointer; font-size: 15px; padding: 0 2px; line-height: 1; opacity: 0; transition: opacity 0.12s; flex-shrink: 0; }
     .nl-bullet-row:hover .nl-bullet-del { opacity: 1; }
     .nl-add-bullet { background: none; border: 1px dashed #BCC5CF; color: #8A9BAE; cursor: pointer; font-size: 11px; padding: 3px 10px; border-radius: 4px; margin-top: 5px; }
-    .nl-add-bullet:hover { border-color: var(--cyan); color: var(--navy); }
+    .nl-add-bullet:hover { border-color:var(--navy); color: var(--navy); }
     .nl-link-row { display: flex; gap: 6px; align-items: center; margin-bottom: 6px; }
     .nl-link-row input { padding: 5px 8px; border: 1.5px solid var(--border); border-radius: 5px; font-size: 0.79rem; font-family: inherit; outline: none; }
-    .nl-link-row input:focus { border-color: var(--cyan); }
+    .nl-link-row input:focus { border-color:var(--navy); }
     .nl-link-label-in { flex: 0 0 130px; }
     .nl-link-url-in { flex: 1; }
     .nl-link-del { background: none; border: none; color: #BCC5CF; cursor: pointer; font-size: 15px; padding: 0 2px; line-height: 1; }
@@ -192,7 +194,7 @@
     .link-rows { display:flex; flex-direction:column; gap:6px; margin-top:6px; }
     .link-row { display:flex; gap:6px; align-items:center; background:var(--bg); border:1px solid var(--border); border-radius:7px; padding:8px 10px; }
     .link-row input { padding:5px 8px; border:1px solid var(--border); border-radius:4px; font-size:0.82rem; background:#fff; font-family:'Open Sans',sans-serif; }
-    .link-row input:focus { outline:none; border-color:var(--cyan); }
+    .link-row input:focus { outline:none; border-color:var(--navy); }
     .link-row select { padding:5px 6px; border:1px solid var(--border); border-radius:4px; font-size:0.74rem; background:#fff; flex-shrink:0; }
     .res-empty { text-align:center; padding:16px; color:var(--muted); font-size:0.82rem; background:var(--bg); border-radius:6px; border:1px dashed var(--border); }
 
@@ -204,7 +206,7 @@
       cursor:pointer; font-size:0.82rem; transition:border-color 0.12s;
     }
     .cal-event-row.meet { border-color:#C3E6CB; background:#F0FFF4; }
-    .cal-event-row:hover { border-color:var(--cyan); }
+    .cal-event-row:hover { border-color:var(--navy); }
     .cal-meet-badge { font-size:0.62rem; font-weight:700; background:#28a745; color:#fff; padding:2px 7px; border-radius:8px; flex-shrink:0; letter-spacing:0.3px; }
     .cal-ev-title { flex:1; font-weight:600; color:var(--navy); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     .cal-ev-date  { font-size:0.74rem; color:var(--muted); white-space:nowrap; flex-shrink:0; }
@@ -224,15 +226,15 @@
       border:1px solid var(--border); border-radius:8px; padding:2px 7px; flex-shrink:0; white-space:nowrap; }
     .mg-vis { font-size:0.78rem; border:1px solid var(--border); border-radius:6px;
       padding:3px 7px; background:var(--white); flex-shrink:0; cursor:pointer; }
-    .mg-vis:focus { outline:2px solid var(--cyan); border-color:var(--cyan); }
+    .mg-vis:focus { outline:2px solid var(--navy); border-color:var(--navy); }
     .mg-del { background:none; border:none; cursor:pointer; color:var(--muted);
       font-size:1rem; padding:0 4px; flex-shrink:0; line-height:1; }
     .mg-del:hover { color:#e53e3e; }
     .mg-row.staged-delete { opacity:0.35; }
     .mg-row.staged-delete .mg-title { text-decoration:line-through; }
     .mg-row.mg-dragging { opacity:0.4; }
-    .mg-row.mg-drag-over-before { border-top:2px solid var(--cyan); }
-    .mg-row.mg-drag-over-after  { border-bottom:2px solid var(--cyan) !important; }
+    .mg-row.mg-drag-over-before { border-top:2px solid var(--navy); }
+    .mg-row.mg-drag-over-after  { border-bottom:2px solid var(--navy) !important; }
     .mg-hint { font-size:0.73rem; color:var(--muted); padding:10px 0 0; }
   </style>
 </head>
@@ -292,7 +294,7 @@
       </div>
       <!-- Collaborators panel -->
       <div id="people-panel-collab" class="modal-body">
-        <p style="font-size:0.82rem;color:var(--muted);margin-bottom:14px;">Collaborators get <strong>Editor access</strong> to the session Drive folder — research files, drafts, Gems, and the Project Database.</p>
+        <p style="font-size:0.82rem;color:var(--muted);margin-bottom:14px;">Collaborators get <strong>Editor access</strong> to the session Drive folder — research files, drafts, AI skills, and the Project Database.</p>
         <div id="collab-current" style="margin-bottom:16px;"></div>
         <div class="form-group" style="margin-bottom:0;">
           <label>Add Collaborators</label>
@@ -349,7 +351,7 @@
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
           <button class="btn btn-dark btn-sm" id="res-browseBtn" onclick="startDriveNav()">Browse My Drive</button>
           <span style="font-size:0.75rem;color:var(--muted);">or</span>
-          <span onclick="toggleFolderUrlInput()" style="font-size:0.75rem;color:var(--cyan);cursor:pointer;text-decoration:underline;text-underline-offset:2px;">paste a folder URL</span>
+          <span onclick="toggleFolderUrlInput()" style="font-size:0.75rem;color:var(--navy);cursor:pointer;text-decoration:underline;text-underline-offset:2px;">paste a folder URL</span>
         </div>
         <div id="res-urlFallback" style="display:none;margin-bottom:8px;display:flex;gap:6px;">
           <input type="url" id="res-folderUrl" placeholder="Paste Drive folder URL..." style="flex:1;padding:7px 10px;border:1.5px solid var(--border);border-radius:6px;font-family:'Open Sans',sans-serif;font-size:0.82rem;">
@@ -432,11 +434,11 @@
   <div id="gemLinksModal" class="modal-overlay">
     <div class="modal">
       <div class="modal-header">
-        <h2>🔗 Set Gem Links</h2>
+        <h2>🔗 Set Skill Links</h2>
         <button class="modal-close" onclick="closeGemLinksModal()">×</button>
       </div>
       <div class="modal-body">
-        <p style="font-size:0.82rem;color:var(--muted);margin-bottom:16px;">After creating each Gem in <a href="https://gemini.google.com" target="_blank" style="color:var(--navy);font-weight:700;">gemini.google.com</a>, paste its shareable link here. Links appear as "Open Gem →" buttons on the Library page.</p>
+        <p style="font-size:0.82rem;color:var(--muted);margin-bottom:16px;">Optional: if you set up a skill in an AI assistant you can share (a Claude project, a Gemini Gem, a ChatGPT project), paste its link here. Links appear as "Open →" buttons on the Library page. Every skill can also be copied from the Library page.</p>
         <div id="gem-link-rows" style="display:flex;flex-direction:column;gap:10px;"></div>
       </div>
       <div class="modal-footer">
@@ -544,7 +546,7 @@
         var emailDone = s.emailSent && s.emailSent !== 'No';
         var accentClass = s.hasGems ? 'stage-gems' : (s.hasBrief ? 'stage-brief' : 'stage-new');
         var badgeClass  = s.hasGems ? 'gems' : (s.hasBrief ? 'ready' : '');
-        var badgeLabel  = s.hasGems ? 'Gems Ready' : (s.hasBrief ? 'Brief Ready' : (s.status || 'New'));
+        var badgeLabel  = s.hasGems ? 'Skills Ready' : (s.hasBrief ? 'Brief Ready' : (s.status || 'New'));
 
         // ── Date block ──
         var dateParsed = _parseEventDate(s.date);
@@ -566,7 +568,7 @@
           '<div class="sc-pipeline">' +
             '<div class="sc-step' + (s.hasBrief ? ' done' : '') + '"><div class="sc-step-dot"></div><div class="sc-step-label">Brief</div></div>' +
             '<div class="sc-step-line' + briefLine + '"></div>' +
-            '<div class="sc-step' + (s.hasGems ? ' done' : '') + '"><div class="sc-step-dot"></div><div class="sc-step-label">Gems</div></div>' +
+            '<div class="sc-step' + (s.hasGems ? ' done' : '') + '"><div class="sc-step-dot"></div><div class="sc-step-label">Skills</div></div>' +
             '<div class="sc-step-line' + gemsLine  + '"></div>' +
             '<div class="sc-step' + (emailDone ? ' done' : '') + '"><div class="sc-step-dot"></div><div class="sc-step-label">Email</div></div>' +
           '</div>';
@@ -582,7 +584,7 @@
           ? '<button class="btn btn-ghost btn-xs" onclick="regenerateBrief(\'' + s.id + '\', this)">✨ Brief</button>'
           : '';
         var gemLinksBtn = s.hasGems
-          ? '<button class="btn btn-ghost btn-xs" onclick="openGemLinksModal(\'' + s.id + '\')">🔗 Gem Links</button>'
+          ? '<button class="btn btn-ghost btn-xs" onclick="openGemLinksModal(\'' + s.id + '\')">🔗 Skill Links</button>'
           : '';
 
         card.innerHTML =
@@ -616,7 +618,7 @@
               '<button class="btn btn-dark btn-xs btn-main" onclick="runSynthesis(\'' + s.id + '\', this)">🔬 Synthesize</button>' +
               '<button class="btn btn-dark btn-xs btn-icon" title="Re-analyze all resources" onclick="runSynthesisForce(\'' + s.id + '\', this)">↩</button>' +
             '</div>' +
-            '<button class="btn btn-ghost btn-xs" onclick="runGems(\'' + s.id + '\', this)">💎 Gems</button>' +
+            '<button class="btn btn-ghost btn-xs" onclick="runGems(\'' + s.id + '\', this)">🧰 Skills</button>' +
             gemLinksBtn +
             '<div class="sc-action-sep"></div>' +
             '<div class="sc-spacer"></div>' +
@@ -658,8 +660,8 @@
     function runGems(sessionId, btn) {
       setBtnLoading(btn, 'Generating…');
       google.script.run
-        .withSuccessHandler(function() { resetBtn(btn, '💎 Gems'); showAlert('Gem instructions generated! Open 03_Gems in Drive, paste into AI Studio, then use 🔗 Gem Links.', 'success'); loadDashboard(); })
-        .withFailureHandler(function(err) { resetBtn(btn, '💎 Gems'); showAlert(err.message, 'error'); })
+        .withSuccessHandler(function() { resetBtn(btn, '🧰 Skills'); showAlert('Skills written. Copy them from the Library page, or find the SKILL.md files in the session folder.', 'success'); loadDashboard(); })
+        .withFailureHandler(function(err) { resetBtn(btn, '🧰 Skills'); showAlert(err.message, 'error'); })
         .webGenerateGems(sessionId);
     }
 
@@ -681,14 +683,14 @@
       var container = document.getElementById('gem-link-rows');
       container.innerHTML = '';
       if (!gems.length) {
-        container.innerHTML = '<p style="color:var(--muted);font-size:0.85rem;">No gems found. Run Generate Gems first.</p>';
+        container.innerHTML = '<p style="color:var(--muted);font-size:0.85rem;">No skills yet. Use 🧰 Skills first.</p>';
       } else {
         gems.forEach(function(gem) {
           var row = document.createElement('div');
           row.style.cssText = 'display:flex;flex-direction:column;gap:4px;';
           row.innerHTML =
-            '<label style="font-size:0.78rem;font-weight:700;color:var(--navy);">' + (gem.emoji || '💎') + ' ' + esc(gem.name || gem.id) + '</label>' +
-            '<input type="url" data-gem-id="' + esc(gem.id) + '" placeholder="Paste Gemini Gem link…" value="' + esc(gem.link || '') + '" ' +
+            '<label style="font-size:0.78rem;font-weight:700;color:var(--navy);">' + esc(gem.name || gem.id) + '</label>' +
+            '<input type="url" data-gem-id="' + esc(gem.id) + '" placeholder="Paste a shareable link (optional)…" value="' + esc(gem.link || '') + '" ' +
               'style="padding:7px 10px;border:1.5px solid var(--border);border-radius:6px;font-family:\'Open Sans\',sans-serif;font-size:0.82rem;">';
           container.appendChild(row);
         });
@@ -715,7 +717,7 @@
         .withSuccessHandler(function() {
           document.getElementById('gemlinks-spinner').style.display = 'none';
           closeGemLinksModal();
-          showAlert('Gem links saved!', 'success');
+          showAlert('Skill links saved.', 'success');
           loadDashboard();
         })
         .withFailureHandler(function(err) {
@@ -1114,7 +1116,7 @@
       var bcHtml = result.path.map(function(seg, i) {
         var isLast = i === result.path.length - 1;
         if (isLast) return '<span style="font-weight:700;color:var(--navy);">' + esc(seg.name) + '</span>';
-        return '<span onclick="navToFolder(\'' + esc(seg.id) + '\')" style="cursor:pointer;color:var(--cyan);text-decoration:underline;text-underline-offset:2px;">' + esc(seg.name) + '</span>';
+        return '<span onclick="navToFolder(\'' + esc(seg.id) + '\')" style="cursor:pointer;color:var(--navy);text-decoration:underline;text-underline-offset:2px;">' + esc(seg.name) + '</span>';
       }).join('<span style="margin:0 3px;color:var(--muted);">›</span>');
       bc.innerHTML = bcHtml;
 
@@ -1364,7 +1366,7 @@
       bc.innerHTML = result.path.map(function(seg, i) {
         var isLast = i === result.path.length - 1;
         if (isLast) return '<span style="font-weight:700;color:var(--navy);">' + esc(seg.name) + '</span>';
-        return '<span onclick="_pickNavTo(\'' + esc(seg.id) + '\')" style="cursor:pointer;color:var(--cyan);text-decoration:underline;">' + esc(seg.name) + '</span>';
+        return '<span onclick="_pickNavTo(\'' + esc(seg.id) + '\')" style="cursor:pointer;color:var(--navy);text-decoration:underline;">' + esc(seg.name) + '</span>';
       }).join('<span style="margin:0 2px;color:var(--muted);">›</span>');
       var list = document.getElementById('dpo-list');
       var html = '';

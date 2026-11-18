@@ -11,13 +11,22 @@ function onOpen() {
     .addItem('🚀  Launch New Session', 'showWizard')
     .addSeparator()
     .addItem('🔬  Synthesize Research', 'menuTriggerSynthesis')
-    .addItem('💎  Generate Gems', 'menuTriggerGems')
+    .addItem('🧰  Generate Skills', 'menuTriggerGems')
     .addItem('📧  Draft & Send Pre-Session Email', 'menuTriggerEmail')
     .addItem('🌐  Generate Site Code', 'menuTriggerSiteCode')
     .addSeparator()
     .addItem('📅  Authorize Calendar Access', 'triggerCalendarAuth')
     .addItem('🌐  Open Dashboard', 'openDashboard')
     .addItem('⚙️   Initial Setup', 'showSetupWizard')
+    .addToUi();
+  // Live capture events (CaptureApi.js). Select a session row in the Sessions tab first.
+  SpreadsheetApp.getUi()
+    .createMenu('Live Capture')
+    .addItem('Turn on for selected session…', 'captureMenuTurnOn')
+    .addItem('Links: board, table cards, wall', 'captureMenuLinks')
+    .addItem('Make posters for selected session', 'captureMenuPosters')
+    .addSeparator()
+    .addItem('Open the live board', 'captureMenuBoard')
     .addToUi();
 }
 
@@ -40,6 +49,12 @@ function processWizardSubmit(params) {
   AuthService.requireUser();
   const result = SessionService.setupSession(params);
   CacheService.getScriptCache().remove('dashboard_v2');
+  // A live-capture event turns capture on for the new session right away.
+  const template = params && params.captureTemplate;
+  if (template && CAPTURE_TEMPLATES[template]) {
+    const config = CaptureStore.enable(result.sessionId, template, params.captureTables, params.name);
+    result.capture = captureLinks_(result.sessionId, config);
+  }
   return result;
 }
 
@@ -65,11 +80,11 @@ function menuTriggerGems() {
   if (!sessionId) return;
   const ui = SpreadsheetApp.getUi();
   try {
-    ui.alert(`Generating Gems for: ${session.name}\nThis may take 20–40 seconds...`);
+    ui.alert(`Writing AI skills for: ${session.name}\nThis may take 20–40 seconds...`);
     GemsService.generateGems(sessionId);
-    ui.alert('✅ Gems generated! View them in the Dashboard or Learning Library.');
+    ui.alert('✅ Skills ready. Find them on the Learning Library page, and as SKILL.md files in the session folder.');
   } catch (e) {
-    ui.alert('❌ Gems generation failed: ' + e.message);
+    ui.alert('❌ Skills were not written: ' + e.message);
   }
 }
 
@@ -102,7 +117,7 @@ function triggerCalendarAuth() {
       '<!DOCTYPE html><html><body style="font-family:\'Google Sans\',Arial,sans-serif;padding:20px;">' +
       '<p style="margin:0 0 14px;color:#444;font-size:13px;">Calendar access requires re-authorization.<br>Click the button below to grant access.</p>' +
       '<a href="' + authUrl + '" target="_blank" ' +
-        'style="display:inline-block;background:#0B2B46;color:#fff;padding:10px 22px;border-radius:6px;' +
+        'style="display:inline-block;background:#003865;color:#fff;padding:10px 22px;border-radius:6px;' +
         'text-decoration:none;font-size:13px;font-weight:700;">Authorize Calendar Access &rarr;</a>' +
       '<p style="margin-top:12px;font-size:0.75rem;color:#888;">After authorizing, reload the web app. The dashboard will load without delays.</p>' +
       '</body></html>'
@@ -125,7 +140,9 @@ function openDashboard() {
   // Calling ScriptApp.getService().getUrl() from a menu trigger returns the /dev URL,
   // which only works for script editors and appears "not available" to everyone else.
   var url = '';
-  try { url = PropertiesService.getScriptProperties().getProperty('WEB_APP_URL') || ''; } catch(e) {}
+  // With live capture's two deployments, the sign-in one serves the dashboard (CaptureDeploy.js).
+  if (typeof CAPTURE_BOARD_URL === 'string' && /^https:\/\/script\.google\.com\//.test(CAPTURE_BOARD_URL)) url = CAPTURE_BOARD_URL;
+  if (!url) try { url = PropertiesService.getScriptProperties().getProperty('WEB_APP_URL') || ''; } catch(e) {}
   if (!url) {
     // Fallback if the web app hasn't been opened yet since last deploy
     try { url = ScriptApp.getService().getUrl() || ''; } catch(e) {}
@@ -142,14 +159,14 @@ function openDashboard() {
   const html = HtmlService.createHtmlOutput(
     `<!DOCTYPE html><html><body style="font-family:'Google Sans',Arial,sans-serif;margin:0;padding:20px 24px;background:#fff;">
     <div style="border:1px solid #DDE4ED;border-radius:8px;overflow:hidden;">
-      <div style="background:#0B2B46;padding:10px 16px;">
-        <span style="color:#5DCDF5;font-size:10px;letter-spacing:2px;text-transform:uppercase;font-weight:700;">Learning Library</span>
+      <div style="background:#003865;padding:10px 16px;">
+        <span style="color:#78BE21;font-size:10px;letter-spacing:2px;text-transform:uppercase;font-weight:700;">Learning Library</span>
         <span style="color:rgba(255,255,255,0.6);font-size:10px;margin-left:8px;">Content Engine</span>
       </div>
       <div style="padding:16px;text-align:center;">
         <p style="margin:0 0 16px;color:#444;font-size:13px;">Dashboard is opening in a new tab.</p>
         <a href="${safeUrl}" target="_blank"
-           style="display:inline-block;background:#0B2B46;color:#fff;padding:10px 28px;border-radius:6px;text-decoration:none;font-size:13px;font-weight:700;letter-spacing:.3px;">
+           style="display:inline-block;background:#003865;color:#fff;padding:10px 28px;border-radius:6px;text-decoration:none;font-size:13px;font-weight:700;letter-spacing:.3px;">
           Open Dashboard &rarr;
         </a>
       </div>

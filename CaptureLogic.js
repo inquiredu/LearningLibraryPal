@@ -37,8 +37,12 @@ function captureCleanText_(value, maxLength) {
  * model text is stored with a leading apostrophe so it stays text.
  */
 function captureSheetSafe_(value) {
+  if (typeof value === 'number') return value;
   const text = String(value === undefined || value === null ? '' : value);
-  return /^[=+\-@]/.test(text) ? "'" + text : text;
+  // Also text Sheets would turn into a number, date, time or TRUE/FALSE
+  // ("1:1", "24/7", "50%", a device id that is all digits): keep it as written.
+  const converts = (/\d/.test(text) && /^[\s\d.,:\/%$()eE+\-]+$/.test(text)) || /^\s*(true|false)\s*$/i.test(text);
+  return /^[=+\-@]/.test(text) || converts ? "'" + text : text;
 }
 
 function captureValidTable_(value, tableCount) {
@@ -153,6 +157,7 @@ function captureNormalizeGroups_(cards, proposed, template) {
   const live = new Set(cards.filter(c => !c.hidden).map(c => Number(c.id)));
   const codes = template ? template.level.options.map(o => o.code) : [];
   const seen = new Set();
+  const usedIds = new Set();
   const groups = [];
   (Array.isArray(proposed) ? proposed : []).forEach((group, index) => {
     if (!group || typeof group !== 'object') return;
@@ -162,8 +167,13 @@ function captureNormalizeGroups_(cards, proposed, template) {
       if (live.has(id) && !seen.has(id)) { seen.add(id); ids.push(id); }
     });
     if (!ids.length) return;
+    // Votes and paper dots are counted by group id, so no two groups may share one.
+    const base = captureCleanText_(group.id, 40) || 'g' + (index + 1);
+    let id = base;
+    for (let n = 2; usedIds.has(id); n++) id = base.slice(0, 36) + '-' + n;
+    usedIds.add(id);
     groups.push({
-      id: captureCleanText_(group.id, 40) || 'g' + (index + 1),
+      id: id,
       topic: captureCleanText_(group.topic, 80) || 'Untitled group',
       cardIds: ids,
       rank: Number.isFinite(Number(group.rank)) && Number(group.rank) > 0 ? Number(group.rank) : 0,
@@ -332,13 +342,16 @@ function captureTally_(template, published, votes, paper, mode) {
   }));
   Object.keys(paper || {}).forEach(id => {
     if (!out[id]) return;
-    template.roles.forEach(r => { out[id].paper[r.code] = Math.max(0, Math.round(Number(paper[id][r.code]) || 0)); });
+    const p = paper[id] && typeof paper[id] === 'object' ? paper[id] : {};
+    template.roles.forEach(r => { out[id].paper[r.code] = captureCount_(p[r.code]); });
+    // Paper dots nobody could mark as a student's or an adult's count toward the total only.
+    out[id].paper.unmarked = captureCount_(p.unmarked);
   });
   const use = mode === 'paper' ? ['paper'] : mode === 'both' ? ['phone', 'paper'] : ['phone'];
   Object.keys(out).forEach(id => {
     const t = out[id];
     template.roles.forEach(r => { t[r.code] = use.reduce((n, k) => n + t[k][r.code], 0); });
-    t.total = template.roles.reduce((n, r) => n + t[r.code], 0);
+    t.total = template.roles.reduce((n, r) => n + t[r.code], 0) + (use.indexOf('paper') !== -1 ? (t.paper.unmarked || 0) : 0);
   });
   return out;
 }
@@ -457,7 +470,7 @@ function capturePaperRole_(template, value) {
 function captureCleanPaperReading_(template, mode, raw, ctx) {
   const c = ctx || {};
   const src = raw && typeof raw === 'object' ? raw : {};
-  const items = Array.isArray(src.items) ? src.items.slice(0, CAPTURE_DEFAULTS.MAX_PAPER_ROWS) : [];
+  const items = (Array.isArray(src.items) ? src.items : []).filter(i => i && typeof i === 'object').slice(0, CAPTURE_DEFAULTS.MAX_PAPER_ROWS);
   const live = (c.flips || []).filter(f => !f.hidden);
   const ownFlips = live.filter(f => f.table === c.table);
   const codes = template.level.options.map(o => o.code);
@@ -525,7 +538,7 @@ function captureValidatePaperRows_(template, mode, rows, ctx) {
   const codes = template.level.options.map(o => o.code);
   const role = v => capturePaperRole_(template, v);
   const ai = r => (Number.isInteger(Number(r.ai)) && r.ai !== '' && r.ai !== null && r.ai !== undefined ? Number(r.ai) : null);
-  return list.map((r, n) => {
+  const clean = list.map((r, n) => {
     const where = 'Row ' + (n + 1) + ': ';
     const table = () => { try { return captureValidTable_(r.table, c.tables); } catch (e) { throw new Error(where + 'choose a table.'); } };
     if (mode === 'signals') {
@@ -563,18 +576,33 @@ function captureValidatePaperRows_(template, mode, rows, ctx) {
     if (mode === 'votes') {
       const id = String(r.groupId || '');
       if (!(c.published || []).some(g => g.id === id)) throw new Error(where + 'choose which published topic these dots are on.');
-      const out = { ai: ai(r), groupId: id };
+      const out = { ai: ai(r), groupId: id, unmarked: captureCount_(r.unmarked) };
       template.roles.forEach(x => { out[x.code] = captureCount_(r[x.code]); });
       return out;
     }
     const notes = captureValidateTestDrive_(template, r);
     return Object.assign({ ai: ai(r), table: table() }, notes);
   });
+  // A count is stored per topic or statement, so two rows for the same one
+  // would leave only the second. Ask for one row instead of losing dots.
+  const idKey = mode === 'votes' ? 'groupId' : mode === 'flipdots' ? 'flipId' : '';
+  if (idKey) {
+    const first = {};
+    clean.forEach((r, n) => {
+      if (first[r[idKey]] !== undefined) throw new Error('Row ' + (n + 1) + ' is for the same ' + (mode === 'votes' ? 'topic' : template.parent.label.toLowerCase()) +
+        ' as row ' + (first[r[idKey]] + 1) + '. Add their dots together in one row.');
+      first[r[idKey]] = n;
+    });
+  }
+  return clean;
 }
 
 /** How the confirmed rows differ from the reading: kept as read, edited, added, dropped. */
 function captureDiffRows_(aiRows, finalRows) {
-  const strip = r => { const o = Object.assign({}, r); delete o.ai; delete o.include; delete o.statement; delete o.topic; delete o.flipText; delete o.unmarked; return JSON.stringify(o, Object.keys(o).sort()); };
+  // Compared field by field, nested counts included, in a fixed key order.
+  const canon = v => (Array.isArray(v) ? v.map(canon) : v && typeof v === 'object'
+    ? Object.keys(v).sort().reduce((o, k) => { o[k] = canon(v[k]); return o; }, {}) : v);
+  const strip = r => { const o = Object.assign({}, r); ['ai', 'include', 'statement', 'topic', 'flipText', 'aiReading', 'group'].forEach(k => { delete o[k]; }); return JSON.stringify(canon(o)); };
   const read = Array.isArray(aiRows) ? aiRows : [];
   const out = { asRead: 0, edited: 0, added: 0, dropped: 0 };
   const used = new Set();
@@ -608,10 +636,13 @@ function captureReport_(template, d) {
   const byRole = list => template.roles.map(r => roleLabel(r.code) + ' ' + list.filter(x => x.role === r.code).length).join(', ') +
     (list.some(x => !template.roles.some(r => r.code === x.role)) ? ', not marked ' + list.filter(x => !template.roles.some(r => r.code === x.role)).length : '');
   const cardById = new Map(snap.cards.map(c => [c.id, c]));
-  const cardRows = ids => ids.map(id => cardById.get(id)).filter(Boolean).map(c =>
-    ['#' + c.id, 'Table ' + c.table, roleLabel(c.role), c.level, c.fields[primary], c.fields[flipKey] || '—', c.source + (c.hidden ? ' (hidden later)' : '')]);
+  // A card hidden after its group was published is left out, like every other hidden entry.
+  const cardRows = ids => ids.map(id => cardById.get(id)).filter(c => c && !c.hidden).map(c =>
+    ['#' + c.id, 'Table ' + c.table, roleLabel(c.role), c.level, c.fields[primary], c.fields[flipKey] || '—', c.source]);
+  const hiddenIn = ids => ids.map(id => cardById.get(id)).filter(c => c && c.hidden).length;
   const cardHeader = ['Card', 'Table', 'Written by', 'Tag', 'Need, as written', template.parent.label, 'How it came in'];
-  const notesFor = table => (snap.testDrive || []).filter(n => n.table === table);
+  const allNotes = snap.testDrive || [];
+  const noteLists = notes => notes.map(note => ({ list: template.testDrive.prompts.filter(p => note.notes[p.key]).map(p => p.label + ': ' + note.notes[p.key]) }));
   const voters = snap.votes || [];
   const sections = [];
 
@@ -631,10 +662,16 @@ function captureReport_(template, d) {
     const rows = [];
     results.columns.forEach(col => col.items.forEach(i => rows.push(i)));
     const assignedTo = id => results.assignments.filter(a => a.groupId === id).map(a => 'Table ' + a.table).join(', ');
-    const vote = rows.filter(r => r.route === 'vote').sort((a, b) => (b.total - a.total) || a.rank - b.rank);
+    // The same order the board and the table assignments use.
+    const vote = results.priorities.map(p => rows.find(r => r.id === p.id)).filter(Boolean);
+    const tied = vote.some((r, n) => n > 0 && r.total === vote[n - 1].total);
+    // Notes go under the priority they were written about; notes saved without one go under the table's priority.
+    const printed = new Set();
+    const notesAbout = id => allNotes.filter(n => (n.groupId ? n.groupId === id : results.assignments.some(a => a.table === n.table && a.groupId === id)));
     const roleCols = template.roles.map(r => roleLabel(r.code) + 's');
     sections.push({ heading: 'Priorities', blocks: [
-      { p: 'The ' + template.level.options.filter(o => o.route === 'vote').map(o => o.code).join(' and ') + ' needs, ranked by votes. A "?" means tables tagged the cards in that group differently.' },
+      { p: 'The ' + template.level.options.filter(o => o.route === 'vote').map(o => o.code).join(' and ') + ' needs, ranked by votes. A "?" means tables tagged the cards in that group differently.' +
+        (tied ? ' Some priorities have the same number of votes: those are listed by how many tables raised them, then how many cards, then alphabetically.' : '') },
       { table: { header: ['Rank', 'Priority', 'Tag', 'Votes'].concat(roleCols).concat(['Tables', 'Cards', 'Test-driven by']),
         rows: vote.map((r, n) => [String(n + 1), r.topic + (r.contested ? ' ?' : ''), r.column, String(r.total)]
           .concat(template.roles.map(x => String(r[x.code] || 0))).concat([String(r.tableCount), String(r.cardCount), assignedTo(r.id) || '—'])) } }
@@ -643,10 +680,16 @@ function captureReport_(template, d) {
       const blocks = [{ p: levelLabel(r.column) + ' · ' + r.total + ' votes (' + template.roles.map(x => roleLabel(x.code) + 's ' + (r[x.code] || 0)).join(', ') + ') · raised by ' +
         r.tableCount + (r.tableCount === 1 ? ' table' : ' tables') + ' in ' + r.cardCount + (r.cardCount === 1 ? ' card' : ' cards') + (r.contested ? ' · tables tagged these differently' : '') + '.' }];
       blocks.push({ table: { header: cardHeader, rows: cardRows(r.cardIds) } });
-      results.assignments.filter(a => a.groupId === r.id).forEach(a => {
-        const notes = notesFor(a.table);
-        blocks.push({ p: 'Test-drive notes from Table ' + a.table + (notes.length ? '' : ': none saved.') });
-        notes.forEach(note => blocks.push({ list: template.testDrive.prompts.filter(p => note.notes[p.key]).map(p => p.label + ': ' + note.notes[p.key]) }));
+      const gone = hiddenIn(r.cardIds);
+      if (gone) blocks.push({ p: gone + (gone === 1 ? ' card in this group was hidden after publishing and is not shown.' : ' cards in this group were hidden after publishing and are not shown.') });
+      const about = notesAbout(r.id);
+      about.forEach(n => printed.add(n));
+      const tables = results.assignments.filter(a => a.groupId === r.id).map(a => a.table);
+      about.forEach(n => { if (tables.indexOf(n.table) === -1) tables.push(n.table); });
+      tables.sort((a, b) => a - b).forEach(table => {
+        const notes = about.filter(n => n.table === table);
+        blocks.push({ p: 'Test-drive notes from Table ' + table + (notes.length ? '' : ': none saved.') });
+        noteLists(notes).forEach(b => blocks.push(b));
       });
       sections.push({ heading: (n + 1) + '. ' + r.topic, level: 2, blocks: blocks });
     });
@@ -654,6 +697,12 @@ function captureReport_(template, d) {
     sections.push({ heading: template.routes.parking, blocks: parked.length ? [
       { p: 'Needs tagged ' + template.level.options.filter(o => o.route === 'parking').map(o => o.code + ' (' + o.label.toLowerCase() + ')').join(', ') + ': they need more than guidance. Ranked by votes.' }
     ].concat(parked.map(r => ({ table: { header: cardHeader, rows: cardRows(r.cardIds) }, caption: r.topic + ' · ' + r.total + ' votes' }))) : [{ p: 'No groups were placed here.' }] });
+    const stray = allNotes.filter(n => !printed.has(n));
+    if (stray.length) {
+      const blocks = [{ p: 'Notes written about a topic that is not one of the ranked priorities above.' }];
+      stray.slice().sort((a, b) => a.table - b.table).forEach(n => { blocks.push({ p: 'Table ' + n.table + (n.topic ? ', about “' + n.topic + '”' : '') }); noteLists([n]).forEach(b => blocks.push(b)); });
+      sections.push({ heading: 'Other test-drive notes', blocks: blocks });
+    }
     const inGroups = new Set();
     d.published.forEach(g => g.cardIds.forEach(id => inGroups.add(id)));
     const loose = cards.filter(c => !inGroups.has(c.id));
@@ -676,7 +725,7 @@ function captureReport_(template, d) {
     'Every signal, statement, card and note above is quoted as it was sent or confirmed. Counts, tags, rankings and table assignments are calculated from those entries, never by AI.',
     'AI (' + (ai.model || 'Gemini') + ') was used ' + (ai.calls || 0) + ' times: to suggest groups of cards and to read photos of cards and posters. People confirmed every suggestion' +
       (ai.readings ? '; of ' + ai.readings + ' photo readings, ' + (ai.confirmed || 0) + ' were confirmed, ' + (ai.edited || 0) + ' of them with changes' : '') + '.',
-    'AI cost for the day: $' + (Number(ai.cost) || 0).toFixed(2) + '.',
+    'AI cost for this session: $' + (Number(ai.cost) || 0).toFixed(2) + '.',
     hidden === 1 ? '1 entry was hidden by facilitators or its writer. It is left out above and kept, unchanged, in the sheet.'
       : hidden ? hidden + ' entries were hidden by facilitators or their writers. They are left out above and kept, unchanged, in the sheet.' : 'No entries were hidden.',
     'The full record is in the sheet' + (d.sheetUrl ? ' (' + d.sheetUrl + ')' : '') + ', including the Live Audit tab: ' + (d.auditEntries || 0) +

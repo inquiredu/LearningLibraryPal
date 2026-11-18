@@ -147,9 +147,12 @@ test('tallies count phones, paper dots or both, split by role', () => {
   c.votes = [{ role: 'S', choices: ['g1', 'g1'] }, { role: 'A', choices: ['g1', 'g2', 'ghost'] }];
   c.paper = { g1: { S: 4, A: '2' }, ghost: { S: 9 } };
   const t = mode => plain(c.eval(`captureTally_(${T}, pub, votes, paper, '${mode}')`));
-  assert.deepEqual(t('phone').g1, { phone: { S: 2, A: 1 }, paper: { S: 4, A: 2 }, total: 3, S: 2, A: 1 });
+  assert.deepEqual(t('phone').g1, { phone: { S: 2, A: 1 }, paper: { S: 4, A: 2, unmarked: 0 }, total: 3, S: 2, A: 1 });
   assert.equal(t('paper').g1.total, 6);
   assert.deepEqual([t('both').g1.S, t('both').g1.A, t('both').g1.total, t('both').g2.total], [6, 3, 9, 1]);
+  c.paper = { g1: { S: 4, A: 2, unmarked: 14 }, g2: null };
+  assert.deepEqual([t('paper').g1.total, t('both').g1.total, t('both').g1.S, t('phone').g1.total, t('paper').g2.total], [20, 23, 6, 3, 0],
+    'paper dots nobody could mark count toward the total, never toward students or adults');
 });
 
 test('results rank each column and give the top priorities to tables, with manual overrides', () => {
@@ -425,8 +428,8 @@ test('facilitator settings are validated before they are saved', () => {
   assert.deepEqual(h.calls[0].slice(2), ['Stage moved', 'needs'], 'the stage change is logged with what it was');
   assert.throws(() => h.c.captureSetTallyMode('S-1', 'guess'), /devices, paper or both/);
   assert.throws(() => h.c.captureSetPaperDots('S-1', 'nope', { S: 1 }), /Publish/);
-  h.c.captureSetPaperDots('S-1', 'g1', { S: -1, A: 'x' }); assert.deepEqual(plain(h.cfg.paperDots), { g1: { S: 0, A: 0 } });
-  h.c.captureSetPaperDots('S-1', 'g1', { S: '3', A: 2.4 }); assert.deepEqual(plain(h.cfg.paperDots), { g1: { S: 3, A: 2 } });
+  h.c.captureSetPaperDots('S-1', 'g1', { S: -1, A: 'x' }); assert.deepEqual(plain(h.cfg.paperDots), { g1: { S: 0, A: 0, unmarked: 0 } });
+  h.c.captureSetPaperDots('S-1', 'g1', { S: '3', A: 2.4, unmarked: 5 }); assert.deepEqual(plain(h.cfg.paperDots), { g1: { S: 3, A: 2, unmarked: 5 } });
   assert.throws(() => h.c.captureSetAssignment('S-1', 1, 'p1'), /published priorities/);
   h.c.captureSetAssignment('S-1', 2, 'g1'); assert.deepEqual(plain(h.cfg.assign), { 2: 'g1' });
   h.c.captureSetAssignment('S-1', 2, ''); assert.deepEqual(plain(h.cfg.assign), {});
@@ -498,6 +501,9 @@ test('confirming paper rows checks them, records how they differ from the readin
   assert.deepEqual(plain(call[3]), { photo: 'https://drive/p', readingEntry: 5, diff: { asRead: 0, edited: 1, added: 1, dropped: 1 } });
   assert.deepEqual(plain(board.added), { count: 2, entry: 77 });
   assert.throws(() => h.c.captureConfirmPaper('S-1', 'cards', [{ table: 2, flipId: 1, need: 'x', level: 'G', role: 'S' }], 99), /reading was not found/);
+  audit[6] = { Entry: 6, Action: 'Added from paper: Need cards', Detail: 'From AI reading in audit entry 5. 0 rows as read, 1 edited, 1 added by hand, 1 left out.' };
+  assert.throws(() => h.c.captureConfirmPaper('S-1', 'cards', rows, 5), /already added \(audit entry 6\)/, 'one reading is added once');
+  delete audit[6];
   assert.throws(() => h.c.captureConfirmPaper('S-1', 'cards', [{ table: 2, flipId: 1, need: 'x', level: '', role: 'S' }]), /Row 1: choose G, G\+, B/);
   h.c.captureConfirmPaper('S-1', 'signals', [{ table: 2, role: '', text: 'Typed from a sticky note' }]);
   assert.deepEqual(plain(h.calls.filter(x => x[0] === 'paper')[1][3].diff), { asRead: 0, edited: 0, added: 1, dropped: 0 });
@@ -514,7 +520,13 @@ test('paper readings for dots and votes match statements and topics by their wor
   const votes = plain(c.eval(`captureCleanPaperReading_(${T}, 'votes', raw, { published: pub })`));
   assert.deepEqual(votes.rows.map(r => [r.groupId, r.S, r.A, r.unmarked]), [['g2', 4, 7, 2], ['', 1, 0, 0]]);
   assert.throws(() => c.eval(`captureValidatePaperRows_(${T}, 'votes', [{ groupId: '', S: 1 }], { published: pub })`), /Row 1: choose which published topic/);
-  assert.deepEqual(plain(c.eval(`captureValidatePaperRows_(${T}, 'votes', [{ groupId: 'g2', S: '4', A: -2 }], { published: pub })`)), [{ ai: null, groupId: 'g2', S: 4, A: 0 }]);
+  assert.deepEqual(plain(c.eval(`captureValidatePaperRows_(${T}, 'votes', [{ groupId: 'g2', S: '4', A: -2, unmarked: '14' }], { published: pub })`)), [{ ai: null, groupId: 'g2', unmarked: 14, S: 4, A: 0 }]);
+  assert.throws(() => c.eval(`captureValidatePaperRows_(${T}, 'votes', [{ groupId: 'g2', S: 5 }, { groupId: 'g2', S: 3 }], { published: pub })`), /Row 2 is for the same topic as row 1/,
+    'two rows for one topic would leave only the second count');
+  c.read = [{ ai: 0, flipId: 1, statement: 's', counts: { green: { S: 2, A: 1, unmarked: 0 } } }, { ai: 1, table: 2, flipId: 1, need: 'Clear rules', level: 'G', role: 'S' }];
+  c.final = [{ ai: 0, flipId: 1, counts: { green: { unmarked: 0, A: 7, S: 9 } } }, { ai: 1, table: 2, flipId: 1, flipText: 'x', need: 'Clear rules', level: 'G', role: 'S', aiReading: 'Clear rules', group: null }];
+  assert.deepEqual(plain(c.eval('captureDiffRows_(read, final)')), { asRead: 1, edited: 1, added: 0, dropped: 0 }, 'changed dot counts are an edit; an untouched card is not');
+  assert.deepEqual(plain(c.eval(`captureCleanPaperReading_(${T}, 'signals', { items: [null, 'x', { text: 'Kept' }] }, { table: 1 })`)).rows.map(r => r.text), ['Kept']);
   assert.equal(c.captureMatchText_('totally different words', c.flips), 0);
   assert.equal(c.captureMatchText_('Right now students worry about', c.flips), 2, 'a photo cut off mid-statement still matches');
   assert.equal(c.captureMatchText_('AI', c.flips), 0, 'one common word is not a match');
@@ -547,8 +559,61 @@ test('the results document traces each priority to its cards, notes and the park
   assert.ok(detail.some(b => b.list && b.list.includes('Change: Say more about rules')));
   assert.ok(heads.includes('Parking lot') && text.includes('Funding for devices'));
   assert.equal(text.includes('Need 4'), false, 'hidden cards are left out of the document');
+  assert.match(text, /AI cost for this session/);
   assert.match(text, /1 entry was hidden by facilitators or its writer/);
   assert.match(text, /used 3 times/); assert.match(text, /2 were confirmed, 1 of them with changes/); assert.match(text, /\$0\.42/); assert.match(text, /120 entries/);
+});
+
+test('the results document ranks as the board does, leaves hidden cards out, and keeps notes with the priority they were written about', () => {
+  const c = logic();
+  const cards = [card(1, 1, 'G'), card(2, 2, 'G', 'A', { hidden: true, fields: { flip: '', need: 'Names a teacher' } }), card(3, 3, 'G+'), card(4, 4, 'G')];
+  const published = [
+    { id: 'a', topic: 'Alpha', cardIds: [1, 2], column: 'G', contested: false, route: 'vote', tableCount: 2, cardCount: 2 },
+    { id: 'b', topic: 'Bravo', cardIds: [4], column: 'G', contested: false, route: 'vote', tableCount: 4, cardCount: 4 },
+    { id: 'x', topic: 'Xray', cardIds: [3], column: 'G+', contested: false, route: 'vote', tableCount: 1, cardCount: 1 }];
+  const votes = [{ role: 'S', choices: ['a', 'a', 'a', 'a', 'a', 'b', 'b', 'b', 'x', 'x', 'x'] }];
+  c.d = { title: 'R', madeAt: 'today', tallyMode: 'phone', published, paperFlipDots: {}, ai: {},
+    snap: { cards, signals: [], flips: [], flipDots: [], votes, testDrive: [
+      { table: 1, groupId: 'b', topic: 'Bravo', notes: { change: 'Written about Bravo', add: '', cut: '', beyond: '' } },
+      { table: 2, groupId: '', topic: '', notes: { change: '', add: 'No topic stored', cut: '', beyond: '' } },
+      { table: 2, groupId: 'old', topic: 'An earlier topic', notes: { change: '', add: '', cut: 'About a topic since replaced', beyond: '' } }] } };
+  c.tally = c.eval(`captureTally_(${T}, d.published, d.snap.votes, {}, 'phone')`);
+  c.d.results = c.eval(`captureResults_(${T}, d.published, tally, 2, {})`);
+  assert.deepEqual([...c.d.results.priorities.map(p => p.topic)], ['Alpha', 'Bravo', 'Xray'], 'the board: Bravo and Xray tie on votes; more tables raised Bravo');
+  const r = plain(c.eval(`captureReport_(${T}, d)`));
+  assert.deepEqual(r.sections.filter(s => s.level === 2).map(s => s.heading), ['1. Alpha', '2. Bravo', '3. Xray'], 'the document lists them in the board\'s order');
+  assert.match(r.sections[1].blocks[0].p, /same number of votes/);
+  const text = JSON.stringify(r);
+  assert.equal(text.includes('Names a teacher'), false, 'a card hidden after publishing is not quoted');
+  const alpha = r.sections.find(s => s.heading === '1. Alpha'), bravo = r.sections.find(s => s.heading === '2. Bravo');
+  assert.ok(alpha.blocks.some(b => b.p && /1 card in this group was hidden after publishing/.test(b.p)));
+  assert.equal(JSON.stringify(alpha).includes('Written about Bravo'), false, 'table 1 holds Alpha now, but its notes were about Bravo');
+  assert.ok(JSON.stringify(bravo).includes('Written about Bravo') && JSON.stringify(bravo).includes('No topic stored'), 'notes with no stored topic go under the table\'s priority');
+  const other = r.sections.find(s => s.heading === 'Other test-drive notes');
+  assert.ok(other && JSON.stringify(other).includes('About a topic since replaced') && JSON.stringify(other).includes('An earlier topic'), 'no note is dropped');
+});
+
+test('group ids are never shared, and each AI draft gets ids of its own', () => {
+  const c = logic();
+  c.cards = [card(1, 1, 'G'), card(2, 2, 'G'), card(3, 3, 'G')];
+  c.proposed = [{ id: 'g2', topic: 'A', cardIds: [1] }, { topic: 'B', cardIds: [2] }, { id: 'g2', topic: 'C', cardIds: [3] }];
+  const ids = plain(c.eval(`captureNormalizeGroups_(cards, proposed, ${T})`)).groups.map(g => g.id);
+  assert.equal(new Set(ids).size, 3, 'three groups, three ids: ' + ids.join(', '));
+  const h = aiContext([{ groups: [{ topic: 'Teacher training', cardIds: [1] }, { topic: 'Student privacy', cardIds: [2] }] },
+    { groups: [{ topic: 'Student privacy', cardIds: [2] }, { topic: 'Teacher training', cardIds: [1] }] }, { groups: 'none' }]);
+  h.c.cards = [card(1, 1, 'G'), card(2, 2, 'G')];
+  const first = plain(h.c.eval(`CaptureAiService.proposeGroups(${T}, cards)`)).groups;
+  const second = plain(h.c.eval(`CaptureAiService.proposeGroups(${T}, cards)`)).groups;
+  assert.equal(first.concat(second).map(g => g.id).filter((id, i, all) => all.indexOf(id) !== i).length, 0,
+    'a second draft reuses no id, so votes for the first draft\'s groups can\'t land on other topics');
+  assert.throws(() => h.c.eval(`CaptureAiService.proposeGroups(${T}, cards)`), /no usable groups/, 'an empty answer changes nothing');
+});
+
+test('text that Sheets would turn into a number, date or true/false is kept as written', () => {
+  const c = logic();
+  for (const v of ['1:1', '24/7', '50%', '9/11', '01234567', '1234e567', '$5', ' 12 ', 'TRUE', 'false']) assert.equal(c.captureSheetSafe_(v), "'" + v, v);
+  for (const v of ['1:1 devices', 'Table 2', 'g1,g2', 'a1b2c3d4', 'No', '']) assert.equal(c.captureSheetSafe_(v), v, v);
+  assert.equal(c.captureSheetSafe_(6), 6, 'numbers the app writes stay numbers');
 });
 
 test('the results document counts AI use from the audit trail and is logged when made', () => {
@@ -803,8 +868,11 @@ test('rows confirmed from paper are added in one go with one audit entry; dot co
   const cfg = plain(c.eval('CaptureStore.getConfig("S-1")'));
   assert.deepEqual(Object.keys(cfg.paperFlipDots), ['3', '5'], 'other statements keep their paper counts');
   assert.equal(cfg.paperFlipDots[5].blue.unmarked, 4);
+  c.rows = [{ ai: null, flipId: 5, counts: { green: { S: 9, A: 9, unmarked: 0 } } }];
+  c.eval('CaptureStore.addFromPaper("S-1", CAPTURE_TEMPLATES.needCards, "flipdots", rows, { diff: { asRead: 0, edited: 0, added: 1, dropped: 0 } })');
+  assert.equal(JSON.parse(auditRows(grid)[2].Before).replaced[5].blue.unmarked, 4, 'a count that replaces an earlier one says what it replaced');
   const log = auditRows(grid);
-  assert.deepEqual(log.map(r => r.Action), ['Added from paper: Signals', 'Added from paper: Gallery dots']);
+  assert.deepEqual(log.map(r => r.Action), ['Added from paper: Signals', 'Added from paper: Gallery dots', 'Added from paper: Gallery dots']);
   assert.match(log[0].Detail, /From AI reading in audit entry 4\. 1 rows as read, 0 edited, 1 added by hand, 2 left out\./);
   assert.equal(log[1].Detail, 'Typed in from paper, no AI reading.');
 });

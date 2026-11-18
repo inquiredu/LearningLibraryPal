@@ -645,7 +645,7 @@ const CaptureStore = {
     const m = meta || {};
     return this.withLock_(() => {
       const db = this.db(sessionId);
-      const ids = [];
+      const ids = [], replaced = {};
       try {
         const extra = { source: 'paper', photo: m.photo || '' };
         if (mode === 'signals') {
@@ -671,13 +671,17 @@ const CaptureStore = {
           const key = mode === 'flipdots' ? 'paperFlipDots' : 'paperDots';
           const next = Object.assign({}, config[key]);
           rows.forEach(r => {
-            if (mode === 'flipdots') { next[r.flipId] = r.counts; ids.push('flip ' + r.flipId); }
-            else { const o = {}; template.roles.forEach(x => { o[x.code] = r[x.code]; }); next[r.groupId] = o; ids.push(r.groupId); }
+            const id = mode === 'flipdots' ? r.flipId : r.groupId;
+            // A new count for the same statement or topic replaces the earlier one; the audit row keeps what it was.
+            if (next[id] !== undefined) replaced[id] = next[id];
+            if (mode === 'flipdots') { next[id] = r.counts; ids.push('flip ' + id); }
+            else { const o = { unmarked: r.unmarked || 0 }; template.roles.forEach(x => { o[x.code] = r[x.code]; }); next[id] = o; ids.push(id); }
           });
           const change = {}; change[key] = next;
           this.writeConfig_(sessionId, Object.assign({}, config, change));
         }
         const entry = this.log_(db, { action: 'Added from paper: ' + CAPTURE_PAPER_MODES_[mode].label, item: mode, ids: ids, after: rows, photo: m.photo || '',
+          before: Object.keys(replaced).length ? { replaced: replaced } : '',
           detail: m.readingEntry ? 'From AI reading in audit entry ' + m.readingEntry + '. ' + m.diff.asRead + ' rows as read, ' + m.diff.edited + ' edited, ' + m.diff.added +
             ' added by hand, ' + m.diff.dropped + ' left out.' : 'Typed in from paper, no AI reading.' });
         return { ids: ids, entry: entry };

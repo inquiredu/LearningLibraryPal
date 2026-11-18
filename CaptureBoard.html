@@ -531,11 +531,12 @@
         html += '<section class="panel section"><div class="head"><h2><span class="level" data-route="' + col.route + '">' + esc(col.code) + '</span> ' + esc(col.label) +
           (col.route === 'parking' ? ' <span class="muted small">' + esc(T().routes.parking) + '</span>' : '') + '</h2></div><table class="tally"><thead><tr><th class="num">Rank</th><th>Topic</th>' +
           T().roles.map(function (r) { return '<th class="num">Device ' + esc(r.code) + '</th>'; }).join('') + T().roles.map(function (r) { return '<th class="num">Paper ' + esc(r.code) + '</th>'; }).join('') +
-          '<th class="num">Total</th></tr></thead><tbody>' + col.items.map(function (i) {
+          '<th class="num" title="Paper dots not marked as a student’s or an adult’s. They count toward the total.">Paper ?</th><th class="num">Total</th></tr></thead><tbody>' + col.items.map(function (i) {
             var t = b.tally[i.id] || { phone: {}, paper: {} };
             return '<tr><td class="num">' + i.rank + '</td><td>' + esc(i.topic) + (i.contested ? ' <span class="contested">?</span>' : '') + '</td>' +
               T().roles.map(function (r) { return '<td class="num">' + (t.phone[r.code] || 0) + '</td>'; }).join('') +
               T().roles.map(function (r) { return '<td class="num"><label class="sr-only" for="pd_' + esc(i.id) + '_' + r.code + '">Paper ' + esc(r.label) + ' dots for ' + esc(i.topic) + '</label><input type="number" min="0" max="999" id="pd_' + esc(i.id) + '_' + r.code + '" data-paper="' + esc(i.id) + '" value="' + (t.paper[r.code] || 0) + '"></td>'; }).join('') +
+              '<td class="num"><label class="sr-only" for="pd_' + esc(i.id) + '_unmarked">Paper dots not marked student or adult for ' + esc(i.topic) + '</label><input type="number" min="0" max="999" id="pd_' + esc(i.id) + '_unmarked" data-paper="' + esc(i.id) + '" value="' + (t.paper.unmarked || 0) + '"></td>' +
               '<td class="num"><strong>' + i.total + '</strong></td></tr>';
           }).join('') + '</tbody></table></section>';
       });
@@ -592,7 +593,7 @@
       if (mode === 'flips') { r.table = t; r.text = ''; }
       if (mode === 'cards') { r.table = t; r.flipId = 0; r.need = ''; r.level = ''; r.role = ''; }
       if (mode === 'flipdots') { r.flipId = 0; r.counts = {}; T().flipDots.forEach(function (d) { r.counts[d.code] = { unmarked: 0 }; T().roles.forEach(function (x) { r.counts[d.code][x.code] = 0; }); }); }
-      if (mode === 'votes') { r.groupId = ''; T().roles.forEach(function (x) { r[x.code] = 0; }); }
+      if (mode === 'votes') { r.groupId = ''; r.unmarked = 0; T().roles.forEach(function (x) { r[x.code] = 0; }); }
       if (mode === 'testdrive') { r.table = t; T().testDrive.prompts.forEach(function (p) { r[p.key] = ''; }); }
       return r;
     }
@@ -642,7 +643,7 @@
       var levels = [['', 'Choose']].concat(t.level.options.map(function (o) { return [o.code, o.code + ' · ' + o.label]; }));
       var liveFlips = b.flips.filter(function (f) { return !f.hidden; });
       var head = { signals: ['Table', 'Written by', 'Signal'], flips: ['Table', t.parent.label], cards: ['Table', t.parent.label, 'Need', 'Tag', 'Written by'],
-        flipdots: [t.parent.label, 'Dots: ' + t.roles.map(function (r) { return r.label + 's'; }).join(', ') + ', unmarked'], votes: ['Topic'].concat(t.roles.map(function (r) { return r.label + 's'; })),
+        flipdots: [t.parent.label, 'Dots: ' + t.roles.map(function (r) { return r.label + 's'; }).join(', ') + ', unmarked'], votes: ['Topic'].concat(t.roles.map(function (r) { return r.label + 's'; })).concat(['Not marked']),
         testdrive: ['Table'].concat(t.testDrive.prompts.map(function (x) { return x.label; })) }[p.mode];
       var rows = p.rows.map(function (r, i) {
         var cells;
@@ -664,8 +665,9 @@
         }
         if (p.mode === 'votes') {
           cells = [sel('groupId', i, [['', 'Choose a topic']].concat((b.published || []).map(function (g) { return [g.id, g.topic]; })), r.groupId) +
-            (r.topic ? '<div class="read-as">Read as: “' + esc(r.topic) + '”' + (r.unmarked ? '; ' + r.unmarked + ' unmarked dots, add them to students or adults' : '') + '</div>' : '')]
-            .concat(t.roles.map(function (x) { return num(x.code, i, r[x.code], x.label + ' dots'); }));
+            (r.topic ? '<div class="read-as">Read as: “' + esc(r.topic) + '”' + '</div>' : '')]
+            .concat(t.roles.map(function (x) { return num(x.code, i, r[x.code], x.label + ' dots'); }))
+            .concat([num('unmarked', i, r.unmarked, 'Dots not marked student or adult')]);
         }
         if (p.mode === 'testdrive') cells = [sel('table', i, tables, r.table)].concat(t.testDrive.prompts.map(function (x) { return area(x.key, i, r[x.key]); }));
         return '<tr class="' + (r.include === false ? 'off' : '') + '"><td><label class="sr-only" for="inc' + i + '">Include row ' + (i + 1) + '</label><input type="checkbox" id="inc' + i + '" data-prow="' + i + '" data-pf="include"' + (r.include === false ? '' : ' checked') + '></td>' +
@@ -798,6 +800,7 @@
       if (d.paper) {
         var counts = {};
         T().roles.forEach(function (r) { var el = $('pd_' + d.paper + '_' + r.code); counts[r.code] = el ? Number(el.value) || 0 : 0; });
+        var un = $('pd_' + d.paper + '_unmarked'); if (un) counts.unmarked = Number(un.value) || 0;
         return call('captureSetPaperDots', SESSION_ID, d.paper, counts).catch(function () {});
       }
       if (d.assign) return call('captureSetAssignment', SESSION_ID, Number(d.assign), e.target.value).catch(function () {});

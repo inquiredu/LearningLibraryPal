@@ -42,14 +42,16 @@ const CaptureAiService = {
     if (!usage) return { model: '', tokens: '', cost: 0 };
     const cost = captureAiCost_(usage, CONFIG.CAPTURE_AI_PRICES_PER_MILLION);
     const key = 'CAPTURE_AI_MICRODOLLARS_' + this.day_();
+    // Money spent is always written down. The lock keeps two calls from
+    // overwriting each other's total; if the room is too busy to get it, the
+    // cost is still recorded rather than dropped.
     const lock = LockService.getScriptLock();
-    if (lock.tryLock(5000)) {
-      try {
-        const props = PropertiesService.getScriptProperties();
-        props.setProperty(key, String((Number(props.getProperty(key)) || 0) + Math.round(cost * 1e6)));
-      } finally {
-        lock.releaseLock();
-      }
+    const locked = lock.tryLock(15000);
+    try {
+      const props = PropertiesService.getScriptProperties();
+      props.setProperty(key, String((Number(props.getProperty(key)) || 0) + Math.round(cost * 1e6)));
+    } finally {
+      if (locked) lock.releaseLock();
     }
     return { model: usage.model, tokens: usage.input + ' in, ' + usage.output + ' out', cost: cost };
   },
@@ -188,9 +190,11 @@ const CaptureAiService = {
     const others = template.fields.filter(f => f !== primary);
     const roleLabel = code => (template.roles.find(r => r.code === code) || { label: code || 'unknown' }).label;
     const lines = cards.map(c => {
-      const parts = ['Card ' + c.id, 'Table ' + c.table, primary.label.replace(/…$/, '') + ': ' + c.fields[primary.key]];
-      others.forEach(f => parts.push(f.label + ': ' + c.fields[f.key]));
-      if (template.parent) parts.push(template.parent.label + ': ' + (c.fields[template.parent.key] || 'none'));
+      // One card, one line: line breaks inside a card can't pass for another card.
+      const flat = v => String(v || '').replace(/\s*[\r\n]+\s*/g, ' ');
+      const parts = ['Card ' + c.id, 'Table ' + c.table, primary.label.replace(/…$/, '') + ': ' + flat(c.fields[primary.key])];
+      others.forEach(f => parts.push(f.label + ': ' + flat(c.fields[f.key])));
+      if (template.parent) parts.push(template.parent.label + ': ' + (flat(c.fields[template.parent.key]) || 'none'));
       parts.push('Level: ' + c.level);
       parts.push('Written by: ' + roleLabel(c.role));
       return parts.join(' | ');
@@ -240,10 +244,16 @@ const CaptureAiService = {
       }
     });
     const raw = res.value;
-    const proposed = (raw && Array.isArray(raw.groups) ? raw.groups : []).map((g, i) => ({
-      id: 'g' + (i + 1), topic: g.topic, cardIds: g.cardIds
+    // Each draft gets ids of its own. Votes, paper dots and table assignments
+    // are kept by group id, so a second draft must never reuse the first one's
+    // ids: they would move to whatever topic now carries that id.
+    const stamp = Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+    const proposed = (raw && Array.isArray(raw.groups) ? raw.groups : []).filter(g => g && typeof g === 'object').map((g, i) => ({
+      id: 'g' + stamp + '-' + (i + 1), topic: g.topic, cardIds: g.cardIds
     }));
     // Cards the model left out stay in "Doesn't fit yet" for the team to place.
-    return { groups: captureNormalizeGroups_(live, proposed, template).groups, ai: res.ai };
+    const groups = captureNormalizeGroups_(live, proposed, template).groups;
+    if (!groups.length) throw new Error('AI returned no usable groups. Nothing was changed; try again or group by hand.');
+    return { groups: groups, ai: res.ai };
   }
 };

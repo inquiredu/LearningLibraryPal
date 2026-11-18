@@ -536,6 +536,9 @@ function captureSetPaperDots(sessionId, groupId, counts) {
   if (ids.indexOf(String(groupId)) === -1) throw new Error('Publish the groups first.');
   const clean = {};
   ctx.template.roles.forEach(r => { clean[r.code] = captureCount_(counts && counts[r.code]); });
+  // Dots nobody could mark as a student's or an adult's; an older board that doesn't send them leaves them as they were.
+  const had = (ctx.config.paperDots || {})[String(groupId)] || {};
+  clean.unmarked = captureCount_(counts && counts.unmarked !== undefined ? counts.unmarked : had.unmarked);
   CaptureStore.updateConfig(sessionId, c => { const p = Object.assign({}, c.paperDots); p[String(groupId)] = clean; return { paperDots: p }; },
     { action: 'Paper vote dots typed in', item: 'votes', ids: [String(groupId)], before: c => c.paperDots[String(groupId)] || '', after: () => clean });
   return captureGetBoard(sessionId, true);
@@ -618,11 +621,17 @@ function captureConfirmPaper(sessionId, mode, rows, readingEntry) {
     reading = CaptureStore.auditEntry(sessionId, n);
     if (!reading || String(reading.Action).indexOf('AI read paper') !== 0) throw new Error('That reading was not found. Read the photo again.');
     aiRows = CaptureStore.json_(reading.After, []);
+    // One reading is added once: a second Confirm would add every row again.
+    const again = CaptureStore.auditTail(sessionId, 300).rows.find(r => String(r.Action).indexOf('Added from paper') === 0 &&
+      String(r.Detail || '').indexOf('From AI reading in audit entry ' + n + '.') === 0);
+    if (again) throw new Error('These rows were already added (audit entry ' + again.Entry + '). Read the photo again to add more.');
   }
+  // How the confirmed rows differ from the reading, before anything is attached to them.
+  const diff = captureDiffRows_(aiRows, clean);
   if (mode === 'cards') clean.forEach(r => { const a = r.ai !== null ? aiRows[r.ai] : null; r.aiReading = a ? a.need : ''; });
   if (mode === 'testdrive') clean.forEach(r => { r.group = captureTableGroup_(ctx, snap, r.table); });
   const res = CaptureStore.addFromPaper(sessionId, ctx.template, mode, clean, {
-    photo: reading ? String(reading.Photo || '') : '', readingEntry: reading ? n : 0, diff: captureDiffRows_(aiRows, clean)
+    photo: reading ? String(reading.Photo || '') : '', readingEntry: reading ? n : 0, diff: diff
   });
   const board = captureGetBoard(sessionId, true);
   board.added = { count: clean.length, entry: res.entry };

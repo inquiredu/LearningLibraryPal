@@ -141,6 +141,13 @@ function captureVoterCounts_(template, votes) {
   return out;
 }
 
+/** A snapshot that knows every flip statement named; read fresh if a cached one doesn't. */
+function captureSnapshotWith_(sessionId, template, flipIds) {
+  const snap = CaptureStore.snapshot(sessionId, template);
+  const known = new Set(snap.flips.map(f => f.id));
+  return flipIds.every(id => !id || known.has(id)) ? snap : CaptureStore.snapshot(sessionId, template, true);
+}
+
 function captureTableGroup_(ctx, snap, table) {
   const a = ctx.config.published ? captureComputeResults_(ctx, snap).assignments.find(x => x.table === table) : null;
   return a && a.groupId ? { id: a.groupId, topic: a.topic } : null;
@@ -153,11 +160,12 @@ function captureTableGroup_(ctx, snap, table) {
  * person can still add to an earlier step after the room has moved on.
  * table: the device's table number, or 0 before it picks one.
  * voter: the device's own random id, so it sees its own dots, votes and notes.
+ * fresh: true right after this device changed something, so it sees its change.
  */
-function captureGetPhoneState(sessionId, key, table, voter) {
+function captureGetPhoneState(sessionId, key, table, voter, fresh) {
   const ctx = captureRequireKey_(sessionId, key);
   const t = ctx.template, c = ctx.config;
-  const snap = CaptureStore.snapshot(sessionId, t);
+  const snap = CaptureStore.snapshot(sessionId, t, !!fresh);
   const tableNo = Number(table) >= 1 && Number(table) <= c.tables ? Number(table) : 0;
   const me = /^[a-f0-9]{16,40}$/.test(String(voter || '')) ? String(voter) : '';
   const primary = t.fields.find(f => f.primary) || t.fields[0];
@@ -239,7 +247,8 @@ function captureSetFlipTop(sessionId, key, table, id, top, device) {
 /** input: { voter, role, dots, table } */
 function captureSaveFlipDots(sessionId, key, input) {
   const ctx = captureRequireKey_(sessionId, key);
-  const snap = CaptureStore.snapshot(sessionId, ctx.template);
+  const ids = (input && Array.isArray(input.dots) ? input.dots : []).map(d => Number(d && d.flipId));
+  const snap = captureSnapshotWith_(sessionId, ctx.template, ids);
   const entry = captureValidateFlipDots_(ctx.template, snap.flips, input);
   captureAsDevice_(ctx, input && input.table, entry.voter);
   CaptureStore.saveFlipDots(sessionId, entry);
@@ -253,7 +262,7 @@ function captureSaveFlipDots(sessionId, key, input) {
  */
 function captureSubmitCard(sessionId, key, input) {
   const ctx = captureRequireKey_(sessionId, key);
-  const snap = CaptureStore.snapshot(sessionId, ctx.template);
+  const snap = captureSnapshotWith_(sessionId, ctx.template, [Number(input && input.flipId) || 0]);
   const card = captureValidateCard_(ctx.template, input, ctx.config.tables, snap.flips);
   captureAsDevice_(ctx, card.table, input && input.device);
   const n = Number(input && input.readingEntry);
@@ -369,7 +378,7 @@ function captureEnable(sessionId, templateId, tables, title) {
   validateSessionId_(sessionId);
   captureAsFacilitator_('');
   CaptureStore.enable(sessionId, String(templateId), tables, title);
-  return captureGetBoard(sessionId);
+  return captureGetBoard(sessionId, true);
 }
 
 /** The facilitator context for a session: config and template, with the actor set for the audit trail. */
@@ -383,16 +392,17 @@ function captureBoardContext_(sessionId) {
   return { config: config, template: template };
 }
 
-function captureGetBoard(sessionId) {
+/** The board's view. fresh: true after the board changed something. */
+function captureGetBoard(sessionId, fresh) {
   AuthService.requireUser();
   validateSessionId_(sessionId);
-  const session = SessionService.getSession(sessionId);
+  const session = CaptureStore.sessionInfo(sessionId);
   if (!session) throw new Error('Session not found.');
   const config = CaptureStore.getConfig(sessionId);
   if (!config) return { sessionId: sessionId, sessionName: session.name, enabled: false };
   const template = captureTemplate_(config.template);
   const ctx = { config: config, template: template };
-  const snap = CaptureStore.snapshot(sessionId, template);
+  const snap = CaptureStore.snapshot(sessionId, template, !!fresh);
   const live = snap.cards.filter(c => !c.hidden);
   const normalized = captureNormalizeGroups_(snap.cards, snap.groups, template);
   const links = captureLinks_(sessionId, config);
@@ -429,39 +439,39 @@ function captureSetStage(sessionId, stage) {
   if (captureStageIds_(ctx.template).indexOf(String(stage)) === -1) throw new Error('Unknown stage.');
   CaptureStore.updateConfig(sessionId, () => ({ stage: String(stage) }),
     { action: 'Stage moved', item: 'stage', before: c => c.stage, after: n => n.stage });
-  return captureGetBoard(sessionId);
+  return captureGetBoard(sessionId, true);
 }
 
 function captureSetHidden(sessionId, cardId, hidden) {
   const ctx = captureBoardContext_(sessionId);
   CaptureStore.setHidden(sessionId, ctx.template, Number(cardId), !!hidden);
-  return captureGetBoard(sessionId);
+  return captureGetBoard(sessionId, true);
 }
 
 function captureSetSignalHidden(sessionId, id, hidden) {
   captureBoardContext_(sessionId);
   CaptureStore.setSignalHidden(sessionId, Number(id), !!hidden);
-  return captureGetBoard(sessionId);
+  return captureGetBoard(sessionId, true);
 }
 
 function captureSetFlipHidden(sessionId, id, hidden) {
   const ctx = captureBoardContext_(sessionId);
   CaptureStore.setFlipFlags(sessionId, ctx.template, null, Number(id), { hidden: !!hidden });
-  return captureGetBoard(sessionId);
+  return captureGetBoard(sessionId, true);
 }
 
 function captureSuggestGroups(sessionId) {
   const ctx = captureBoardContext_(sessionId);
-  const res = CaptureAiService.proposeGroups(ctx.template, CaptureStore.snapshot(sessionId, ctx.template).cards);
+  const res = CaptureAiService.proposeGroups(ctx.template, CaptureStore.snapshot(sessionId, ctx.template, true).cards);
   CaptureStore.writeGroups(sessionId, res.groups, { action: 'AI suggested groups', model: res.ai.model, tokens: res.ai.tokens, cost: res.ai.cost, detail: res.ai.raw });
-  return captureGetBoard(sessionId);
+  return captureGetBoard(sessionId, true);
 }
 
 function captureSaveGroups(sessionId, groups) {
   const ctx = captureBoardContext_(sessionId);
-  const cards = CaptureStore.snapshot(sessionId, ctx.template).cards;
+  const cards = CaptureStore.snapshot(sessionId, ctx.template, true).cards;
   CaptureStore.writeGroups(sessionId, captureNormalizeGroups_(cards, groups, ctx.template).groups, { action: 'Groups edited' });
-  return captureGetBoard(sessionId);
+  return captureGetBoard(sessionId, true);
 }
 
 /**
@@ -470,7 +480,7 @@ function captureSaveGroups(sessionId, groups) {
  */
 function capturePublish(sessionId, clearVotes) {
   const ctx = captureBoardContext_(sessionId);
-  const snap = CaptureStore.snapshot(sessionId, ctx.template);
+  const snap = CaptureStore.snapshot(sessionId, ctx.template, true);
   const live = snap.cards.filter(c => !c.hidden);
   const groups = captureNormalizeGroups_(snap.cards, snap.groups, ctx.template).groups;
   if (!groups.length) throw new Error('Make at least one group before publishing.');
@@ -479,7 +489,7 @@ function capturePublish(sessionId, clearVotes) {
   const brief = list => (list || []).map(g => ({ id: g.id, topic: g.topic, column: g.column, contested: g.contested, cards: g.cardIds }));
   CaptureStore.updateConfig(sessionId, () => ({ published: published, publishedAt: new Date().toISOString() }),
     { action: 'Published for voting', item: 'groups', ids: published.length + ' groups', before: c => brief(c.published), after: n => brief(n.published) });
-  return captureGetBoard(sessionId);
+  return captureGetBoard(sessionId, true);
 }
 
 /** Paper dot counts for one published group, by role (the analog count, typed in). */
@@ -491,7 +501,7 @@ function captureSetPaperDots(sessionId, groupId, counts) {
   ctx.template.roles.forEach(r => { clean[r.code] = captureCount_(counts && counts[r.code]); });
   CaptureStore.updateConfig(sessionId, c => { const p = Object.assign({}, c.paperDots); p[String(groupId)] = clean; return { paperDots: p }; },
     { action: 'Paper vote dots typed in', item: 'votes', ids: [String(groupId)], before: c => c.paperDots[String(groupId)] || '', after: () => clean });
-  return captureGetBoard(sessionId);
+  return captureGetBoard(sessionId, true);
 }
 
 function captureSetTallyMode(sessionId, mode) {
@@ -499,7 +509,7 @@ function captureSetTallyMode(sessionId, mode) {
   if (['phone', 'paper', 'both'].indexOf(String(mode)) === -1) throw new Error('Choose devices, paper or both.');
   CaptureStore.updateConfig(sessionId, () => ({ tallyMode: String(mode) }),
     { action: 'Vote count source changed', item: 'votes', before: c => c.tallyMode, after: n => n.tallyMode });
-  return captureGetBoard(sessionId);
+  return captureGetBoard(sessionId, true);
 }
 
 /** Assigns a table its priority by hand; an empty groupId goes back to automatic. */
@@ -510,7 +520,7 @@ function captureSetAssignment(sessionId, table, groupId) {
   if (id && !(ctx.config.published || []).some(g => g.id === id && g.route === 'vote')) throw new Error('Choose one of the published priorities.');
   CaptureStore.updateConfig(sessionId, c => { const a = Object.assign({}, c.assign); if (id) a[t] = id; else delete a[t]; return { assign: a }; },
     { action: 'Table priority set by hand', item: 'assignment', ids: ['table ' + t], before: c => c.assign[t] || 'automatic', after: () => id || 'automatic' });
-  return captureGetBoard(sessionId);
+  return captureGetBoard(sessionId, true);
 }
 
 function captureSetSurveyUrl(sessionId, url) {
@@ -519,12 +529,12 @@ function captureSetSurveyUrl(sessionId, url) {
   if (clean && !/^https:\/\/[^\s"'<>]+$/.test(clean)) throw new Error('Use a full https:// link.');
   CaptureStore.updateConfig(sessionId, () => ({ surveyUrl: clean }),
     { action: 'Survey link set', item: 'settings', before: c => c.surveyUrl, after: n => n.surveyUrl });
-  return captureGetBoard(sessionId);
+  return captureGetBoard(sessionId, true);
 }
 
 function captureMakePosters(sessionId) {
   const ctx = captureBoardContext_(sessionId);
-  const snap = CaptureStore.snapshot(sessionId, ctx.template);
+  const snap = CaptureStore.snapshot(sessionId, ctx.template, true);
   const groups = captureNormalizeGroups_(snap.cards, snap.groups, ctx.template).groups;
   const url = CapturePosterService.make(sessionId, ctx.template, ctx.config, snap.cards, groups);
   CaptureStore.audit(sessionId, { action: 'Posters made', item: 'posters', after: url });
@@ -563,7 +573,7 @@ function captureReadPaper(sessionId, mode, table, base64, mimeType, hints) {
 function captureConfirmPaper(sessionId, mode, rows, readingEntry) {
   const ctx = captureBoardContext_(sessionId);
   capturePaperMode_(mode);
-  const snap = CaptureStore.snapshot(sessionId, ctx.template);
+  const snap = CaptureStore.snapshot(sessionId, ctx.template, true);
   const clean = captureValidatePaperRows_(ctx.template, mode, rows, { tables: ctx.config.tables, flips: snap.flips, published: ctx.config.published || [] });
   let reading = null, aiRows = [];
   const n = Number(readingEntry);
@@ -577,7 +587,7 @@ function captureConfirmPaper(sessionId, mode, rows, readingEntry) {
   const res = CaptureStore.addFromPaper(sessionId, ctx.template, mode, clean, {
     photo: reading ? String(reading.Photo || '') : '', readingEntry: reading ? n : 0, diff: captureDiffRows_(aiRows, clean)
   });
-  const board = captureGetBoard(sessionId);
+  const board = captureGetBoard(sessionId, true);
   board.added = { count: clean.length, entry: res.entry };
   return board;
 }
@@ -587,7 +597,7 @@ function captureConfirmPaper(sessionId, mode, rows, readingEntry) {
 function captureGetAudit(sessionId) {
   captureBoardContext_(sessionId);
   const tail = CaptureStore.auditTail(sessionId, 50);
-  const session = SessionService.getSession(sessionId);
+  const session = CaptureStore.sessionInfo(sessionId);
   return { total: tail.total, rows: tail.rows, sheetUrl: String(session && session.dbUrl || ''),
     ai: { spentToday: CaptureAiService.spentToday(), budget: Number(CONFIG.CAPTURE_AI_DAILY_BUDGET_USD) || 0 } };
 }
@@ -596,7 +606,7 @@ function captureGetAudit(sessionId) {
 function captureMakeReport(sessionId) {
   const ctx = captureBoardContext_(sessionId);
   const session = SessionService.getSession(sessionId);
-  const snap = CaptureStore.snapshot(sessionId, ctx.template);
+  const snap = CaptureStore.snapshot(sessionId, ctx.template, true);
   const all = CaptureStore.auditTail(sessionId, 100000);
   const ai = { model: '', calls: 0, cost: 0, readings: 0, confirmed: 0, edited: 0 };
   all.rows.forEach(r => {

@@ -15,14 +15,22 @@
  * Nothing is deleted: removing an entry hides it, and the audit row says who
  * hid it. Rows are read and written by header name, so a column added later
  * goes at the end and older sheets keep working. Writes, and the audit row
- * that describes them, run together under the script lock. Devices and the
- * wall read one cached snapshot per session, refreshed every few seconds and
- * cleared on every write.
+ * that describes them, run together under the script lock.
+ *
+ * Speed: every device checks in every few seconds, so reads come from
+ * CacheService. The snapshot of all rows is cached in chunks (one cache value
+ * holds at most 100 KB) for a few seconds and is not thrown away on writes;
+ * whoever just changed something asks for a fresh one, so they see their own
+ * change at once and everyone else within seconds. Settings and the session's
+ * spreadsheet id are cached and rewritten on every change. Within one request,
+ * the spreadsheet, its tabs and their header rows are fetched once.
  */
 
 const CaptureStore = {
   CONFIG_SHEET: 'Live Capture',
-  SNAPSHOT_SECONDS: 4,
+  SNAPSHOT_SECONDS: 5,
+  CONFIG_SECONDS: 120,
+  CHUNK: 90000,
   HEADER_COLOR: '#003865',
   CELL_MAX: 45000,
 
@@ -44,20 +52,37 @@ const CaptureStore = {
   context_: { actor: '', stage: '' },
   as: function(actor, stage) { this.context_ = { actor: String(actor || ''), stage: String(stage || '') }; return this; },
 
-  db: function(sessionId) {
+  memo_: { dbs: {}, sheets: {}, headers: {} },
+
+  /**
+   * The session's name and links, cached: looking a session up reads the whole
+   * master Sessions sheet. Returns { id, name, dbUrl, folderUrl } or null.
+   */
+  sessionInfo: function(sessionId) {
     const cache = CacheService.getScriptCache();
-    const cacheKey = 'capture_db_' + sessionId;
-    let dbId = cache.get(cacheKey);
-    if (!dbId) {
-      const session = SessionService.getSession(sessionId);
-      if (!session || !session.dbUrl) throw new Error('This session link is not available.');
-      const match = String(session.dbUrl).match(/\/d\/([a-zA-Z0-9_-]+)/);
-      if (!match) throw new Error('This session has no Project Database.');
-      dbId = match[1];
-      try { cache.put(cacheKey, dbId, 600); } catch (e) {}
-    }
-    return SpreadsheetApp.openById(dbId);
+    const key = 'capture_sess_' + sessionId;
+    const hit = cache.get(key);
+    if (hit) { try { return JSON.parse(hit); } catch (e) {} }
+    const s = SessionService.getSession(sessionId);
+    if (!s) return null;
+    const info = { id: s.id, name: String(s.name || ''), dbUrl: String(s.dbUrl || ''), folderUrl: String(s.folderUrl || '') };
+    try { cache.put(key, JSON.stringify(info), 600); } catch (e) {}
+    return info;
   },
+
+  db: function(sessionId) {
+    if (this.memo_.dbs[sessionId]) return this.memo_.dbs[sessionId];
+    const session = this.sessionInfo(sessionId);
+    if (!session || !session.dbUrl) throw new Error('This session link is not available.');
+    const match = String(session.dbUrl).match(/\/d\/([a-zA-Z0-9_-]+)/);
+    if (!match) throw new Error('This session has no Project Database.');
+    const db = SpreadsheetApp.openById(match[1]);
+    this.memo_.dbs[sessionId] = db;
+    return db;
+  },
+
+  /** Clears the per-request memo (tests and long runs). */
+  forget: function() { this.memo_ = { dbs: {}, sheets: {}, headers: {} }; },
 
   // ─── Settings ─────────────────────────────────────────────────────────────
 
@@ -65,6 +90,15 @@ const CaptureStore = {
   CONFIG_KEYS: ['template', 'tables', 'key', 'title', 'stage', 'published', 'publishedAt', 'paperDots', 'tallyMode', 'assign', 'surveyUrl', 'paperFlipDots'],
 
   getConfig: function(sessionId) {
+    const cache = CacheService.getScriptCache();
+    const hit = cache.get('capture_cfg_' + sessionId);
+    if (hit) { try { return JSON.parse(hit); } catch (e) {} }
+    const config = this.readConfig_(sessionId);
+    if (config) { try { cache.put('capture_cfg_' + sessionId, JSON.stringify(config), this.CONFIG_SECONDS); } catch (e) {} }
+    return config;
+  },
+
+  readConfig_: function(sessionId) {
     const sheet = this.db(sessionId).getSheetByName(this.CONFIG_SHEET);
     if (!sheet) return null;
     const map = {};
@@ -101,7 +135,11 @@ const CaptureStore = {
     sheet.clearContents();
     sheet.getRange(1, 1, rows.length, 2).setValues(rows);
     sheet.getRange(1, 1, 1, 2).setBackground(this.HEADER_COLOR).setFontColor('#FFFFFF').setFontWeight('bold');
-    this.invalidate_(sessionId);
+    // Write through, so a stage change reaches every device on its next check-in.
+    const cache = CacheService.getScriptCache();
+    try { cache.remove('capture_cfg_' + sessionId); } catch (e) {}
+    const fresh = this.readConfig_(sessionId);
+    if (fresh) { try { cache.put('capture_cfg_' + sessionId, JSON.stringify(fresh), this.CONFIG_SECONDS); } catch (e) {} }
   },
 
   /**
@@ -110,7 +148,7 @@ const CaptureStore = {
    */
   updateConfig: function(sessionId, change, log) {
     return this.withLock_(() => {
-      const config = this.getConfig(sessionId);
+      const config = this.readConfig_(sessionId);
       if (!config) throw new Error('Turn on live capture for this session first.');
       const next = Object.assign({}, config, change(config) || {});
       this.writeConfig_(sessionId, next);
@@ -131,7 +169,7 @@ const CaptureStore = {
       throw new Error('Tables must be between 1 and ' + CAPTURE_DEFAULTS.MAX_TABLES + '.');
     }
     return this.withLock_(() => {
-      const existing = this.getConfig(sessionId) || {};
+      const existing = this.readConfig_(sessionId) || {};
       const config = Object.assign({ stage: template.stages[0].id, tallyMode: 'phone', paperDots: {}, paperFlipDots: {}, assign: {}, published: null, publishedAt: '', surveyUrl: '' }, existing, {
         template: template.id,
         tables: count,
@@ -150,20 +188,28 @@ const CaptureStore = {
   // ─── Rows by header ───────────────────────────────────────────────────────
 
   headers_: function(sheet) {
+    const key = sheet.getName ? sheet.getName() : '';
+    if (key && this.memo_.headers[key]) return this.memo_.headers[key];
     const width = sheet.getLastColumn();
-    return width ? sheet.getRange(1, 1, 1, width).getValues()[0].map(String) : [];
+    const headers = width ? sheet.getRange(1, 1, 1, width).getValues()[0].map(String) : [];
+    if (key) this.memo_.headers[key] = headers;
+    return headers;
   },
 
   /** The sheet for a spec, with any missing headers added at the end. */
   sheet_: function(db, name, create) {
     const spec = this.SPECS[name];
-    let sheet = db.getSheetByName(spec.sheet);
+    const memo = this.memo_.sheets[spec.sheet];
+    if (memo && (memo.checked || !create)) return memo.sheet;
+    let sheet = memo ? memo.sheet : db.getSheetByName(spec.sheet);
     if (!sheet) {
       if (!create) return null;
       sheet = db.insertSheet(spec.sheet);
       sheet.getRange(1, 1, 1, spec.headers.length).setValues([spec.headers])
         .setBackground(this.HEADER_COLOR).setFontColor('#FFFFFF').setFontWeight('bold');
       sheet.setFrozenRows(1);
+      this.memo_.headers[spec.sheet] = spec.headers.slice();
+      this.memo_.sheets[spec.sheet] = { sheet: sheet, checked: true };
       return sheet;
     }
     if (create) {
@@ -172,8 +218,10 @@ const CaptureStore = {
       if (missing.length) {
         sheet.getRange(1, have.length + 1, 1, missing.length).setValues([missing])
           .setBackground(this.HEADER_COLOR).setFontColor('#FFFFFF').setFontWeight('bold');
+        this.memo_.headers[spec.sheet] = have.concat(missing);
       }
     }
+    this.memo_.sheets[spec.sheet] = { sheet: sheet, checked: !!create };
     return sheet;
   },
 
@@ -277,12 +325,16 @@ const CaptureStore = {
 
   // ─── Reading everything at once ───────────────────────────────────────────
 
-  /** Everything devices, the wall and the board read, cached for a few seconds. */
-  snapshot: function(sessionId, template) {
-    const cache = CacheService.getScriptCache();
-    const key = 'capture_snap_' + sessionId;
-    const hit = cache.get(key);
-    if (hit) { try { return JSON.parse(hit); } catch (e) {} }
+  /**
+   * Everything devices, the wall and the board read, cached for a few seconds.
+   * fresh: true reads the sheet now (whoever just made a change); otherwise a
+   * snapshot up to SNAPSHOT_SECONDS old is fine.
+   */
+  snapshot: function(sessionId, template, fresh) {
+    if (!fresh) {
+      const hit = this.cacheGet_('capture_snap_' + sessionId);
+      if (hit) { try { return JSON.parse(hit); } catch (e) {} }
+    }
     const db = this.db(sessionId);
     const bool = v => String(v) === 'yes';
     const iso = v => (v instanceof Date ? v.toISOString() : String(v || ''));
@@ -314,12 +366,35 @@ const CaptureStore = {
     };
     // The flip-dot list is derived, so it is cached with the rows.
     snap.flipDots = snap.flipDots.reduce((all, p) => all.concat((p.dots || []).map(d => ({ flipId: Number(d.flipId), color: String(d.color), role: p.role, voter: p.voter }))), []);
-    try { cache.put(key, JSON.stringify(snap), this.SNAPSHOT_SECONDS); } catch (e) {}
+    this.cachePut_('capture_snap_' + sessionId, JSON.stringify(snap), this.SNAPSHOT_SECONDS);
     return snap;
+  },
+
+  /** Stores a long string across several cache values (each holds at most 100 KB). */
+  cachePut_: function(key, text, seconds) {
+    const cache = CacheService.getScriptCache();
+    const parts = {};
+    let n = 0;
+    for (let i = 0; i < text.length; i += this.CHUNK) parts[key + ':' + (n++)] = text.slice(i, i + this.CHUNK);
+    parts[key] = String(n);
+    try { cache.putAll(parts, seconds); } catch (e) {}
+  },
+
+  cacheGet_: function(key) {
+    const cache = CacheService.getScriptCache();
+    const count = Number(cache.get(key));
+    if (!count || count > 200) return null;
+    const keys = [];
+    for (let i = 0; i < count; i++) keys.push(key + ':' + i);
+    const got = cache.getAll(keys);
+    let text = '';
+    for (let i = 0; i < count; i++) { if (typeof got[keys[i]] !== 'string') return null; text += got[keys[i]]; }
+    return text;
   },
 
   json_: function(v, fallback) { try { return v ? JSON.parse(String(v)) : fallback; } catch (e) { return fallback; } },
 
+  /** Drops the cached snapshot (used when settings change, which the snapshot doesn't hold, so rarely needed). */
   invalidate_: function(sessionId) {
     try { CacheService.getScriptCache().remove('capture_snap_' + sessionId); } catch (e) {}
   },
@@ -328,6 +403,16 @@ const CaptureStore = {
 
   nextId_: function(rows, header) {
     return rows.reduce((max, r) => Math.max(max, Number(r[header]) || 0), 0) + 1;
+  },
+
+  /** The ids in a tab's first column, read without the rest of the row. */
+  ids_: function(db, name) {
+    const sheet = this.sheet_(db, name, false);
+    if (!sheet) return [];
+    const last = sheet.getLastRow();
+    if (last < 2) return [];
+    const header = this.SPECS[name].headers[0];
+    return sheet.getRange(2, 1, last - 1, 1).getValues().map(r => { const o = {}; o[header] = r[0]; return o; }).filter(o => String(o[header]) !== '');
   },
 
   token_: function() { return Utilities.getUuid().replace(/-/g, ''); },
@@ -345,7 +430,7 @@ const CaptureStore = {
 
   addSignal: function(sessionId, signal) {
     return this.write_(sessionId, db => {
-      const res = this.addSignal_(db, signal, this.rows_(db, 'signals'));
+      const res = this.addSignal_(db, signal, this.ids_(db, 'signals'));
       this.log_(db, { action: 'Signal added', item: 'signal', ids: [res.id], after: { table: signal.table, role: signal.role, text: signal.text, source: signal.source || 'typed' } });
       return res;
     });
@@ -441,7 +526,7 @@ const CaptureStore = {
 
   appendCard: function(sessionId, template, card) {
     return this.write_(sessionId, db => {
-      const res = this.appendCard_(db, template, card, this.rows_(db, 'cards'));
+      const res = this.appendCard_(db, template, card, this.ids_(db, 'cards'));
       const primary = template.fields[0];
       this.log_(db, { action: 'Card sent', item: 'card', ids: [res.id],
         after: { table: card.table, role: card.role, level: card.level, flipId: card.flipId || 0, need: card.fields[primary.key], source: card.source },
@@ -546,7 +631,7 @@ const CaptureStore = {
           rows.forEach(r => { this.saveTestDrive_(db, template, r.table, 'paper-' + this.token_().slice(0, 8), r.group || null, r, extra); ids.push('table ' + r.table); });
         } else {
           // Dot counts live in the settings, keyed by flip statement or published group.
-          const config = this.getConfig(sessionId);
+          const config = this.readConfig_(sessionId);
           const key = mode === 'flipdots' ? 'paperFlipDots' : 'paperDots';
           const next = Object.assign({}, config[key]);
           rows.forEach(r => {
@@ -567,14 +652,12 @@ const CaptureStore = {
   },
 
   write_: function(sessionId, action) {
-    return this.withLock_(() => {
-      try { return action(this.db(sessionId)); } finally { this.invalidate_(sessionId); }
-    });
+    return this.withLock_(() => action(this.db(sessionId)));
   },
 
   withLock_: function(action) {
     const lock = LockService.getScriptLock();
-    if (!lock.tryLock(10000)) throw new Error('Busy saving other entries. Try again in a moment.');
+    if (!lock.tryLock(20000)) throw new Error('Busy saving other entries. Try again in a moment.');
     try { return action(); } finally { lock.releaseLock(); }
   }
 };

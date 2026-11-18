@@ -191,6 +191,7 @@ function apiContext({ email = '', config = {}, snap = {}, audit = {}, ai = {} } 
     SessionService: { getSession: () => ({ id: 'S-1', name: 'Test', dbUrl: 'https://docs.google.com/spreadsheets/d/DB/edit' }), getAllSessions: () => [] },
     CaptureStore: {
       as: (actor, stage) => { actors.push([actor, stage]); },
+      sessionInfo: id => ({ id, name: 'Test', dbUrl: 'https://docs.google.com/spreadsheets/d/DB/edit', folderUrl: '' }),
       json_: (v, f) => { try { return v ? JSON.parse(String(v)) : f; } catch (e) { return f; } },
       getConfig: () => cfg,
       snapshot: () => data,
@@ -582,6 +583,7 @@ test('nothing is timed: stages carry no clock times and no page shows one', () =
 
 function storeContext(grid) {
   const sheet = name => grid[name] && {
+    getName: () => name,
     getDataRange: () => ({ getValues: () => grid[name].map(r => r.slice()) }),
     getLastRow: () => grid[name].length,
     getLastColumn: () => grid[name].reduce((w, r) => Math.max(w, r.length), 0),
@@ -600,8 +602,13 @@ function storeContext(grid) {
   };
   const db = { getSheetByName: sheet, insertSheet: name => { grid[name] = []; return sheet(name); } };
   let uuid = 0;
+  const cached = {};
   return load(['CaptureTemplates.js', 'CaptureLogic.js', 'CaptureStore.js'], {
-    CacheService: { getScriptCache: () => ({ get: k => (k.startsWith('capture_db_') ? 'db-id' : null), put() {}, remove() {} }) },
+    SessionService: { getSession: id => ({ id, name: 'Test', dbUrl: 'https://docs.google.com/spreadsheets/d/DB/edit' }) },
+    CacheService: { getScriptCache: () => ({
+      get: k => (k in cached ? cached[k] : null), put: (k, v) => { cached[k] = String(v); }, remove: k => { delete cached[k]; },
+      getAll: ks => { const o = {}; ks.forEach(k => { if (k in cached) o[k] = cached[k]; }); return o; },
+      putAll: o => { Object.keys(o).forEach(k => { if (String(o[k]).length > 100 * 1024) throw new Error('Argument too large'); cached[k] = String(o[k]); }); } }) },
     SpreadsheetApp: { openById: () => db },
     LockService: { getScriptLock: () => ({ tryLock: () => true, releaseLock() {} }) },
     Utilities: { getUuid: () => '11111111-2222-3333-4444-' + String(++uuid).padStart(12, '0') }
@@ -675,6 +682,35 @@ test('rows confirmed from paper are added in one go with one audit entry; dot co
   assert.deepEqual(log.map(r => r.Action), ['Added from paper: Signals', 'Added from paper: Gallery dots']);
   assert.match(log[0].Detail, /From AI reading in audit entry 4\. 1 rows as read, 0 edited, 1 added by hand, 2 left out\./);
   assert.equal(log[1].Detail, 'Typed in from paper, no AI reading.');
+});
+
+test('a large snapshot is cached in pieces; a change shows at once to whoever asks fresh, and to others within seconds', () => {
+  const grid = {
+    'Live Capture': [['Setting', 'Value'], ['template', 'needCards'], ['tables', 6], ['stage', 'needs']],
+    'Live Cards': [['Card', 'Submitted', 'Table', 'Level', 'Source', 'Hidden', 'Token', 'Role', 'Flip ID', 'Flip statement', 'Need']]
+      .concat(Array.from({ length: 600 }, (_, i) => [i + 1, '', 1, 'G', 'typed', 'no', 't' + i, 'S', 0, '', 'A long need written out in full so the snapshot grows past one cache value ' + i]))
+  };
+  const c = storeContext(grid);
+  const first = plain(c.eval('CaptureStore.snapshot("S-1", CAPTURE_TEMPLATES.needCards)'));
+  assert.ok(JSON.stringify(first).length > 100 * 1024, 'the snapshot is bigger than one cache value holds');
+  grid['Live Cards'][1][10] = 'Changed in the sheet';
+  const cached = plain(c.eval('CaptureStore.snapshot("S-1", CAPTURE_TEMPLATES.needCards)'));
+  assert.equal(cached.cards[0].fields.need, first.cards[0].fields.need, 'the next read comes from the cache, intact');
+  assert.equal(cached.cards.length, 600);
+  c.eval('CaptureStore.appendCard("S-1", CAPTURE_TEMPLATES.needCards, { table: 2, level: "B", source: "typed", role: "A", flipId: 0, fields: { flip: "", need: "Brand new" } })');
+  assert.equal(plain(c.eval('CaptureStore.snapshot("S-1", CAPTURE_TEMPLATES.needCards)')).cards.length, 600, 'others may see a snapshot a few seconds old');
+  const fresh = plain(c.eval('CaptureStore.snapshot("S-1", CAPTURE_TEMPLATES.needCards, true)'));
+  assert.deepEqual([fresh.cards.length, fresh.cards[600].fields.need, fresh.cards[0].fields.need], [601, 'Brand new', 'Changed in the sheet'], 'the writer sees its change at once');
+});
+
+test('settings are cached, and a change reaches the cache at once', () => {
+  const grid = { 'Live Capture': [['Setting', 'Value'], ['template', 'needCards'], ['tables', 6], ['stage', 'needs']] };
+  const c = storeContext(grid);
+  assert.equal(c.eval('CaptureStore.getConfig("S-1").stage'), 'needs');
+  grid['Live Capture'][3][1] = 'vote';
+  assert.equal(c.eval('CaptureStore.getConfig("S-1").stage'), 'needs', 'read from the cache');
+  c.eval('CaptureStore.as("f", "needs"); CaptureStore.updateConfig("S-1", () => ({ stage: "results" }))');
+  assert.equal(c.eval('CaptureStore.getConfig("S-1").stage'), 'results', 'a stage change is seen on the very next check-in');
 });
 
 test('test-drive notes are kept per device, so two people at a table never overwrite each other', () => {

@@ -276,8 +276,9 @@
     function stageInfo(id) { return T().stages.find(function (s) { return s.id === id; }) || { label: id, phone: '' }; }
 
     // ── Loading and polling ──────────────────────────────────────────────────
-    function load(force) {
-      return Capture.run('captureGetPhoneState', SESSION_ID, CAPTURE_KEY, S.table, S.voter).then(function (state) {
+    // fresh: right after this device changed something, so its change shows at once.
+    function load(force, fresh) {
+      return Capture.run('captureGetPhoneState', SESSION_ID, CAPTURE_KEY, S.table, S.voter, !!fresh).then(function (state) {
         var moved = !S.state || state.stage !== S.stage;
         S.state = state;
         $('title').textContent = state.title;
@@ -397,7 +398,7 @@
           S.sigVoice = false;
           S.tokens['s' + res.id] = res.token; Capture.store(K + 'tokens', S.tokens);
           $('sigText').value = ''; $('sigErr').textContent = ''; Capture.toast('Signal added.');
-          return load(false);
+          load(false, true);
         }).catch(function (e) { $('sigErr').textContent = e.message; }).then(function () { busy($('sigSend'), false, 'Add signal'); $('sigText').focus(); });
       };
       renderSignalList();
@@ -437,7 +438,7 @@
       busy(btn, true, 'Saving…');
       Capture.run('captureSaveFlip', SESSION_ID, CAPTURE_KEY, S.table, id, text, S.voter).then(function () {
         errEl.textContent = ''; if (done) done(); Capture.toast('Saved.');
-        return load(false);
+        load(false, true);
       }).catch(function (e) { errEl.textContent = e.message; }).then(function () { busy(btn, false, label); });
     }
 
@@ -548,7 +549,7 @@
         $('needText').value = ''; level.checked = false; S.sources = {}; S.readingEntry = 0; err.textContent = '';
         if ($('photoStatus')) { $('photoStatus').className = 'alert'; $('photoStatus').textContent = ''; }
         Capture.toast('Card ' + res.id + ' sent. Sharing this device? Pass it on.');
-        return load(false);
+        load(false, true);
       }).catch(function (e) { err.textContent = e.message; }).then(function () { busy($('cardSend'), false, 'Send card'); });
     }
     function shrink(file) {
@@ -693,14 +694,14 @@
       if (b.dataset.nextPerson) return nextPerson();
       if (b.dataset.rmSignal) {
         var sid = b.dataset.rmSignal;
-        return Capture.run('captureRemoveSignal', SESSION_ID, CAPTURE_KEY, Number(sid), S.tokens['s' + sid], S.table, S.voter).then(function () { delete S.tokens['s' + sid]; Capture.store(K + 'tokens', S.tokens); return load(false); }).catch(function (x) { Capture.toast(x.message); });
+        return Capture.run('captureRemoveSignal', SESSION_ID, CAPTURE_KEY, Number(sid), S.tokens['s' + sid], S.table, S.voter).then(function () { delete S.tokens['s' + sid]; Capture.store(K + 'tokens', S.tokens); return load(false, true); }).catch(function (x) { Capture.toast(x.message); });
       }
       if (b.dataset.rmCard) {
         var cid = b.dataset.rmCard;
-        return Capture.run('captureRemoveOwnCard', SESSION_ID, CAPTURE_KEY, Number(cid), S.tokens['c' + cid], S.table, S.voter).then(function () { delete S.tokens['c' + cid]; Capture.store(K + 'tokens', S.tokens); Capture.toast('Card removed.'); return load(false); }).catch(function (x) { Capture.toast(x.message); });
+        return Capture.run('captureRemoveOwnCard', SESSION_ID, CAPTURE_KEY, Number(cid), S.tokens['c' + cid], S.table, S.voter).then(function () { delete S.tokens['c' + cid]; Capture.store(K + 'tokens', S.tokens); Capture.toast('Card removed.'); return load(false, true); }).catch(function (x) { Capture.toast(x.message); });
       }
       if (b.dataset.rmFlip) {
-        return Capture.run('captureRemoveFlip', SESSION_ID, CAPTURE_KEY, S.table, Number(b.dataset.rmFlip), S.voter).then(function () { return load(false); }).catch(function (x) { Capture.toast(x.message); });
+        return Capture.run('captureRemoveFlip', SESSION_ID, CAPTURE_KEY, S.table, Number(b.dataset.rmFlip), S.voter).then(function () { return load(false, true); }).catch(function (x) { Capture.toast(x.message); });
       }
       if (b.dataset.edit) {
         var li = b.closest('li'), f = (S.state.table.flips || []).find(function (x) { return String(x.id) === b.dataset.edit; });
@@ -714,7 +715,7 @@
       if (b.dataset.cancelEdit) { document.activeElement.blur(); return renderFlipList(); }
       if (b.dataset.top) {
         var top = b.getAttribute('aria-pressed') !== 'true';
-        return Capture.run('captureSetFlipTop', SESSION_ID, CAPTURE_KEY, S.table, Number(b.dataset.top), top, S.voter).then(function () { return load(false); }).catch(function (x) { Capture.toast(x.message); });
+        return Capture.run('captureSetFlipTop', SESSION_ID, CAPTURE_KEY, S.table, Number(b.dataset.top), top, S.voter).then(function () { return load(false, true); }).catch(function (x) { Capture.toast(x.message); });
       }
       if (b.dataset.dot) {
         var k = b.dataset.dot, i = S.dots.indexOf(k);

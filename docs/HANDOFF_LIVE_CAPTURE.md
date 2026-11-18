@@ -33,7 +33,7 @@ What it gives back to MDE:
 
 | What | Where |
 |---|---|
-| Code | branch `claude/need-cards-live-capture` (all pushed). Latest: `6956560`. |
+| Code | branch `claude/need-cards-live-capture` (all pushed). Latest code: `28b2bb0`. `main` has PR #7 (up to `44ebebf`) but not the speed fix or anything after it. |
 | How it works | `docs/LIVE_CAPTURE.md` |
 | Proof-of-concept instance | Sean's Google account. Its Sheet is `1wdxMK4y1-VdsMUDQXnBJDszEdczuTqER0Ap87V_LpBs`; `npm run poc` prints the board and public links. |
 | Where `npm run poc` runs | Sean's **GitHub Codespace** for this repo. It holds `.clasp.poc.json` and `.poc.json` (which project to update) and the clasp sign-in. A fresh clone without those files makes a new POC instead of updating this one. |
@@ -62,12 +62,15 @@ node scripts/check.cjs
 node scripts/capture-preview.cjs /tmp/preview
 ```
 
-78 tests pass as of `6956560`. The preview builds every stage's device, board and wall page with made-up data and a stand-in for Apps Script.
+79 tests pass as of `28b2bb0`. The preview builds every stage's device, board and wall page with made-up data and a stand-in for Apps Script.
+
+On a Mac, run `npm ci --ignore-scripts` first, and run the tests with `TMPDIR` set to its real path (`TMPDIR=$(cd "${TMPDIR:-/tmp}" && pwd -P) npm test`). Otherwise one `tests/poc.test.cjs` check fails because macOS temp folders are symlinks. CI on Linux is not affected.
 
 ## What changed on the branch, newest first
 
 | Commit | What |
 |---|---|
+| `28b2bb0` | **Writes flushed before the lock is let go.** New entry numbers are the highest so far + 1, read under the lock; without a flush, the next writer could read the Sheet before the last write landed, and two tables sending at once could get the same number, and a settings change could save back a stale copy. Google's `Lock.releaseLock()` docs say to flush first. The November 17 rehearsal's stage moves show this happening (see [Not yet proven on Google](#not-yet-proven-on-google)). |
 | `6956560` | A code comment no longer points at Gather. |
 | `140af3e` | **Speed.** The cached snapshot was over Apps Script's 100 KB cache limit, so every device check-in re-read the whole Sheet. It is now cached in pieces and not dropped on writes; whoever just changed something reads fresh. Settings and the session lookup are cached. Measured on a busy stand-in: device check-in 18 → 0 Sheet calls, sending a card 37 → 12, board refresh 19 → 0. |
 | `44ebebf` | State colors on the facilitator screens; wizard says skills and phones and laptops. |
@@ -79,6 +82,8 @@ node scripts/capture-preview.cjs /tmp/preview
 
 These ran only against stand-ins here. Check them in a rehearsal and after the event:
 
+- **Stage moves on the deployed latest code.** The rehearsal on the evening of November 17 (session "Rehersal", 27 Live Audit rows, one device) ran almost entirely on code from before `140af3e`. In 3 of its 24 "Stage moved" rows, the Before doesn't match the previous row's After. In the worst case, a move to `results` was followed two seconds later by a move that started from `welcome`, a value five writes old. That code read the stage straight from the Sheet under the lock, with no cache, so a locked read didn't see earlier locked writes: Apps Script was still holding them when the lock was let go. Each change then saves the whole settings copy back, and that copy also holds published groups, paper dots and table assignments, so a stage click could have undone a Publish. `140af3e` didn't change this; `28b2bb0` (flush before release) is the fix. To check: after a rehearsal on `28b2bb0` or later, each "Stage moved" row's Before should equal the previous row's After, and card numbers should have no repeats.
+- **Known small gap, left alone on purpose before the retreat.** A device checking in at the wrong instant can put the old stage back in the settings cache for up to 2 minutes (`CONFIG_SECONDS`). If a phone or the wall shows the wrong stage, click the stage again on the board; that rewrites the cache. Stages lock nothing, so people can still add to any step meanwhile.
 - Load with about 40 devices after the speed fix; Apps Script still takes about a second per tap.
 - Drive photo saving, the results Doc (DocumentApp), and SlidesApp posters on a real account.
 - Gemini on real handwriting, posters and especially dot stickers (the weakest reading; check counts against the paper).
@@ -88,7 +93,8 @@ These ran only against stand-ins here. Check them in a rehearsal and after the e
 
 ## Loose ends
 
-- The Codespace has an **uncommitted `Brands.js`** edit adding an "MDE" brand text of unknown origin. It does nothing today (nothing reads `Brands.js`, and the wizard's Brand dropdown is hard-coded). Decide whether to commit or discard it; check any MDE identity claims against MDE's real guide first.
+- The Codespace has an **uncommitted `Brands.js`** edit adding an "MDE" brand text of unknown origin. It does nothing today (nothing reads `Brands.js`, and the wizard's Brand dropdown is hard-coded). Decide whether to commit or discard it; check any MDE identity claims against MDE's real guide first. Until then, `git stash` it before `npm run poc`: clasp uploads the working tree, so an uncommitted edit goes live with everything else.
+- For the real retreat, make a fresh session rather than using "Rehersal", so the record MDE gets holds only the room's work.
 - The walkthrough has a `[Wi-Fi name and password]` placeholder. Both attendee artifacts are private until shared from their Share menu.
 - After the event: make the results document, then save the Sheet (with its Live Audit tab), the Doc and the photos folder somewhere MDE can reach.
 

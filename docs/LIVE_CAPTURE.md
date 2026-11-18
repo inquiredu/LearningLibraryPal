@@ -85,6 +85,8 @@ Every change writes a row to the session's **Live Audit** tab, in the same lock 
 
 The `k` parameter is a random table key made when capture is turned on. Every table and wall call checks it, so the session's public library link cannot be used to send cards. The board's **Settings & links** tab lists every link with **Open**, **Copy link** and, for the table link and the wall, **Show QR code** (large enough to scan from a laptop held up or a projector). Laptops use the same table link (the board's **Copy table link**).
 
+**A short link to type.** Apps Script addresses are too long to type, and the app can't shorten its own. A facilitator makes a short link from the table link at any link shortener and pastes it into **Settings & links → Short link to type**. The server follows it and refuses one that opens anything other than this session's table link (so the facilitator link can never end up on a table card); one it can't follow is saved and said to be unchecked. The short link prints on every table card ("No camera, or on a laptop? Type …, then choose Table N") and stays in the wall's header.
+
 ## The facilitator link
 
 The one address to hand a facilitator. On the board, **Settings & links → Make the facilitator link** creates it; **Copy link** or **Show QR code** hands it over. It opens that session's board with no Google sign-in, and from there everything the facilitator needs: the stage bar, the wall, the table link, printable table cards, paper, results.
@@ -212,7 +214,7 @@ Then open `capture.html`, `board.html` or `wall.html` from that folder in a brow
 
 Checked here, with stand-ins for Google:
 
-- `npm run check` and `npm test`: 93 tests pass. They cover the agenda rules (cards under their own table's statement or none, columns and **?**, the published snapshot, dots and votes with no per-person caps, tallies from devices and paper, ranking and assignment), that stages lock nothing and voting needs published groups, the key and sign-in boundaries, the audit row each change writes (who, before, after; nothing deleted), paper readings (matching, checking, how confirmed rows differ), the dollar budget, the results document's content and layout, photo filing, the wall never carrying anyone's words, the store reading older sheets by header, the AI calls, page rendering and `scripts/poc.sh`.
+- `npm run check` and `npm test`: 94 tests pass. They cover the agenda rules (cards under their own table's statement or none, columns and **?**, the published snapshot, dots and votes with no per-person caps, tallies from devices and paper, ranking and assignment), that stages lock nothing and voting needs published groups, the key and sign-in boundaries, the audit row each change writes (who, before, after; nothing deleted), paper readings (matching, checking, how confirmed rows differ), the dollar budget, the results document's content and layout, photo filing, the wall never carrying anyone's words, the store reading older sheets by header, the AI calls, page rendering and `scripts/poc.sh`.
 - Every stage's device, board and wall page built by `scripts/capture-preview.cjs`, with no script errors. A scripted click-through covered a late signal and a card with no statement while the room was at Test drive, per-device test-drive notes, 12 gallery dots and 5 votes on one device, Next person, a card photo reading, every **From paper** mode (read, edit, untick, add a row, confirm), the Record & results tab and the results document button.
 
 Not checked, because it needs a real Google run:

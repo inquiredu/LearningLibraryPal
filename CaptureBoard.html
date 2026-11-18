@@ -652,11 +652,25 @@
             '<code class="linktext" aria-label="' + esc(x[1]) + ' address">' + esc(url) + '</code>' +
             (canQr && S.qr === x[0] ? '<div class="qrbox">' + qrSvg(url) + '<p class="muted small">Scan with a phone camera.</p></div>' : '') + '</div>';
         }).join('') +
+        // A short address for the table link, for people who will type it.
+        '<div class="linkrow"><div class="linkhead"><label for="shortUrl" style="margin:0"><strong>Short link to type</strong></label><span class="muted small">For anyone not using a phone camera. It prints on the table cards and shows on the wall.</span></div>' +
+        (l.short ? '<p class="small" style="margin:6px 0 0">People type <strong style="font-size:1.15em">' + esc(l.short.replace(/^https:\/\//, '').replace(/\/$/, '')) + '</strong> and then choose their table.</p>' : '') +
+        '<p class="muted small" style="margin:6px 0">To make one: copy the table link above, paste it into a link shortener (tinyurl.com lets you choose the name, like <em>mn-ai-retreat</em>), then paste the short link here.</p>' +
+        '<div class="linkbtns"><input type="text" id="shortUrl" placeholder="tinyurl.com/…" value="' + esc(l.short || '') + '" style="flex:1 1 16rem;min-width:0">' +
+        '<button type="button" class="btn btn-small" id="shortSave">Save short link</button></div></div>' +
         '</section><section class="panel section stack"><h2>Exit survey</h2><p class="muted small">Shown on phones and the wall during Close.</p>' +
         '<div><label for="survey">Survey link</label><input type="text" id="survey" placeholder="https://" value="' + esc(b.config.surveyUrl || '') + '"></div>' +
         '<button type="button" class="btn btn-small" id="surveySave">Save survey link</button></section>' +
         '<section class="panel section stack"><h2>AI help</h2><p class="small">' + (b.ai && b.ai.enabled ? 'On. Spent today: $' + b.ai.spentToday.toFixed(2) + ' of a $' + b.ai.budget.toFixed(0) + ' daily budget.' : 'Off.') +
         ' AI suggests groups and reads photos; people confirm everything it suggests. Every call is in the audit trail.</p></section>');
+      $('shortSave').onclick = function () {
+        var btn = $('shortSave'); btn.disabled = true;
+        call('captureSetShortUrl', SESSION_ID, $('shortUrl').value).then(function (b) {
+          Capture.toast(!b.links.short ? 'Short link removed.' : b.shortCheck === 'ok' ? 'Saved. It opens the table link.' : 'Saved, but it could not be checked from here. Open it once yourself to be sure.');
+          if (document.activeElement === $('shortUrl')) $('shortUrl').blur();
+          renderAll();
+        }).catch(function () { var x = $('shortSave'); if (x) x.disabled = false; });
+      };
       $('surveySave').onclick = function () { call('captureSetSurveyUrl', SESSION_ID, $('survey').value).then(function () { Capture.toast('Survey link saved.'); }); };
     }
 

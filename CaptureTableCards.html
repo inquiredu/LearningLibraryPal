@@ -105,6 +105,8 @@
     .tcard .qr-missing { font-size: .85rem; color: var(--warn); background: var(--warn-bg); border-radius: 8px; padding: 10px; overflow-wrap: anywhere; text-align: left; }
     .tcard ol { text-align: left; margin: 0; padding-left: 1.3em; display: grid; gap: 4px; font-size: 1.05rem; }
     .tcard .scan { font-weight: 700; font-size: 1.2rem; }
+    .tcard .type { font-size: 1.05rem; }
+    .tcard .type strong { display: block; font: 700 1.5rem/1.3 ui-monospace, Menlo, Consolas, monospace; overflow-wrap: anywhere; margin-top: 2px; }
     @media print {
       @page { size: letter portrait; margin: 0.6in; }
       main { padding: 0; max-width: none; }
@@ -116,6 +118,8 @@
       .tcard .num { font-size: 96pt; }
       .tcard .qr { width: 3.6in; }
       .tcard .scan { font-size: 22pt; }
+      .tcard .type { font-size: 15pt; }
+      .tcard .type strong { font-size: 24pt; }
       .tcard ol { font-size: 16pt; }
     }
   </style>
@@ -224,7 +228,11 @@
           '<div class="num">Table ' + t + '</div>' +
           '<div class="qr">' + (svg || '<p class="qr-missing">The QR code couldn’t be drawn. Use this link: ' + Capture.esc(link) + '</p>') + '</div>' +
           '<div class="scan">Scan to join Table ' + t + '</div>' +
-          '<ol><li>Pick student or adult. Your table is already set.</li><li>Keep the page open. It follows the room, and earlier steps stay open.</li><li>On a laptop? Use the link the facilitators shared. Sharing a device? Tap Next person before the next person votes.</li></ol>' +
+          // Where there is a short link, it is printed to type; the table is then chosen on screen.
+          (d.typeLink ? '<div class="type">No camera, or on a laptop? Type<strong>' + Capture.esc(d.typeLink) + '</strong>then choose Table ' + t + '.</div>' : '') +
+          (d.flow === 'cards'
+            ? '<ol><li>Write your table’s ' + Capture.esc(d.parent) + ' once.</li><li>Then send one need per card.</li><li>Keep the page open. It follows the room.</li></ol>'
+            : '<ol><li>Pick student or adult. Your table is already set.</li><li>Keep the page open. It follows the room, and earlier steps stay open.</li><li>' + (d.typeLink ? '' : 'On a laptop? Use the link the facilitators shared. ') + 'Sharing a device? Tap Next person before the next person votes.</li></ol>') +
           '</section>';
       }
       $('cards').innerHTML = html;

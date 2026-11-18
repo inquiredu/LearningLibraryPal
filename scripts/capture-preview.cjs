@@ -70,6 +70,8 @@ function mock(sc) {
   var sc = ${JSON.stringify(sc)};
   // Add #flow=cards to a preview page's address to see the need-cards-only flow.
   var FLOW = /flow=cards/.test(location.hash) ? 'cards' : 'full';
+  // Add short=tinyurl.com/name to the address to see a short link on the table cards and the wall.
+  var SHORT = (location.hash.match(/short=([^&]+)/) || [])[1] || '';
   var tpl = captureTemplateFor_({ template: 'needCards', flow: FLOW });
   var ids = tpl.stages.map(function (s) { return s.id; });
   var at = function (s) { return ids.indexOf(sc.stage) >= ids.indexOf(s); };
@@ -116,7 +118,7 @@ function mock(sc) {
       config: { title: config.title, tables: config.tables, stage: config.stage, tallyMode: config.tallyMode, surveyUrl: config.surveyUrl, publishedAt: config.publishedAt, paperDots: config.paperDots, paperFlipDots: config.paperFlipDots, assign: config.assign },
       template: pub(),
       paperModes: Object.keys(CAPTURE_PAPER_MODES_).map(function (k) { return { id: k, label: CAPTURE_PAPER_MODES_[k].label, table: CAPTURE_PAPER_MODES_[k].table }; }),
-      ai: { enabled: true, spentToday: spent, budget: 100 }, links: { table: 'https://script.google.com/macros/s/DEMO/exec?session=S-demo&k=${KEY}&page=capture', wall: 'wall-' + config.stage + '.html', tableCards: 'table-cards.html', board: '#', facilitator: config.facilitatorKey ? 'https://script.google.com/macros/s/DEMO/exec?page=run&session=S-demo&f=' + config.facilitatorKey : '' },
+      ai: { enabled: true, spentToday: spent, budget: 100 }, links: { table: 'https://script.google.com/macros/s/DEMO/exec?session=S-demo&k=${KEY}&page=capture', wall: 'wall-' + config.stage + '.html', tableCards: 'table-cards.html', board: '#', short: config.shortUrl || '', facilitator: config.facilitatorKey ? 'https://script.google.com/macros/s/DEMO/exec?page=run&session=S-demo&f=' + config.facilitatorKey : '' },
       signals: signals, flips: flips.map(function (f) { return Object.assign({}, f, { dots: dots[f.id] || {} }); }), cards: cards,
       groups: captureOrderGroups_(tpl, live, n.groups), ungrouped: n.ungrouped, parking: captureParkingLot_(tpl, cards).map(function (c) { return c.id; }),
       published: config.published, voters: voters(), tally: config.published ? captureTally_(tpl, config.published, votes, config.paperDots, config.tallyMode) : {},
@@ -164,7 +166,7 @@ function mock(sc) {
       var per = function (list) { var o = []; for (var i = 1; i <= config.tables; i++) o.push(list.filter(function (x) { return x.table === i; }).length); return o; };
       var byRole = function (list) { var o = { total: list.length }; tpl.roles.forEach(function (r) { o[r.code] = list.filter(function (x) { return x.role === r.code; }).length; }); return o; };
       var levels = {}; tpl.level.options.forEach(function (o) { levels[o.code] = live.filter(function (c) { return c.level === o.code; }).length; });
-      var w = { title: config.title, stage: config.stage, tables: config.tables,
+      var w = { join: SHORT || undefined, title: config.title, stage: config.stage, tables: config.tables,
         template: { flow: FLOW, stages: tpl.stages, roles: tpl.roles, levelOptions: tpl.level.options, routes: tpl.routes, flipDots: tpl.flipDots, parent: { plural: tpl.parent.plural }, vote: { prompt: tpl.vote.prompt } },
         signals: { byRole: byRole(signals), perTable: per(signals) }, flips: { total: flips.length, perTable: per(flips) }, flipDots: byRole(flipDots),
         cards: { total: live.length, perTable: per(live), levels: levels, byRole: byRole(live) }, voters: voters() };
@@ -185,6 +187,7 @@ function mock(sc) {
     captureSetTallyMode: function (s, m) { config.tallyMode = m; return board(); },
     captureSetAssignment: function (s, t, id) { if (id) config.assign[t] = id; else delete config.assign[t]; return board(); },
     captureSetSurveyUrl: function (s, u) { config.surveyUrl = u; return board(); },
+    captureSetShortUrl: function (s, u) { u = String(u || '').trim(); config.shortUrl = u ? (/^https:/.test(u) ? u : 'https://' + u) : ''; var b = board(); b.shortCheck = u ? 'ok' : ''; return b; },
     captureSetFlow: function (s, f) { location.hash = f === 'cards' ? 'flow=cards' : ''; location.reload(); return board(); },
     captureSetFacilitatorLink: function (s, mode) { config.facilitatorKey = mode === 'new' ? Array.from({ length: 32 }, function () { return Math.floor(Math.random() * 16).toString(16); }).join('') : ''; return board(); },
     captureMakePosters: function () { return { url: '#posters' }; },
@@ -217,7 +220,7 @@ function mock(sc) {
     },
     captureGetAudit: function () { return { total: audit.length, rows: audit.slice().reverse().slice(0, 50), sheetUrl: 'https://docs.google.com/spreadsheets/d/DEMO/edit', ai: { spentToday: spent, budget: 100 } }; },
     captureMakeReport: function () { log('owner@example.org', 'Results document made'); return { url: 'report.html' }; },
-    captureGetTableCardsData: function () { return { title: config.title, sessionName: 'Retreat rehearsal', tables: config.tables, noun: tpl.noun,
+    captureGetTableCardsData: function () { return { title: config.title, sessionName: 'Retreat rehearsal', tables: config.tables, noun: tpl.noun, flow: FLOW, parent: tpl.parent.label.toLowerCase(), typeLink: SHORT,
       tableLink: 'https://script.google.com/macros/s/DEMO/exec?session=S-demo&k=${KEY}&page=capture' }; },
     captureListTemplates: function () { return [{ id: 'needCards', name: 'Need Cards' }]; },
     captureListSessions: function () { return [{ id: 'S-demo', name: 'Retreat rehearsal', date: 'Nov 18' }]; },

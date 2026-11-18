@@ -140,6 +140,7 @@
     <header class="wall-head">
       <h1 id="title">Live wall</h1>
       <span class="stage" id="stage" aria-live="polite"></span>
+      <span id="join" hidden style="margin-left:auto;font-weight:700;font-size:1.1em;overflow-wrap:anywhere"></span>
     </header>
     <main id="view" aria-live="polite"></main>
     <footer class="foot">Phones and laptops add what tables write, and paper is entered too. Facilitators group it; AI only drafts. The wall never shows anyone’s card text.</footer>
@@ -295,6 +296,8 @@
       $('title').textContent = w.title;
       var s = stageInfo(w);
       $('stage').textContent = s.label;
+      // The address to type stays up for anyone joining late or without a camera.
+      $('join').hidden = !w.join; $('join').textContent = w.join ? 'Join: ' + w.join : '';
       $('view').innerHTML = (views[w.stage] || views.welcome)(w);
     }
 

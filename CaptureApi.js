@@ -104,7 +104,8 @@ function captureLinks_(sessionId, config) {
     board: board ? board + '?page=board&session=' + encodeURIComponent(sessionId) : '',
     tableCards: board ? board + '?page=tablecards&session=' + encodeURIComponent(sessionId) : '',
     dashboard: board || '',
-    facilitator: f ? pub + '?page=run' + f : ''
+    facilitator: f ? pub + '?page=run' + f : '',
+    short: config.shortUrl || ''
   };
   // Someone who came in by the facilitator link gets links that work without signing in.
   if (CAPTURE_VIA_LINK_[sessionId] && f) { links.board = links.facilitator; links.tableCards = pub + '?page=runcards' + f; links.dashboard = ''; }
@@ -440,6 +441,8 @@ function captureGetWall(sessionId, key) {
       assignments: r.assignments };
   }
   if (c.stage === 'close') wall.surveyUrl = c.surveyUrl;
+  // The address to type, for anyone joining without a camera; it is the table link the room already has.
+  if (c.shortUrl) wall.join = captureTypeable_(c.shortUrl);
   return wall;
 }
 
@@ -658,6 +661,61 @@ function captureSetFacilitatorLink(sessionId, mode) {
   return captureGetBoard(sessionId, true);
 }
 
+/** A short link as someone would type it: no "https://", no trailing slash. */
+function captureTypeable_(url) {
+  return String(url || '').replace(/^https:\/\//i, '').replace(/^www\./i, '').replace(/\/$/, '');
+}
+
+/**
+ * Follows a short link to see where it lands. Returns 'ok' when it opens this
+ * session's table link, 'wrong' when it opens something else, and 'unknown'
+ * when that can't be told from here (the shortener shows a page first, or the
+ * check couldn't run).
+ */
+function captureCheckShortUrl_(url, sessionId, key) {
+  const isTable = at => /^https:\/\/script\.google\.com\//.test(at) && at.indexOf('session=' + sessionId) !== -1 && at.indexOf('k=' + key) !== -1 && /[?&]page=capture(&|$)/.test(at);
+  let at = url;
+  try {
+    for (let hop = 0; hop < 5; hop++) {
+      const res = UrlFetchApp.fetch(at, { followRedirects: false, muteHttpExceptions: true });
+      const headers = res.getHeaders() || {};
+      const next = headers.Location || headers.location;
+      if (res.getResponseCode() < 300 || res.getResponseCode() >= 400 || !next) break;
+      at = String(next);
+      if (isTable(at)) return 'ok';
+    }
+  } catch (e) {
+    return 'unknown';
+  }
+  return at === url ? 'unknown' : 'wrong';
+}
+
+/**
+ * Saves a short address for the table link (made at any link shortener), so
+ * people without a camera can type it. It prints on the table cards and shows
+ * on the wall. A link that opens something other than this session's table
+ * link is refused. An empty value removes it.
+ */
+function captureSetShortUrl(sessionId, url) {
+  sessionId = captureFacilitatorAuth_(sessionId);
+  const ctx = captureBoardContext_(sessionId);
+  const clean = String(url || '').trim().replace(/^(?!https?:\/\/)/i, 'https://').replace(/^http:\/\//i, 'https://');
+  let check = '';
+  if (String(url || '').trim()) {
+    if (!/^https:\/\/[^\s"'<>\/]+\.[^\s"'<>]+$/.test(clean) || clean.length > 200) throw new Error('Paste the short link, for example tinyurl.com/our-retreat.');
+    if (/^https:\/\/script\.google\.com\//.test(clean)) throw new Error('That is the long link. Make a short one from it at a link shortener, then paste the short one here.');
+    check = captureCheckShortUrl_(clean, sessionId, ctx.config.key);
+    if (check === 'wrong') throw new Error('That short link does not open this session’s table link. Make it from the table link above (Copy link), then paste it again.');
+  }
+  const value = String(url || '').trim() ? clean : '';
+  CaptureStore.updateConfig(sessionId, () => ({ shortUrl: value }),
+    { action: 'Short link set', item: 'settings', before: c => c.shortUrl || '', after: () => value,
+      detail: check === 'ok' ? 'Checked: it opens the table link.' : check === 'unknown' ? 'Could not be checked from here.' : '' });
+  const board = captureGetBoard(sessionId, true);
+  board.shortCheck = check;
+  return board;
+}
+
 function captureSetSurveyUrl(sessionId, url) {
   sessionId = captureFacilitatorAuth_(sessionId);
   captureBoardContext_(sessionId);
@@ -790,7 +848,8 @@ function captureGetTableCardsData(sessionId) {
   const template = captureTemplateFor_(config);
   const links = captureLinks_(sessionId, config);
   if (!links.table) throw new Error('Deploy the web app first, so the table link exists.');
-  return { title: config.title, sessionName: session.name, tables: config.tables, noun: template.noun, tableLink: links.table };
+  return { title: config.title, sessionName: session.name, tables: config.tables, noun: template.noun, tableLink: links.table,
+    flow: template.flow || 'full', parent: template.parent.label.toLowerCase(), typeLink: config.shortUrl ? captureTypeable_(config.shortUrl) : '' };
 }
 
 /** Sheet menu: turn live capture on for the session selected in the Sessions tab. */

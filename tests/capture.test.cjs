@@ -764,6 +764,33 @@ test('need cards only is the default: four steps, a card needs no student or adu
   assert.throws(() => fullRoom.c.captureSaveVote('S-1', KEY, { voter: VOTER, role: 'S', choices: ['p1'] }), /at least one/);
 });
 
+test('a short link people can type is checked, printed on table cards and shown on the wall', () => {
+  const h = apiContext({ email: 'owner@example.org' });
+  const table = 'https://script.google.com/macros/s/x/exec?session=S-1&k=' + KEY + '&page=capture';
+  const hops = { 'https://tinyurl.com/mn-ai': table, 'https://bit.ly/two': 'https://example.org/step', 'https://example.org/step': table,
+    'https://tinyurl.com/other': 'https://script.google.com/macros/s/x/exec?session=S-2&k=' + KEY + '&page=capture',
+    'https://tinyurl.com/run': 'https://script.google.com/macros/s/x/exec?page=run&session=S-1&f=' + 'ab'.repeat(16) };
+  h.c.UrlFetchApp = { fetch: url => { if (/down/.test(url)) throw new Error('no network');
+    return hops[url] ? { getResponseCode: () => 301, getHeaders: () => ({ Location: hops[url] }) } : { getResponseCode: () => 200, getHeaders: () => ({}) }; } };
+  const board = plain(h.c.captureSetShortUrl('S-1', ' tinyurl.com/mn-ai '));
+  assert.deepEqual([board.links.short, board.shortCheck, h.cfg.shortUrl], ['https://tinyurl.com/mn-ai', 'ok', 'https://tinyurl.com/mn-ai']);
+  assert.equal(plain(h.c.captureSetShortUrl('S-1', 'http://bit.ly/two')).shortCheck, 'ok', 'followed through more than one hop');
+  assert.throws(() => h.c.captureSetShortUrl('S-1', 'tinyurl.com/other'), /does not open this session/, 'another session\'s link');
+  assert.throws(() => h.c.captureSetShortUrl('S-1', 'tinyurl.com/run'), /does not open this session/, 'the facilitator link must never go on a table card');
+  assert.throws(() => h.c.captureSetShortUrl('S-1', table), /long link/);
+  assert.throws(() => h.c.captureSetShortUrl('S-1', 'not a link'), /Paste the short link/);
+  assert.equal(h.cfg.shortUrl, 'https://bit.ly/two', 'a refused link changes nothing');
+  assert.equal(plain(h.c.captureSetShortUrl('S-1', 'short.example/shows-a-page-first')).shortCheck, 'unknown', 'saved, and said to be unchecked');
+  assert.equal(plain(h.c.captureSetShortUrl('S-1', 'short.example/down')).shortCheck, 'unknown');
+  h.c.captureSetShortUrl('S-1', 'https://www.tinyurl.com/mn-ai/');
+  assert.equal(plain(h.c.captureGetWall('S-1', KEY)).join, 'tinyurl.com/mn-ai', 'the wall shows it as people type it');
+  const cards = plain(h.c.captureGetTableCardsData('S-1'));
+  assert.deepEqual([cards.typeLink, cards.flow, cards.parent], ['tinyurl.com/mn-ai', 'full', 'flip statement']);
+  assert.equal(plain(h.c.captureSetShortUrl('S-1', '')).links.short, '');
+  assert.equal(plain(h.c.captureGetWall('S-1', KEY)).join, undefined);
+  assert.throws(() => apiContext({ email: '' }).c.captureSetShortUrl('S-1', 'tinyurl.com/x'), /Access denied/);
+});
+
 test('one facilitator link runs a session\'s board with no sign-in, and only that', () => {
   const FKEY = 'ab'.repeat(16);
   // No link yet, nobody signed in: the board stays shut, with or without a made-up key.

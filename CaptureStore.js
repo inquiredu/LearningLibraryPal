@@ -89,7 +89,7 @@ const CaptureStore = {
   // ─── Settings ─────────────────────────────────────────────────────────────
 
   JSON_KEYS: ['published', 'paperDots', 'assign', 'paperFlipDots'],
-  CONFIG_KEYS: ['template', 'tables', 'key', 'title', 'stage', 'published', 'publishedAt', 'paperDots', 'tallyMode', 'assign', 'surveyUrl', 'paperFlipDots', 'facilitatorKey', 'flow'],
+  CONFIG_KEYS: ['template', 'tables', 'key', 'title', 'stage', 'published', 'publishedAt', 'paperDots', 'tallyMode', 'assign', 'surveyUrl', 'paperFlipDots', 'facilitatorKey', 'flow', 'shortUrl'],
 
   /**
    * Settings come from the cache when the cached copy is current. Each write
@@ -150,6 +150,8 @@ const CaptureStore = {
       tallyMode: ['phone', 'paper', 'both'].indexOf(String(map.tallyMode)) !== -1 ? String(map.tallyMode) : 'phone',
       assign: json(map.assign, {}),
       surveyUrl: /^https:\/\//.test(String(map.surveyUrl || '')) ? String(map.surveyUrl) : '',
+      // A short address for the table link that people can type; made at a link shortener and pasted in.
+      shortUrl: /^https:\/\/[^\s"'<>]+$/.test(String(map.shortUrl || '')) ? String(map.shortUrl) : '',
       // Set when the owner makes a facilitator link; empty means there is none.
       facilitatorKey: /^[a-f0-9]{32}$/.test(String(map.facilitatorKey || '')) ? String(map.facilitatorKey) : ''
     };

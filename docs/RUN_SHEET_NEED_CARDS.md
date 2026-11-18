@@ -7,8 +7,9 @@ Nothing is timed. You move the room on when it's ready.
 ## Before people arrive
 
 1. Open the facilitator link on a laptop. This is the board.
-2. Click **Table cards** (top right) and print one per table. Each has a QR code that opens that table's form.
-3. Click **Open the wall** and put it on the projector. It shows counts only, never anyone's words.
+2. If some people will type the address instead of scanning: on **Settings & links**, copy the table link, make a short link from it at a link shortener (tinyurl.com lets you pick the name), and paste it into **Short link to type**. It then prints on every table card and shows on the wall.
+3. Click **Table cards** (top right) and print one per table. Each has a QR code that opens that table's form.
+4. Click **Open the wall** and put it on the projector. It shows counts only, never anyone's words.
 
 ## 1. Need cards
 

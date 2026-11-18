@@ -347,6 +347,8 @@
         if (!S.table || (!cardsOnly() && !S.role)) return showWho();
         afterWho();
       }).catch(function (err) {
+        // A link to a session that isn't there any more is not a connection problem: trying again won't help.
+        if (/session link|session has no/i.test(err.message)) { $('title').textContent = 'This link is out of date'; $('pageError').textContent = 'This link is for a session that is no longer there. Ask a facilitator for today’s link or table card.'; return; }
         if (/table link/i.test(err.message)) { $('title').textContent = 'Link not working'; $('pageError').textContent = err.message; return; }
         if (tries < 4) { $('pageError').textContent = 'Still connecting…'; return setTimeout(function () { open(tries + 1); }, 2500); }
         $('title').textContent = 'Not connected';

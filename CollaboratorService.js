@@ -44,7 +44,7 @@ const CollaboratorService = {
     // Send notification email to each newly added collaborator
     if (added.length > 0) {
       var dashboardUrl = '';
-      try { dashboardUrl = PropertiesService.getScriptProperties().getProperty('WEB_APP_URL') || ''; } catch(e2) {}
+      try { dashboardUrl = appFacilitatorUrl_() || ''; } catch(e2) {}
       var self = this;
       added.forEach(function(email) {
         try {

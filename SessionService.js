@@ -112,7 +112,7 @@ const SessionService = {
     row[this.COL.BRAND]      = brand || 'Learning Library';
     row[this.COL.STATUS]     = 'Active';
     row[this.COL.FOLDER_URL] = sessionFolder.getUrl();
-    const baseUrl = getWebAppUrl_();
+    const baseUrl = appPublicUrl_();
     row[this.COL.LIBRARY_URL]= baseUrl ? baseUrl + '?page=library&session=' + sessionId : '';
     row[this.COL.DB_URL]     = db.getUrl();
     row[this.COL.EMAIL_SENT] = 'No';
@@ -140,6 +140,13 @@ const SessionService = {
     const data = sheet.getDataRange().getValues();
     if (data.length <= 1) return [];
 
+    // The library address is worked out from today's public deployment, not
+    // trusted from the row: rows written earlier can hold an address that no
+    // longer serves anything (see appPublicUrl_).
+    let publicBase = '';
+    try { publicBase = appPublicUrl_() || ''; } catch (e) {}
+    const libraryUrlFor = (id, stored) => publicBase && id ? publicBase + '?page=library&session=' + id : stored;
+
     return data.slice(1).map(row => ({
       id:          row[this.COL.ID],
       name:        row[this.COL.NAME],
@@ -150,7 +157,7 @@ const SessionService = {
       brand:       row[this.COL.BRAND],
       status:      row[this.COL.STATUS],
       folderUrl:   row[this.COL.FOLDER_URL],
-      libraryUrl:  row[this.COL.LIBRARY_URL],
+      libraryUrl:  libraryUrlFor(row[this.COL.ID], row[this.COL.LIBRARY_URL]),
       dbUrl:       row[this.COL.DB_URL],
       emailSent:   row[this.COL.EMAIL_SENT],
       brief:       this._safeParseJson(row[this.COL.BRIEF_JSON]),

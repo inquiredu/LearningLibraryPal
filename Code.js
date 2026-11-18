@@ -48,7 +48,7 @@ function showWizard() {
 function processWizardSubmit(params) {
   AuthService.requireUser();
   const result = SessionService.setupSession(params);
-  CacheService.getScriptCache().remove('dashboard_v2');
+  CacheService.getScriptCache().remove(DASHBOARD_CACHE_KEY_);
   // A live-capture event turns capture on for the new session right away.
   const template = params && params.captureTemplate;
   if (template && CAPTURE_TEMPLATES[template]) {

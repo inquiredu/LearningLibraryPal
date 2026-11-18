@@ -16,6 +16,7 @@
       --border: #DDE4ED;
       --text:   #2C3E50;
       --muted:  #7F8FA4;
+      --muted-strong: #56677D;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Open Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
@@ -34,7 +35,7 @@
     .btn-dark    { background: var(--navy); color: var(--white); }
     .btn-outline { background: transparent; color:var(--navy); border: 1.5px solid var(--navy); }
     .header .btn-outline { color: var(--cyan); border-color: var(--cyan); }
-    .btn-ghost   { background: transparent; color: var(--muted); border: 1px solid var(--border); font-weight: 600; }
+    .btn-ghost   { background: transparent; color: var(--muted-strong); border: 1px solid var(--border); font-weight: 600; }
     .btn-ghost:hover { color: var(--navy); border-color: var(--navy); opacity: 1; }
     .btn-sm { padding: 6px 12px; font-size: 0.78rem; }
     .btn-xs { padding: 5px 9px; font-size: 0.73rem; }
@@ -50,79 +51,60 @@
     /* ── Sessions grid ── */
     .sessions-grid { display: flex; flex-direction: column; gap: 14px; }
 
-    /* ── Event card ── */
-    .session-card {
-      background: var(--white); border-radius: 12px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.06); border: 1px solid var(--border);
-      overflow: hidden; transition: box-shadow 0.15s;
-    }
-    .session-card:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.10); }
-
-    /* Top accent bar — colour signals pipeline stage */
-    .sc-accent { height: 3px; background: var(--border); }
-    .sc-accent.stage-gems  { background: var(--cyan); }
-    .sc-accent.stage-brief { background: #f6c343; }
-    .sc-accent.stage-new   { background: var(--border); }
-
-    /* Card body: date + info + CTA */
-    .sc-body { display: flex; align-items: flex-start; gap: 0; padding: 20px 22px 16px; }
-
-    /* Date block */
-    .sc-date {
-      flex-shrink: 0; width: 54px; text-align: center;
-      background: var(--bg); border: 1px solid var(--border);
-      border-radius: 10px; padding: 8px 6px; margin-right: 18px;
-    }
-    .sc-date-month { font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color:var(--navy); }
-    .sc-date-day   { font-family: 'Montserrat', sans-serif; font-size: 1.55rem; font-weight: 800; color: var(--navy); line-height: 1.1; }
-    .sc-date-dow   { font-size: 0.6rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 2px; }
-    .sc-date-raw   { font-size: 0.65rem; font-weight: 700; color: var(--muted); line-height: 1.3; }
-
-    /* Info block */
-    .sc-info { flex: 1; min-width: 0; }
-    .sc-title-row { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 3px; }
-    .sc-name { font-family: 'Montserrat', sans-serif; font-size: 1.05rem; font-weight: 800; color: var(--navy); line-height: 1.25; flex: 1; min-width: 0; }
-    .sc-theme { font-size: 0.82rem; color: var(--muted); margin-bottom: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .sc-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 12px; }
-    .sc-tag { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.04em; padding: 2px 8px; border-radius: 99px; background: var(--bg); border: 1px solid var(--border); color: var(--muted); }
-
-    /* Pipeline stepper */
-    .sc-pipeline { display: flex; align-items: center; gap: 0; }
-    .sc-step { display: flex; flex-direction: column; align-items: center; gap: 3px; }
-    .sc-step-dot {
-      width: 13px; height: 13px; border-radius: 50%;
-      border: 2px solid var(--border); background: var(--white);
-      transition: all 0.15s;
-    }
-    .sc-step.done .sc-step-dot { background: #28a745; border-color: #28a745; }
-    .sc-step-label { font-size: 0.6rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
-    .sc-step.done .sc-step-label { color: #28a745; }
-    .sc-step-line { flex: 1; height: 2px; background: var(--border); min-width: 20px; max-width: 36px; margin: 0 3px; margin-bottom: 14px; }
-    .sc-step-line.done { background: #28a745; }
-
-    /* Status badge */
-    .status-badge { padding: 3px 10px; border-radius: 20px; font-size: 0.68rem; font-weight: 700; white-space: nowrap; flex-shrink: 0; background: rgba(0,56,101,0.08); color: var(--navy); }
-    .status-badge.ready { background: #D4EDDA; color: #155724; }
-    .status-badge.gems  { background: #e0f4ff; color: #0074b7; }
-
-    /* Right CTA */
-    .sc-cta { flex-shrink: 0; margin-left: 16px; display: flex; flex-direction: column; gap: 6px; align-items: flex-end; justify-content: flex-start; }
-    .sc-links { display: flex; flex-direction: column; gap: 4px; align-items: flex-end; }
-    .sc-links a { font-size: 0.73rem; font-weight: 600; color: var(--muted); text-decoration: none; display: flex; align-items: center; gap: 4px; }
-    .sc-links a:hover { color: var(--navy); }
-
-    /* Action bar */
-    .sc-actions {
-      padding: 10px 22px; background: var(--bg); border-top: 1px solid var(--border);
-      display: flex; align-items: center; flex-wrap: wrap; gap: 5px;
-    }
+    /* ── Session card ──
+       Every label that names a place opens it: the title, the status, and the
+       Before / During / After steps. Facts (date, format, audience) are plain
+       text so nothing looks clickable that isn't. */
+    .session-card { background: var(--white); border-radius: 12px; border: 1px solid var(--border); box-shadow: 0 2px 10px rgba(0,0,0,0.06); overflow: hidden; }
+    .sc-accent { height: 4px; background: var(--border); }
+    .sc-accent.live  { background: var(--cyan); }
+    .sc-accent.ready { background: #f6c343; }
+    .sc-body { padding: 18px 22px 14px; }
+    .sc-top { display: flex; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+    .sc-head { flex: 1; min-width: 0; }
+    .sc-name { font-family: 'Montserrat', sans-serif; font-size: 1.1rem; font-weight: 800; color: var(--navy); line-height: 1.25; text-decoration: none; }
+    .sc-name:hover { text-decoration: underline; }
+    .sc-facts { font-size: 0.8rem; color: var(--muted-strong); margin-top: 3px; }
+    .sc-theme { font-size: 0.82rem; color: var(--muted-strong); margin-top: 4px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+    .sc-status { flex-shrink: 0; font-family: inherit; font-size: 0.75rem; font-weight: 700; padding: 5px 11px; border-radius: 20px; border: none; text-decoration: none; background: rgba(0,56,101,0.08); color: var(--navy); white-space: nowrap; cursor: pointer; }
+    .sc-status.live  { background: #E8F5D9; color: #2D5A0B; }
+    .sc-status.ready { background: #FFF4D6; color: #6B4A00; }
+    .sc-status:hover { text-decoration: underline; }
+    .sc-steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 14px 0; }
+    .sc-step { display: block; text-align: left; border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; text-decoration: none; background: var(--white); font: inherit; color: var(--text); cursor: pointer; }
+    .sc-step:hover { border-color: var(--navy); }
+    .sc-step-k { display: block; font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted-strong); }
+    .sc-step-v { display: block; font-size: 0.82rem; font-weight: 600; color: var(--navy); margin-top: 2px; }
+    .sc-step.done { border-color: #9CCB6A; }
+    .sc-step.done .sc-step-k { color: #2D5A0B; }
+    .sc-step.now { border: 2px solid var(--navy); padding: 7px 9px; }
+    .sc-step.now .sc-step-k { color: var(--navy); }
+    .sc-step.todo { border-style: dashed; border-color: #A9B6C6; }
+    .sc-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .sc-links { display: flex; gap: 14px; margin-left: auto; }
+    .sc-links a { font-size: 0.78rem; font-weight: 600; color: var(--navy); }
+    .sc-tools { padding: 10px 22px; background: var(--bg); border-top: 1px solid var(--border); display: flex; align-items: center; flex-wrap: wrap; gap: 5px; }
+    .sc-tools-label { font-size: 0.72rem; font-weight: 700; color: var(--muted-strong); margin-right: 4px; }
     .sc-action-sep { width: 1px; height: 18px; background: var(--border); margin: 0 4px; flex-shrink: 0; }
-    .sc-spacer { flex: 1; }
 
     /* Split button: Synthesize + ↩ re-run icon */
     .split-btn { display: flex; gap: 3px; }
     .split-btn .btn-main { flex: 1; }
     .split-btn .btn-icon { padding: 5px 8px; font-size: 0.82rem; line-height: 1; }
+
+    .btn:focus-visible, .sc-name:focus-visible, .sc-status:focus-visible, .sc-step:focus-visible, .sc-links a:focus-visible { outline: 3px solid var(--cyan); outline-offset: 2px; }
+
+    @media (max-width: 640px) {
+      .header { padding: 12px 16px; flex-wrap: wrap; gap: 8px; }
+      .header .btn { padding: 7px 12px; font-size: 0.8rem; }
+      .main { padding: 16px; }
+      .sc-body { padding: 14px 16px 12px; }
+      .sc-tools { padding: 10px 16px; }
+      .sc-links { margin-left: 0; width: 100%; }
+    }
+    @media (max-width: 440px) {
+      .sc-steps { grid-template-columns: 1fr; }
+    }
 
     /* ── Empty / spinner ── */
     .empty-state { text-align: center; padding: 60px 20px; color: var(--muted); }
@@ -524,12 +506,6 @@
 
     function renderSessions(sessions) {
       _sessionsData = sessions || [];
-      // Extract the exec base URL from a session's libraryUrl (more reliable than window.location.href in GAS sandbox)
-      if (!_appBaseUrl) {
-        for (var _i = 0; _i < _sessionsData.length; _i++) {
-          if (_sessionsData[_i].libraryUrl) { _appBaseUrl = _sessionsData[_i].libraryUrl.split('?')[0]; break; }
-        }
-      }
       document.getElementById('loader').style.display = 'none';
       var grid = document.getElementById('sessions-grid');
       grid.style.display = 'flex';
@@ -538,96 +514,110 @@
         grid.innerHTML = '<div class="empty-state"><div class="icon">🚀</div><p>No sessions yet. Click <strong>+ New Session</strong> to begin.</p></div>';
         return;
       }
-      sessions.forEach(function(s) {
-        var card = document.createElement('div');
-        card.className = 'session-card';
+      sessions.forEach(function(s) { grid.appendChild(sessionCard(s)); });
+    }
 
-        // ── Pipeline state ──
-        var emailDone = s.emailSent && s.emailSent !== 'No';
-        var accentClass = s.hasGems ? 'stage-gems' : (s.hasBrief ? 'stage-brief' : 'stage-new');
-        var badgeClass  = s.hasGems ? 'gems' : (s.hasBrief ? 'ready' : '');
-        var badgeLabel  = s.hasGems ? 'Skills Ready' : (s.hasBrief ? 'Brief Ready' : (s.status || 'New'));
+    // One session: what it is, where it stands, and a way into every place it
+    // names. Facilitator pages (board) open in this tab; pages for the room or
+    // the public (library, wall, table cards) open in a new one.
+    function sessionCard(s) {
+      var cap = s.capture || { on: false, board: '' };
+      var id = esc(s.id);
+      var lib = s.libraryUrl || '';
+      var newTab = ' target="_blank" rel="noopener"';
+      var libHref = ' href="' + _href(lib) + '"' + newTab;
 
-        // ── Date block ──
-        var dateParsed = _parseEventDate(s.date);
-        var dateHtml = dateParsed
-          ? '<div class="sc-date-month">' + dateParsed.month + '</div>' +
-            '<div class="sc-date-day">'   + dateParsed.day   + '</div>' +
-            '<div class="sc-date-dow">'   + dateParsed.dow   + '</div>'
-          : '<div class="sc-date-raw">'   + esc(s.date || '—') + '</div>';
+      var date = _parseEventDate(s.date);
+      var facts = [date ? date.dow + ', ' + date.month + ' ' + date.day : 'No date set'];
+      if (s.format)   facts.push(s.format);
+      if (s.audience) facts.push(s.audience);
+      if (cap.on)     facts.push(cap.tables + ' tables');
 
-        // ── Tags ──
-        var tags = '';
-        if (s.format)   tags += '<span class="sc-tag">' + esc(s.format) + '</span>';
-        if (s.audience) tags += '<span class="sc-tag">' + esc(s.audience) + '</span>';
+      // Where the session is now, as a link to that place.
+      var status;
+      if (cap.on && cap.closed) status = '<a class="sc-status live" href="' + _href(cap.record) + '">Closed · see results &rarr;</a>';
+      else if (cap.on)          status = '<a class="sc-status live" href="' + _href(cap.board) + '">Live now: ' + esc(cap.stageLabel) + ' &rarr;</a>';
+      else if (s.hasGems)       status = '<a class="sc-status ready"' + libHref + '>Skills ready &rarr;</a>';
+      else if (s.hasBrief)      status = '<a class="sc-status ready"' + libHref + '>Brief ready &rarr;</a>';
+      else                      status = '<button type="button" class="sc-status" onclick="regenerateBrief(\'' + id + '\', this)">Make the brief</button>';
 
-        // ── Pipeline stepper ──
-        var briefLine = s.hasBrief ? ' done' : '';
-        var gemsLine  = s.hasGems  ? ' done' : '';
-        var stepper =
-          '<div class="sc-pipeline">' +
-            '<div class="sc-step' + (s.hasBrief ? ' done' : '') + '"><div class="sc-step-dot"></div><div class="sc-step-label">Brief</div></div>' +
-            '<div class="sc-step-line' + briefLine + '"></div>' +
-            '<div class="sc-step' + (s.hasGems ? ' done' : '') + '"><div class="sc-step-dot"></div><div class="sc-step-label">Skills</div></div>' +
-            '<div class="sc-step-line' + gemsLine  + '"></div>' +
-            '<div class="sc-step' + (emailDone ? ' done' : '') + '"><div class="sc-step-dot"></div><div class="sc-step-label">Email</div></div>' +
-          '</div>';
+      var title = cap.on
+        ? '<a class="sc-name" href="' + _href(cap.board) + '">' + esc(s.name) + '</a>'
+        : '<a class="sc-name"' + libHref + '>' + esc(s.name) + '</a>';
 
-        // ── Side links ──
-        var sideLinks = '<div class="sc-links">';
-        if (s.folderUrl)  sideLinks += '<a href="' + s.folderUrl  + '" target="_blank">📁 Drive</a>';
-        if (s.dbUrl)      sideLinks += '<a href="' + s.dbUrl      + '" target="_blank">🗄 DB</a>';
-        sideLinks += '</div>';
+      // Before · During · After: each one opens its place.
+      var before = s.hasBrief
+        ? _step('a', libHref, s.hasGems ? 'done' : (cap.on ? 'done' : 'now'), 'Before', s.hasGems ? 'Library and skills' : 'Library · skills next')
+        : _step('button', ' type="button" onclick="regenerateBrief(\'' + id + '\', this)"', cap.on ? '' : 'now', 'Before', 'Make the brief');
+      var during = cap.on
+        ? _step('a', ' href="' + _href(cap.board) + '"', cap.closed ? 'done' : 'now', 'During', 'Board · ' + cap.stageLabel)
+        : _step('a', ' href="' + _href(cap.board) + '"', 'todo', 'During', 'Turn on live capture');
+      var after = cap.on
+        ? _step('a', ' href="' + _href(cap.record) + '"', cap.closed ? 'now' : '', 'After', cap.closed ? 'Make the results document' : 'Results document')
+        : _step('a', ' href="' + _href(cap.board) + '"', 'todo', 'After', 'Results come from live capture');
 
-        // ── Conditional action buttons ──
-        var briefBtn = !s.hasBrief
-          ? '<button class="btn btn-ghost btn-xs" onclick="regenerateBrief(\'' + s.id + '\', this)">✨ Brief</button>'
-          : '';
-        var gemLinksBtn = s.hasGems
-          ? '<button class="btn btn-ghost btn-xs" onclick="openGemLinksModal(\'' + s.id + '\')">🔗 Skill Links</button>'
-          : '';
+      var main = cap.on
+        ? '<a class="btn btn-primary btn-sm" href="' + _href(cap.board) + '">Open board</a>' +
+          '<a class="btn btn-ghost btn-sm" href="' + _href(cap.wall) + '"' + newTab + '>Wall</a>' +
+          '<a class="btn btn-ghost btn-sm" href="' + _href(cap.tableCards) + '"' + newTab + '>Table cards</a>' +
+          '<button type="button" class="btn btn-ghost btn-sm" onclick="copyTableLink(\'' + id + '\')">Copy table link</button>'
+        : (lib ? '<a class="btn btn-primary btn-sm"' + libHref + '>Open library</a>' : '') +
+          '<a class="btn btn-ghost btn-sm" href="' + _href(cap.board) + '">Turn on live capture</a>';
+      var links = (cap.on && lib ? '<a' + libHref + '>Library</a>' : '') +
+        (s.folderUrl ? '<a href="' + _href(s.folderUrl) + '"' + newTab + '>Drive folder</a>' : '') +
+        (s.dbUrl ? '<a href="' + _href(s.dbUrl) + '"' + newTab + '>Session sheet</a>' : '');
 
-        card.innerHTML =
-          '<div class="sc-accent ' + accentClass + '"></div>' +
-          '<div class="sc-body">' +
-            '<div class="sc-date">' + dateHtml + '</div>' +
-            '<div class="sc-info">' +
-              '<div class="sc-title-row">' +
-                '<h3 class="sc-name">' + esc(s.name) + '</h3>' +
-                '<span class="status-badge ' + badgeClass + '">' + esc(badgeLabel) + '</span>' +
-              '</div>' +
-              '<div class="sc-theme">' + esc(s.theme || '') + '</div>' +
-              (tags ? '<div class="sc-tags">' + tags + '</div>' : '') +
-              stepper +
-            '</div>' +
-            '<div class="sc-cta">' +
-              (s.libraryUrl
-                ? '<a href="' + s.libraryUrl + '" target="_blank" class="btn btn-primary btn-sm">Open Library &rarr;</a>'
-                : '') +
-              sideLinks +
-            '</div>' +
+      var card = document.createElement('div');
+      card.className = 'session-card';
+      card.innerHTML =
+        '<div class="sc-accent ' + (cap.on ? 'live' : (s.hasBrief ? 'ready' : '')) + '"></div>' +
+        '<div class="sc-body">' +
+          '<div class="sc-top">' +
+            '<div class="sc-head">' + title +
+              '<div class="sc-facts">' + facts.map(esc).join(' · ') + '</div>' +
+              (s.theme ? '<div class="sc-theme">' + esc(s.theme) + '</div>' : '') +
+            '</div>' + status +
           '</div>' +
-          '<div class="sc-actions">' +
-            '<button class="btn btn-ghost btn-xs" onclick="openResourcesModal(\'' + s.id + '\')">📁 Resources</button>' +
-            '<button class="btn btn-ghost btn-xs" onclick="openManageModal(\'' + s.id + '\')" title="View, reorder, and remove resources">🗂️ Manage</button>' +
-            '<button class="btn btn-ghost btn-xs" onclick="openPeopleModal(\'' + s.id + '\', \'collab\')">👥 People</button>' +
-            '<button class="btn btn-ghost btn-xs" onclick="openPermModal(\'' + s.id + '\')" title="Check Drive file permissions">🔍 Access</button>' +
-            '<div class="sc-action-sep"></div>' +
-            briefBtn +
-            '<div class="split-btn">' +
-              '<button class="btn btn-dark btn-xs btn-main" onclick="runSynthesis(\'' + s.id + '\', this)">🔬 Synthesize</button>' +
-              '<button class="btn btn-dark btn-xs btn-icon" title="Re-analyze all resources" onclick="runSynthesisForce(\'' + s.id + '\', this)">↩</button>' +
-            '</div>' +
-            '<button class="btn btn-ghost btn-xs" onclick="runGems(\'' + s.id + '\', this)">🧰 Skills</button>' +
-            gemLinksBtn +
-            '<div class="sc-action-sep"></div>' +
-            '<div class="sc-spacer"></div>' +
-            '<button class="btn btn-dark btn-xs" onclick="openPageBuilder(\'' + s.id + '\')">🎨 Design</button>' +
-            '<button class="btn btn-ghost btn-xs" onclick="openNewsletterModal(\'' + s.id + '\')">✉️ Email</button>' +
-          '</div>';
+          '<nav class="sc-steps" aria-label="' + esc(s.name) + ': before, during and after">' + before + during + after + '</nav>' +
+          '<div class="sc-row">' + main + '<div class="sc-links">' + links + '</div></div>' +
+        '</div>' +
+        '<div class="sc-tools">' +
+          '<span class="sc-tools-label">Library tools</span>' +
+          '<button class="btn btn-ghost btn-xs" onclick="openResourcesModal(\'' + id + '\')">📁 Resources</button>' +
+          '<button class="btn btn-ghost btn-xs" onclick="openManageModal(\'' + id + '\')" title="View, reorder, and remove resources">🗂️ Manage</button>' +
+          '<button class="btn btn-ghost btn-xs" onclick="openPeopleModal(\'' + id + '\', \'collab\')">👥 People</button>' +
+          '<button class="btn btn-ghost btn-xs" onclick="openPermModal(\'' + id + '\')" title="Check Drive file permissions">🔍 Access</button>' +
+          '<div class="sc-action-sep"></div>' +
+          (!s.hasBrief ? '<button class="btn btn-ghost btn-xs" onclick="regenerateBrief(\'' + id + '\', this)">✨ Brief</button>' : '') +
+          '<div class="split-btn">' +
+            '<button class="btn btn-dark btn-xs btn-main" onclick="runSynthesis(\'' + id + '\', this)">🔬 Synthesize</button>' +
+            '<button class="btn btn-dark btn-xs btn-icon" title="Re-analyze all resources" aria-label="Re-analyze all resources" onclick="runSynthesisForce(\'' + id + '\', this)">↩</button>' +
+          '</div>' +
+          '<button class="btn btn-ghost btn-xs" onclick="runGems(\'' + id + '\', this)">🧰 Skills</button>' +
+          (s.hasGems ? '<button class="btn btn-ghost btn-xs" onclick="openGemLinksModal(\'' + id + '\')">🔗 Skill Links</button>' : '') +
+          '<div class="sc-action-sep"></div>' +
+          '<button class="btn btn-ghost btn-xs" onclick="openPageBuilder(\'' + id + '\')">🎨 Design</button>' +
+          '<button class="btn btn-ghost btn-xs" onclick="openNewsletterModal(\'' + id + '\')">✉️ Email</button>' +
+        '</div>';
+      return card;
+    }
 
-        grid.appendChild(card);
-      });
+    // An address for an href: escaped, and never a script URL (javascript:, data:, vbscript:).
+    function _href(u) { return /^\s*(javascript|data|vbscript):/i.test(String(u || '')) ? '#' : esc(u); }
+
+    function _step(tag, attrs, state, label, value) {
+      return '<' + tag + ' class="sc-step' + (state ? ' ' + state : '') + '"' + attrs + '>' +
+        '<span class="sc-step-k">' + (state === 'done' ? '✓ ' : '') + esc(label) + '</span>' +
+        '<span class="sc-step-v">' + esc(value) + '</span></' + tag + '>';
+    }
+
+    function copyTableLink(sessionId) {
+      var s = _sessionsData.filter(function(x) { return x.id === sessionId; })[0];
+      var link = s && s.capture && s.capture.table;
+      if (!link) return;
+      var done = function() { showAlert('Table link copied. Anyone with it can add to this session.', 'success'); };
+      if (navigator.clipboard) navigator.clipboard.writeText(link).then(done, function() { prompt('Copy the table link:', link); });
+      else prompt('Copy the table link:', link);
     }
 
     // ── Pipeline actions ───────────────────────────────────────────────────────
@@ -666,10 +656,13 @@
     }
 
     function regenerateBrief(sessionId, btn) {
-      setBtnLoading(btn, '…');
+      // Called from the status, the Before step and the tools row: put back whatever the button showed.
+      var shown = btn.innerHTML;
+      var restore = function() { btn.disabled = false; btn.innerHTML = shown; };
+      setBtnLoading(btn, 'Making the brief…');
       google.script.run
-        .withSuccessHandler(function() { resetBtn(btn, '✨ Brief'); showAlert('Session brief generated!', 'success'); loadDashboard(); })
-        .withFailureHandler(function(err) { resetBtn(btn, '✨ Brief'); showAlert(err.message, 'error'); })
+        .withSuccessHandler(function() { restore(); showAlert('Session brief made.', 'success'); loadDashboard(); })
+        .withFailureHandler(function(err) { restore(); showAlert(err.message, 'error'); })
         .webRegenerateBrief(sessionId);
     }
 

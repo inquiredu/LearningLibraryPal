@@ -24,7 +24,7 @@ const SitesService = {
     const gems = (Array.isArray(session.gems) ? session.gems : []).map(skillsNormalize_).filter(Boolean);
 
     // Compute the library URL for this session
-    const baseUrl = typeof getWebAppUrl_ === 'function' ? getWebAppUrl_() : '';
+    const baseUrl = typeof appPublicUrl_ === 'function' ? appPublicUrl_() : '';
     const libraryUrl = baseUrl
       ? baseUrl + '?page=library&session=' + sessionId
       : (session.libraryUrl || '');

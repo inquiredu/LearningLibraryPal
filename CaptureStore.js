@@ -99,6 +99,24 @@ const CaptureStore = {
     return config;
   },
 
+  /**
+   * getConfig for the dashboard, which asks about every session: also
+   * remembers for a while that a session has no live capture, so the
+   * dashboard doesn't open that session's spreadsheet on every load.
+   */
+  peekConfig: function(sessionId) {
+    const cache = CacheService.getScriptCache();
+    const hit = cache.get('capture_cfg_' + sessionId);
+    if (hit) { try { return JSON.parse(hit); } catch (e) {} }
+    if (cache.get('capture_off_' + sessionId)) return null;
+    const config = this.readConfig_(sessionId);
+    try {
+      if (config) cache.put('capture_cfg_' + sessionId, JSON.stringify(config), this.CONFIG_SECONDS);
+      else cache.put('capture_off_' + sessionId, '1', this.CONFIG_SECONDS);
+    } catch (e) {}
+    return config;
+  },
+
   readConfig_: function(sessionId) {
     const sheet = this.db(sessionId).getSheetByName(this.CONFIG_SHEET);
     if (!sheet) return null;
@@ -138,7 +156,9 @@ const CaptureStore = {
     sheet.getRange(1, 1, 1, 2).setBackground(this.HEADER_COLOR).setFontColor('#FFFFFF').setFontWeight('bold');
     // Write through, so a stage change reaches every device on its next check-in.
     const cache = CacheService.getScriptCache();
-    try { cache.remove('capture_cfg_' + sessionId); } catch (e) {}
+    try { cache.remove('capture_cfg_' + sessionId); cache.remove('capture_off_' + sessionId); } catch (e) {}
+    // The dashboard shows each session's stage and links: let it see this change on its next load.
+    try { if (typeof DASHBOARD_CACHE_KEY_ === 'string') cache.remove(DASHBOARD_CACHE_KEY_); } catch (e) {}
     const fresh = this.readConfig_(sessionId);
     if (fresh) { try { cache.put('capture_cfg_' + sessionId, JSON.stringify(fresh), this.CONFIG_SECONDS); } catch (e) {} }
   },

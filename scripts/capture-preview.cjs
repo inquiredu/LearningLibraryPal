@@ -217,7 +217,25 @@ function mock(sc) {
       tableLink: 'https://script.google.com/macros/s/DEMO/exec?session=S-demo&k=${KEY}&page=capture' }; },
     captureListTemplates: function () { return [{ id: 'needCards', name: 'Need Cards' }]; },
     captureListSessions: function () { return [{ id: 'S-demo', name: 'Retreat rehearsal', date: 'Nov 18' }]; },
-    webGetAppBaseUrl: function () { return '#'; }
+    webGetAppBaseUrl: function () { return 'dashboard-' + sc.stage + '.html'; },
+    webGetAppConfig: function () { return { timezone: 'America/Chicago', timezoneLabel: 'CT' }; },
+    // The dashboard: a live-capture session at this stage, one with only its library, and a brand-new one.
+    getDashboardData: function () {
+      var at = ids.indexOf(sc.stage);
+      return [
+        { id: 'S-demo', name: 'Retreat rehearsal', theme: 'What do Minnesota\u2019s students and educators need from AI guidance to keep learning human and learner-centered?',
+          date: '2026-11-18', format: 'Community Forum', audience: 'Students and educators', status: 'Active', hasBrief: true, hasGems: true, emailSent: 'No',
+          folderUrl: '#drive', dbUrl: '#sheet', libraryUrl: '#library',
+          capture: { on: true, template: tpl.name, tables: config.tables, stage: sc.stage, stageLabel: tpl.stages[at].label, stageNumber: at + 1, stageCount: ids.length,
+            closed: sc.stage === ids[ids.length - 1], board: 'board-' + sc.stage + '.html', record: 'board-close.html', wall: 'wall-' + sc.stage + '.html',
+            table: 'https://script.google.com/macros/s/DEMO/exec?session=S-demo&k=${KEY}&page=capture', tableCards: 'table-cards.html' } },
+        { id: 'S-library', name: 'Rehearse me', theme: 'What a state might need for work.', date: '', format: 'Collaborative Monthly Gathering', audience: 'Community Members',
+          status: 'Active', hasBrief: true, hasGems: false, emailSent: 'No', folderUrl: '#drive', dbUrl: '#sheet', libraryUrl: '#library',
+          capture: { on: false, board: 'board-welcome.html' } },
+        { id: 'S-new', name: 'Spring leadership circle', theme: '', date: '2027-03-04', format: '', audience: '', status: 'Active', hasBrief: false, hasGems: false,
+          emailSent: 'No', folderUrl: '#drive', dbUrl: '', libraryUrl: '#library', capture: { on: false, board: 'board-welcome.html' } }
+      ];
+    }
   };
   function runner(ok, fail) {
     return new Proxy({}, { get: function (_, name) {
@@ -247,7 +265,8 @@ function build(file, outName, scenario) {
     .replace('<body>', () => '<body>\n  ' + NOTE + mock(scenario))
     .replace('__SESSION_ID__', 'S-demo')
     .replace('__CAPTURE_KEY__', KEY)
-    .replace('__TABLE__', '');
+    .replace('__TABLE__', '')
+    .replace('__TAB__', '');
   fs.writeFileSync(path.join(out, outName), html);
   return outName;
 }
@@ -260,7 +279,8 @@ STAGES.forEach(stage => {
   files.push(build('CaptureWall.html', 'wall-' + stage + '.html', { stage }));
 });
 files.push(build('CaptureTableCards.html', 'table-cards.html', { stage: 'welcome' }));
+STAGES.forEach(stage => files.push(build('Index.html', 'dashboard-' + stage + '.html', { stage })));
 fs.writeFileSync(path.join(out, 'index.html'), '<!doctype html><meta charset="utf-8"><title>Live capture preview</title><body style="font:16px system-ui;padding:16px">' +
-  '<h1>Live capture preview</h1><table>' + STAGES.map(s => `<tr><th style="text-align:left;padding-right:12px">${s}</th><td><a href="phone-${s}.html">phone</a> · <a href="board-${s}.html">board</a> · <a href="wall-${s}.html">wall</a></td></tr>`).join('') +
+  '<h1>Live capture preview</h1><table>' + STAGES.map(s => `<tr><th style="text-align:left;padding-right:12px">${s}</th><td><a href="dashboard-${s}.html">dashboard</a> · <a href="phone-${s}.html">phone</a> · <a href="board-${s}.html">board</a> · <a href="wall-${s}.html">wall</a></td></tr>`).join('') +
   '</table><p><a href="table-cards.html">table cards</a></p>');
 console.log('Wrote ' + files.length + ' pages and index.html to ' + out);

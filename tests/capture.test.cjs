@@ -175,6 +175,50 @@ const KEY = '0123456789abcdef0123';
 const BASE_CONFIG = { template: 'needCards', tables: 6, key: KEY, title: 'Retreat', stage: 'needs', published: null, publishedAt: '',
   paperDots: {}, tallyMode: 'phone', assign: {}, surveyUrl: 'https://example.org/s' };
 
+test('the dashboard shows each session\'s live capture, links every page from the right deployment, and survives a broken session', () => {
+  const PUB = 'https://script.google.com/macros/s/PUB/exec';
+  const BOARD = 'https://script.google.com/macros/s/BOARD/exec';
+  const configs = { 'S-on': { ...BASE_CONFIG, stage: 'flips' } };
+  const c = load(['CaptureTemplates.js', 'CaptureLogic.js', 'CaptureApi.js', 'WebApp.js'], {
+    CAPTURE_PUBLIC_URL: PUB, CAPTURE_BOARD_URL: BOARD,
+    PropertiesService: { getScriptProperties: () => ({ getProperty: () => null }) },
+    // On the November 2026 POC this answered with an address Google 404s.
+    ScriptApp: { getService: () => ({ getUrl: () => 'https://script.google.com/macros/s/BROKEN/exec' }) },
+    CaptureStore: { peekConfig: id => { if (id === 'S-bad') throw new Error('No spreadsheet'); return configs[id] || null; } }
+  });
+  assert.deepEqual(plain(c.captureDashboardInfo_('S-off')), { on: false, board: BOARD + '?page=board&session=S-off' }, 'off: the board, which offers to turn it on');
+  assert.deepEqual(plain(c.captureDashboardInfo_('S-bad')), { on: false, board: BOARD + '?page=board&session=S-bad' }, 'a broken session reads as off instead of failing the dashboard');
+  const on = plain(c.captureDashboardInfo_('S-on'));
+  assert.deepEqual([on.on, on.stage, on.stageLabel, on.stageNumber, on.stageCount, on.closed, on.tables], [true, 'flips', 'The Flip', 3, 10, false, 6]);
+  assert.equal(on.board, BOARD + '?page=board&session=S-on');
+  assert.equal(on.record, BOARD + '?page=board&session=S-on&tab=record');
+  assert.equal(on.tableCards, BOARD + '?page=tablecards&session=S-on');
+  assert.ok(on.table.startsWith(PUB + '?session=S-on&k=') && on.table.endsWith('&page=capture'));
+  assert.ok(on.wall.startsWith(PUB + '?session=S-on&k=') && on.wall.endsWith('&page=wall'));
+  assert.equal(c.webGetAppBaseUrl(), BOARD, 'facilitator pages (wizard, design) open on the board deployment');
+  assert.equal(c.appPublicUrl_(), PUB, 'public pages (library) open on the public deployment');
+  assert.ok(!JSON.stringify(on).includes('BROKEN'));
+});
+
+test('the dashboard cache has one name, so whatever clears it clears the right one', () => {
+  const literals = ['WebApp.js', 'Code.js', 'CaptureStore.js'].map(f => (source(f).match(/'dashboard_v\d+'/g) || []).length);
+  assert.deepEqual(literals, [1, 0, 0], 'only DASHBOARD_CACHE_KEY_ spells the key out');
+  assert.match(source('CaptureStore.js'), /cache\.remove\(DASHBOARD_CACHE_KEY_\)/, 'a live-capture change (stage, key) reaches the dashboard on its next load');
+});
+
+test('a session\'s library link comes from today\'s public deployment, not an address saved in its row', () => {
+  const row = Array(15).fill('');
+  row[0] = 'S-1'; row[1] = 'Retreat'; row[9] = 'https://script.google.com/macros/s/BROKEN/exec?page=library&session=S-1';
+  const sheet = { getDataRange: () => ({ getValues: () => [Array(15).fill('h'), row] }) };
+  const withBase = load(['SessionService.js'], {
+    StorageService: { master: () => ({ getSheetByName: () => sheet }) },
+    appPublicUrl_: () => 'https://script.google.com/macros/s/PUB/exec'
+  });
+  assert.equal(withBase.eval('SessionService.getSession("S-1").libraryUrl'), 'https://script.google.com/macros/s/PUB/exec?page=library&session=S-1');
+  const without = load(['SessionService.js'], { StorageService: { master: () => ({ getSheetByName: () => sheet }) } });
+  assert.equal(without.eval('SessionService.getSession("S-1").libraryUrl'), row[9], 'with no deployment to go by, the saved address is kept');
+});
+
 function apiContext({ email = '', config = {}, snap = {}, audit = {}, ai = {} } = {}) {
   const calls = [];
   const actors = [];
@@ -551,6 +595,19 @@ test('pages get the session, key and a phone viewport; a table card link presele
   assert.ok(state.html.includes('captureGetTableCardsData'));
 });
 
+test('the dashboard can open the board on a tab, but only a real one, and the board links back to the dashboard', () => {
+  const { c, state } = pageContext();
+  c.captureRoute_('board', { parameter: { session: 'S-abc', tab: 'record' } });
+  assert.match(state.html, /START_TAB = "record"/);
+  for (const tab of ['', 'nope', 'record"><script>', 'RECORD']) {
+    c.captureRoute_('board', { parameter: { session: 'S-abc', tab } });
+    assert.match(state.html, /START_TAB = ""/, tab);
+  }
+  c.captureRoute_('capture', { parameter: { session: 'S-abc', k: KEY, tab: 'record' } });
+  assert.ok(!state.html.includes('START_TAB'), 'only the board takes a tab');
+  assert.match(source('CaptureBoard.html'), /id="dashLink"[^>]*target="_top"/, 'the board has a way back to the dashboard');
+});
+
 test('each live-capture page is self-contained: one inline script that defines Capture before using it', () => {
   const { c, state } = pageContext();
   for (const [page, file] of [['capture', 'Capture'], ['board', 'CaptureBoard'], ['wall', 'CaptureWall'], ['tablecards', 'CaptureTableCards']]) {
@@ -616,6 +673,20 @@ function storeContext(grid, events = []) {
 }
 const auditRows = grid => (grid['Live Audit'] || []).slice(1).map(r => {
   const h = grid['Live Audit'][0]; const o = {}; h.forEach((k, i) => { o[k] = r[i]; }); return o;
+});
+
+test('the dashboard asks the Sheet once whether a session has live capture, and learns at once when it is turned on', () => {
+  const grid = {};
+  let reads = 0;
+  const c = storeContext(grid);
+  const db = c.eval('CaptureStore.db("S-1")');
+  const getSheet = db.getSheetByName;
+  db.getSheetByName = name => { if (name === 'Live Capture') reads++; return getSheet(name); };
+  assert.equal(c.eval('CaptureStore.peekConfig("S-1")'), null);
+  assert.equal(c.eval('CaptureStore.peekConfig("S-1")'), null);
+  assert.equal(reads, 1, 'a session without live capture is remembered as off');
+  c.eval('CaptureStore.enable("S-1", "needCards", 6, "Retreat")');
+  assert.equal(plain(c.eval('CaptureStore.peekConfig("S-1")')).stage, 'welcome', 'turning it on clears the remembered "off"');
 });
 
 test('writes reach the Sheet before the lock is let go, so the next writer numbers from them', () => {

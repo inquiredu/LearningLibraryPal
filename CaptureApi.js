@@ -31,12 +31,15 @@ function captureRoute_(page, e) {
   const key = spec.keyed ? captureValidateKeyFormat_(String(params.k || '')) : '';
   // A table card's QR code names its table, so the device skips the table picker.
   const table = page === 'capture' && /^[1-9][0-9]?$/.test(String(params.t || '')) ? String(params.t) : '';
+  // The dashboard links straight to a board tab (After → Record & results).
+  const tab = page === 'board' && /^(signals|flips|cards|results|testdrive|record|settings)$/.test(String(params.tab || '')) ? String(params.tab) : '';
   // Each page is self-contained (scripts/sync-capture-shared.cjs copies the shared
   // styles and helpers into it); only the session, key and table are filled in here.
   let html = HtmlService.createHtmlOutputFromFile(spec.file).getContent()
     .replace('__SESSION_ID__', sessionId)
     .replace('__CAPTURE_KEY__', key)
-    .replace('__TABLE__', table);
+    .replace('__TABLE__', table)
+    .replace('__TAB__', tab);
   return HtmlService.createHtmlOutput(html)
     .setTitle(spec.title)
     .addMetaTag('viewport', 'width=device-width, initial-scale=1')
@@ -62,7 +65,41 @@ function captureLinks_(sessionId, config) {
     table: pub ? pub + s + '&k=' + config.key + '&page=capture' : '',
     wall: pub ? pub + s + '&k=' + config.key + '&page=wall' : '',
     board: board ? board + '?page=board&session=' + encodeURIComponent(sessionId) : '',
-    tableCards: board ? board + '?page=tablecards&session=' + encodeURIComponent(sessionId) : ''
+    tableCards: board ? board + '?page=tablecards&session=' + encodeURIComponent(sessionId) : '',
+    dashboard: board || ''
+  };
+}
+
+/**
+ * What the dashboard shows about a session's live capture. Off: the board
+ * address, where the board offers to turn it on. On: the stage the room is
+ * at and every link a facilitator opens or hands out. Never throws, so one
+ * session's missing spreadsheet can't stop the dashboard from loading.
+ */
+function captureDashboardInfo_(sessionId) {
+  const base = captureBoardBase_();
+  const board = base ? base + '?page=board&session=' + encodeURIComponent(sessionId) : '';
+  let config = null;
+  try { config = CaptureStore.peekConfig(sessionId); } catch (e) { config = null; }
+  const template = config ? CAPTURE_TEMPLATES[config.template] : null;
+  if (!config || !template) return { on: false, board: board };
+  const stages = template.stages;
+  const at = Math.max(0, stages.findIndex(s => s.id === config.stage));
+  const links = captureLinks_(sessionId, config);
+  return {
+    on: true,
+    template: template.name,
+    tables: config.tables,
+    stage: stages[at].id,
+    stageLabel: stages[at].label,
+    stageNumber: at + 1,
+    stageCount: stages.length,
+    closed: stages[at].id === stages[stages.length - 1].id,
+    board: links.board,
+    record: links.board ? links.board + '&tab=record' : '',
+    wall: links.wall,
+    table: links.table,
+    tableCards: links.tableCards
   };
 }
 

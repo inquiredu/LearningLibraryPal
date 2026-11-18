@@ -93,17 +93,20 @@ function doGet(e) {
 /**
  * Returns all sessions for the dashboard.
  */
+/** One name for the dashboard's cache, so everything that clears it clears the right one. */
+const DASHBOARD_CACHE_KEY_ = 'dashboard_v3';
+
 function getDashboardData() {
   AuthService.requireUser();
   const cache = CacheService.getScriptCache();
-  const CACHE_KEY = 'dashboard_v2';
+  const CACHE_KEY = DASHBOARD_CACHE_KEY_;
   const hit = cache.get(CACHE_KEY);
   if (hit) {
     try { return JSON.parse(hit); } catch (e) {}
   }
   SessionService.ensureMasterSheet();
   const sessions = SessionService.getAllSessions();
-  const baseUrl = getWebAppUrl_();
+  const baseUrl = appPublicUrl_();
   const data = sessions.reverse().map(s => ({
     id:         s.id,
     name:       s.name,
@@ -118,7 +121,8 @@ function getDashboardData() {
     hasGems:    !!(s.gems && s.gems.length),
     gemsJson:   s.gems ? JSON.stringify(s.gems) : '[]',
     hasBrief:   !!(s.brief && s.brief.overview),
-    libraryUrl: baseUrl ? baseUrl + '?page=library&session=' + s.id : ''
+    libraryUrl: baseUrl ? baseUrl + '?page=library&session=' + s.id : '',
+    capture:    captureDashboardInfo_(s.id)
   }));
   try { cache.put(CACHE_KEY, JSON.stringify(data), 60); } catch (e) {}
   return data;
@@ -232,7 +236,7 @@ function getLibraryData(sessionId) {
 function invalidateLibraryCache_(sessionId) {
   const c = CacheService.getScriptCache();
   c.remove('library_v2_' + sessionId);
-  c.remove('dashboard_v2'); // invalidate dashboard cache when any session data changes
+  c.remove(DASHBOARD_CACHE_KEY_); // invalidate dashboard cache when any session data changes
   return true;
 }
 
@@ -633,13 +637,29 @@ function getWebAppUrl_() {
 }
 
 /**
+ * Where pages anyone can open without signing in are served: the library,
+ * table entry and the wall. With live capture's two deployments this is the
+ * public one (CaptureDeploy.js). ScriptApp.getService().getUrl() is only the
+ * fallback: on the November 2026 POC it returned an address Google answers
+ * with "Page Not Found".
+ */
+function appPublicUrl_() {
+  return capturePublicBase_();
+}
+
+/** Where facilitator pages are served: dashboard, wizard, board, design. */
+function appFacilitatorUrl_() {
+  return captureBoardBase_();
+}
+
+/**
  * Returns the deployed web-app exec URL.
  * Used by the dashboard client to construct page=design links, since
  * window.location.href inside a GAS sandbox iframe returns an internal
  * googleusercontent.com URL rather than the real exec URL.
  */
 function webGetAppBaseUrl() {
-  return getWebAppUrl_();
+  return appFacilitatorUrl_();
 }
 
 /**
@@ -666,7 +686,7 @@ function webGetPageBuilderData(sessionId) {
   const session = SessionService.getSession(sessionId);
   if (!session) throw new Error('Session not found: ' + sessionId);
   const resources = SynthesisService.getResources(sessionId);
-  const baseUrl   = getWebAppUrl_();
+  const baseUrl   = appPublicUrl_();
   return {
     session:    session,
     resources:  resources,

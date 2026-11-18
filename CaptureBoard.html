@@ -96,6 +96,10 @@
     body { font-size: 16px; }
     main { padding: 16px; max-width: 1680px; margin: 0 auto; }
     .bar .actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    /* On a phone the buttons wrap under the title instead of squeezing it to a letter per line. */
+    .bar { flex-wrap: wrap; }
+    .bar .back { color: #FFFFFF; text-decoration: underline; text-underline-offset: 2px; }
+    .bar .back:focus-visible { outline: 3px solid #78BE21; outline-offset: 2px; }
     .stepper { display: flex; gap: 6px; overflow-x: auto; padding: 10px 16px; background: #E8F1F8; border-bottom: 1px solid var(--line); }
     .step { display: grid; text-align: left; min-width: 104px; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--line-strong); background: #fff; cursor: pointer; font: inherit; color: var(--ink); }
     .step .l { font-weight: 700; font-size: .9rem; }
@@ -176,8 +180,8 @@
 </head>
 <body>
   <header class="bar">
-    <div style="flex:1;min-width:0">
-      <div class="tag">Live board</div>
+    <div style="flex:1 1 220px;min-width:0">
+      <div class="tag"><a class="back" id="dashLink" href="#" target="_top" hidden>&larr; Dashboard</a><span class="crumb" id="dashSep" hidden aria-hidden="true"> / </span>Live board</div>
       <h1 id="title">Loading…</h1>
     </div>
     <div class="actions" id="barActions" hidden>
@@ -254,6 +258,8 @@
   /* /shared:CaptureClient */
 
     var SESSION_ID = "__SESSION_ID__";
+    // Set when the dashboard links straight to a tab (After → Record & results).
+    var START_TAB = "__TAB__";
     var $ = function (id) { return document.getElementById(id); };
     var esc = Capture.esc;
     var S = { board: null, groups: [], selected: null, dirty: 0, saving: false, saveTimer: null, tab: '', tabChosen: false, lastStage: '', tableFilter: 'all', paper: null, audit: null, report: '' };
@@ -264,6 +270,9 @@
 
     // ── Start ────────────────────────────────────────────────────────────────
     function start() {
+      // Every facilitator page has a way back to the dashboard.
+      Capture.run('webGetAppBaseUrl').then(function (u) { if (u) { $('dashLink').href = u; $('dashLink').hidden = $('dashSep').hidden = false; } }).catch(function () {});
+      if (/^(signals|flips|cards|results|testdrive|record|settings)$/.test(START_TAB)) { S.tab = START_TAB; S.tabChosen = true; }
       if (!SESSION_ID) return pickSession();
       Capture.run('captureGetBoard', SESSION_ID).then(adopt).then(function () { Capture.poll(refresh, 6000); }).catch(showError);
     }

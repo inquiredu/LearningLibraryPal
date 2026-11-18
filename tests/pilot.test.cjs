@@ -243,7 +243,7 @@ test('new sessions retain the existing schema and receive a unique ID and librar
   const c = load(['SessionService.js'], {
     StorageService: { master: () => ({ getSheetByName: () => ({ appendRow: row => { written = row; } }) }) },
     Utilities: { getUuid: () => 'unique-session-id' },
-    getWebAppUrl_: () => 'https://script.google.com/macros/s/pilot/exec',
+    appPublicUrl_: () => 'https://script.google.com/macros/s/pilot/exec',
     GeminiService: { generateSessionBrief: () => ({ overview: 'Reviewed later' }) }
   });
   c.eval('SessionService.ensureMasterSheet = () => {}; SessionService._getRootFolderId = () => "root"; SessionService._scaffoldFolders = () => ({ getUrl: () => "folder" }); SessionService._createProjectDatabase = () => ({ getUrl: () => "database" });');

@@ -6,27 +6,28 @@
 // ─── Menu ────────────────────────────────────────────────────────────────────
 
 function onOpen() {
-  SpreadsheetApp.getUi()
-    .createMenu('Learning Library Engine')
-    .addItem('🚀  Launch New Session', 'showWizard')
+  // One menu, in the dashboard's order. The dashboard is the hub: every
+  // session's library, live capture and results are one click from it.
+  // Items under "selected session" act on the row selected in the Sessions tab.
+  const ui = SpreadsheetApp.getUi();
+  ui.createMenu('Learning Library Engine')
+    .addItem('Open the dashboard', 'openDashboard')
+    .addItem('New session…', 'showWizard')
     .addSeparator()
-    .addItem('🔬  Synthesize Research', 'menuTriggerSynthesis')
-    .addItem('🧰  Generate Skills', 'menuTriggerGems')
-    .addItem('📧  Draft & Send Pre-Session Email', 'menuTriggerEmail')
-    .addItem('🌐  Generate Site Code', 'menuTriggerSiteCode')
+    .addSubMenu(ui.createMenu('Live capture (selected session)')
+      .addItem('Open the board', 'captureMenuBoard')
+      .addItem('Links: board, wall, table cards, table link', 'captureMenuLinks')
+      .addItem('Turn on live capture…', 'captureMenuTurnOn')
+      .addItem('Make the gallery-walk posters', 'captureMenuPosters')
+      .addItem('Make the results document', 'captureMenuReport'))
+    .addSubMenu(ui.createMenu('Library (selected session)')
+      .addItem('Synthesize research', 'menuTriggerSynthesis')
+      .addItem('Write AI skills', 'menuTriggerGems')
+      .addItem('Draft and send the pre-session email', 'menuTriggerEmail')
+      .addItem('Make Google Sites code', 'menuTriggerSiteCode'))
     .addSeparator()
-    .addItem('📅  Authorize Calendar Access', 'triggerCalendarAuth')
-    .addItem('🌐  Open Dashboard', 'openDashboard')
-    .addItem('⚙️   Initial Setup', 'showSetupWizard')
-    .addToUi();
-  // Live capture events (CaptureApi.js). Select a session row in the Sessions tab first.
-  SpreadsheetApp.getUi()
-    .createMenu('Live Capture')
-    .addItem('Turn on for selected session…', 'captureMenuTurnOn')
-    .addItem('Links: board, table cards, wall', 'captureMenuLinks')
-    .addItem('Make posters for selected session', 'captureMenuPosters')
-    .addSeparator()
-    .addItem('Open the live board', 'captureMenuBoard')
+    .addItem('Authorize calendar access', 'triggerCalendarAuth')
+    .addItem('Initial Setup', 'showSetupWizard')
     .addToUi();
 }
 
@@ -102,7 +103,7 @@ function menuTriggerSiteCode() {
   try {
     ui.alert(`Generating site code for: ${session.name}...\nThis takes ~10 seconds.`);
     const result = SitesService.generateSiteCode(sessionId);
-    ui.alert(`✅ Site code created!\n\nOpen the doc to copy each section:\n${result.docUrl}`);
+    captureMenuDialog_('Site code is ready', [{ label: 'Open the site code document', url: result.docUrl, note: 'Copy each section into Google Sites.' }]);
   } catch (e) {
     ui.alert('❌ Site code failed: ' + e.message);
   }
@@ -139,14 +140,10 @@ function openDashboard() {
   // Read the URL cached when doGet() first ran — that is always the live /exec URL.
   // Calling ScriptApp.getService().getUrl() from a menu trigger returns the /dev URL,
   // which only works for script editors and appears "not available" to everyone else.
+  // The sign-in deployment serves the dashboard (appFacilitatorUrl_: CaptureDeploy.js,
+  // then the address doGet saved, then ScriptApp's own).
   var url = '';
-  // With live capture's two deployments, the sign-in one serves the dashboard (CaptureDeploy.js).
-  if (typeof CAPTURE_BOARD_URL === 'string' && /^https:\/\/script\.google\.com\//.test(CAPTURE_BOARD_URL)) url = CAPTURE_BOARD_URL;
-  if (!url) try { url = PropertiesService.getScriptProperties().getProperty('WEB_APP_URL') || ''; } catch(e) {}
-  if (!url) {
-    // Fallback if the web app hasn't been opened yet since last deploy
-    try { url = ScriptApp.getService().getUrl() || ''; } catch(e) {}
-  }
+  try { url = appFacilitatorUrl_() || ''; } catch(e) {}
   if (!url) {
     SpreadsheetApp.getUi().alert(
       '⚠️  Dashboard URL not found.\n\n' +
@@ -216,25 +213,17 @@ function saveSetupConfig(config) {
 /**
  * Gets the session corresponding to the currently selected row in the Sessions sheet.
  */
-function getSelectedSession_() {
+function getSelectedSession_(quiet) {
   const ui = SpreadsheetApp.getUi();
+  const say = message => { if (!quiet) ui.alert(message); return {}; };
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getActiveSheet();
-  if (sheet.getName() !== 'Sessions') {
-    ui.alert('Please navigate to the Sessions tab and select a session row.');
-    return {};
-  }
+  if (sheet.getName() !== 'Sessions') return say('Go to the Sessions tab, click any cell in a session\'s row, then choose this again.');
   const row = sheet.getActiveCell().getRow();
-  if (row <= 1) {
-    ui.alert('Please select a session row (not the header).');
-    return {};
-  }
+  if (row <= 1) return say('Click a cell in a session\'s row (not the header row), then choose this again.');
   const sessionId = sheet.getRange(row, 1).getValue();
   const session = SessionService.getSession(sessionId);
-  if (!session) {
-    ui.alert('Could not find session data for row ' + row);
-    return {};
-  }
+  if (!session) return say('Row ' + row + ' is not a session this library knows. Pick another row.');
   return { sessionId, session };
 }
 

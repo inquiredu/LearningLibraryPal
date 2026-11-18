@@ -200,6 +200,48 @@ test('the dashboard shows each session\'s live capture, links every page from th
   assert.ok(!JSON.stringify(on).includes('BROKEN'));
 });
 
+test('the Sheet menu follows the dashboard: dashboard first, live capture before the library, and every item runs something real', () => {
+  const menu = name => { const m = { name, items: [] }; m.addItem = (label, fn) => { m.items.push({ label, fn }); return m; }; m.addSeparator = () => { m.items.push('—'); return m; };
+    m.addSubMenu = sub => { m.items.push(sub); return m; }; m.addToUi = () => { menus.push(m); return m; }; return m; };
+  const menus = [];
+  const c = load(['Code.js'], { SpreadsheetApp: { getUi: () => ({ createMenu: menu }) } });
+  c.onOpen();
+  assert.equal(menus.length, 1, 'one menu, not one per feature');
+  const top = menus[0];
+  assert.equal(top.name, 'Learning Library Engine', 'README and setup scripts say Learning Library Engine > Initial Setup');
+  assert.deepEqual(top.items[0], { label: 'Open the dashboard', fn: 'openDashboard' });
+  const subs = top.items.filter(i => i.items).map(i => i.name);
+  assert.deepEqual(subs, ['Live capture (selected session)', 'Library (selected session)']);
+  assert.deepEqual(top.items[top.items.length - 1], { label: 'Initial Setup', fn: 'showSetupWizard' });
+  const handlers = [];
+  (function walk(m) { m.items.forEach(i => { if (i.fn) handlers.push(i.fn); else if (i.items) walk(i); }); })(top);
+  const defined = new Set(fs.readdirSync(ROOT).filter(f => f.endsWith('.js')).flatMap(f => [...source(f).matchAll(/^function (\w+)\(/gm)].map(m => m[1])));
+  assert.deepEqual(handlers.filter(h => !defined.has(h)), [], 'every menu item runs a function that exists');
+  assert.ok(handlers.includes('captureMenuReport') && handlers.includes('captureMenuBoard'));
+});
+
+test('the menu\'s Open the board opens the selected session\'s board, or the session picker when no row is selected', () => {
+  const shown = [];
+  const ctx = (selected, config) => load(['CaptureTemplates.js', 'CaptureLogic.js', 'CaptureApi.js'], {
+    CAPTURE_PUBLIC_URL: 'https://script.google.com/macros/s/PUB/exec', CAPTURE_BOARD_URL: 'https://script.google.com/macros/s/BOARD/exec',
+    PropertiesService: { getScriptProperties: () => ({ getProperty: () => null }) },
+    AuthService: { requireUser: () => {} },
+    getSelectedSession_: quiet => { assert.equal(quiet, true, 'no alert when nothing is selected'); return selected; },
+    CaptureStore: { peekConfig: () => config },
+    HtmlService: { createHtmlOutput: html => { const o = { setWidth: () => o, setHeight: () => o, html }; return o; } },
+    SpreadsheetApp: { getUi: () => ({ showModalDialog: (o, title) => shown.push({ title, html: o.html }), alert: m => shown.push({ alert: m }) }) }
+  });
+  ctx({}, null).captureMenuBoard();
+  assert.match(shown[0].html, /BOARD\/exec\?page=board"/, 'no selection: the session picker');
+  ctx({ sessionId: 'S-1', session: { name: 'Retreat' } }, { ...BASE_CONFIG, stage: 'vote' }).captureMenuBoard();
+  assert.equal(shown[1].title, 'Board: Retreat');
+  assert.match(shown[1].html, /page=board&amp;session=S-1/);
+  assert.match(shown[1].html, /The room is at Vote\./);
+  ctx({ sessionId: 'S-2', session: { name: 'Library only' } }, null).captureMenuBoard();
+  assert.match(shown[2].html, /session=S-2/);
+  assert.match(shown[2].html, /The board offers to turn it on/);
+});
+
 test('the dashboard cache has one name, so whatever clears it clears the right one', () => {
   const literals = ['WebApp.js', 'Code.js', 'CaptureStore.js'].map(f => (source(f).match(/'dashboard_v\d+'/g) || []).length);
   assert.deepEqual(literals, [1, 0, 0], 'only DASHBOARD_CACHE_KEY_ spells the key out');

@@ -131,7 +131,7 @@ First time only:
   2. Open the Dashboard and create a session. Choose the event type "Live capture: Need Cards"
      and the number of tables; the wizard opens the board when it's done.
   3. From the board, open "Table cards" and print one per table (each QR code opens
-     that table), and open the wall on a projector. The Sheet's Live Capture menu has
+     that table), and open the wall on a projector. The Sheet's menu (Learning Library Engine > Live capture) has
      the same links.
 
 Run "npm run poc" again after any code change to update both deployments.

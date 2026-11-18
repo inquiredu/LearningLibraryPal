@@ -711,7 +711,7 @@ function captureMenuLinks() {
   const picked = getSelectedSession_();
   if (!picked.sessionId) return;
   if (!CaptureStore.getConfig(picked.sessionId)) {
-    SpreadsheetApp.getUi().alert('Live capture is not on for this session yet. Choose Live Capture > Turn on for selected session.');
+    SpreadsheetApp.getUi().alert('Live capture is not on for this session yet. Choose Learning Library Engine > Live capture > Turn on live capture.');
     return;
   }
   captureMenuShowLinks_(picked.sessionId, 'Live capture links');
@@ -730,12 +730,36 @@ function captureMenuPosters() {
   }
 }
 
-/** Sheet menu: the board's session picker. */
+/**
+ * Sheet menu: the board for the selected session, or the board's session
+ * picker when no session row is selected. Never a dead end.
+ */
 function captureMenuBoard() {
   AuthService.requireUser();
   const base = captureBoardBase_();
   if (!base) { SpreadsheetApp.getUi().alert('Open the web app once in your browser, then try again.'); return; }
-  captureMenuDialog_('Live board', [{ label: 'Open the live board', url: base + '?page=board', note: 'Pick the session there.' }]);
+  const picked = getSelectedSession_(true);
+  if (!picked.sessionId) {
+    captureMenuDialog_('Live board', [{ label: 'Open the board', url: base + '?page=board', note: 'No session row is selected, so the board asks which session.' }]);
+    return;
+  }
+  const info = captureDashboardInfo_(picked.sessionId);
+  captureMenuDialog_('Board: ' + picked.session.name, [{ label: 'Open the board', url: info.board,
+    note: info.on ? 'Live capture is on. The room is at ' + info.stageLabel + '.' : 'Live capture is off for this session. The board offers to turn it on.' }]);
+}
+
+/** Sheet menu: the results document for the selected session, made from the stored record. */
+function captureMenuReport() {
+  AuthService.requireUser();
+  const picked = getSelectedSession_();
+  if (!picked.sessionId) return;
+  try {
+    const res = captureMakeReport(picked.sessionId);
+    captureMenuDialog_('Results document is ready', [{ label: 'Open the results document', url: res.url,
+      note: 'Made from the stored record; AI wrote none of it. Saved in the session folder (04_Final).' }]);
+  } catch (e) {
+    SpreadsheetApp.getUi().alert('The results document was not made: ' + e.message);
+  }
 }
 
 function captureMenuShowLinks_(sessionId, heading) {

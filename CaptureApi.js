@@ -16,23 +16,29 @@
 
 // keyed: the page's links carry the table key (public pages); the others are
 // facilitator pages that doGet only serves to authorized users.
+// facilitator: the same board and table cards, opened with a session's
+// facilitator link instead of a Google sign-in.
 const CAPTURE_PAGES_ = {
   capture: { file: 'Capture', title: 'Live capture', keyed: true },
   wall: { file: 'CaptureWall', title: 'Live wall', keyed: true },
   board: { file: 'CaptureBoard', title: 'Live board', keyed: false },
-  tablecards: { file: 'CaptureTableCards', title: 'Table cards', keyed: false }
+  tablecards: { file: 'CaptureTableCards', title: 'Table cards', keyed: false },
+  run: { file: 'CaptureBoard', title: 'Live board', keyed: false, facilitator: true },
+  runcards: { file: 'CaptureTableCards', title: 'Table cards', keyed: false, facilitator: true }
 };
 
 /** Called from doGet for the live-capture pages. */
 function captureRoute_(page, e) {
   const spec = CAPTURE_PAGES_[page];
   const params = (e && e.parameter) || {};
-  const sessionId = params.session ? validateSessionId_(String(params.session)) : '';
+  let sessionId = params.session ? validateSessionId_(String(params.session)) : '';
+  // A facilitator link carries its key; the page sends it back with every call.
+  if (spec.facilitator) sessionId = captureFacilitatorAuth_(sessionId + '~' + String(params.f || '')) + '~' + String(params.f);
   const key = spec.keyed ? captureValidateKeyFormat_(String(params.k || '')) : '';
   // A table card's QR code names its table, so the device skips the table picker.
   const table = page === 'capture' && /^[1-9][0-9]?$/.test(String(params.t || '')) ? String(params.t) : '';
   // The dashboard links straight to a board tab (After → Record & results).
-  const tab = page === 'board' && /^(signals|flips|cards|results|testdrive|record|settings)$/.test(String(params.tab || '')) ? String(params.tab) : '';
+  const tab = (page === 'board' || page === 'run') && /^(signals|flips|cards|results|testdrive|record|settings)$/.test(String(params.tab || '')) ? String(params.tab) : '';
   // Each page is self-contained (scripts/sync-capture-shared.cjs copies the shared
   // styles and helpers into it); only the session, key and table are filled in here.
   let html = HtmlService.createHtmlOutputFromFile(spec.file).getContent()
@@ -56,18 +62,53 @@ function captureBoardBase_() {
   return cached || getWebAppUrl_();
 }
 
+/**
+ * A session's facilitator link: one address that opens its board with no
+ * sign-in. Google does not always tell a script who a signed-in visitor is, so
+ * a list of facilitator accounts can't be relied on to let someone else run a
+ * room. The owner makes this link, hands it over, and can replace it or turn
+ * it off. It opens this one session's board and table cards and nothing else:
+ * not the dashboard, not other sessions, not setup.
+ */
+const CAPTURE_VIA_LINK_ = {}; // sessions this request opened with a valid facilitator link
+
+/**
+ * Who may act as a facilitator for this call. `arg` is the session id, or the
+ * session id + "~" + facilitator key from a page opened with the link.
+ * Returns the plain session id, or throws.
+ */
+function captureFacilitatorAuth_(arg) {
+  const parts = String(arg || '').split('~');
+  const sessionId = validateSessionId_(parts[0]);
+  if (parts.length > 1) {
+    const stale = 'This facilitator link is not active. Ask whoever set up the session for the current one.';
+    if (!/^[a-f0-9]{32}$/.test(parts[1])) throw new Error(stale);
+    const config = CaptureStore.getConfig(sessionId);
+    if (!config || !config.facilitatorKey || config.facilitatorKey !== parts[1]) throw new Error(stale);
+    CAPTURE_VIA_LINK_[sessionId] = true;
+    return sessionId;
+  }
+  if (!CAPTURE_VIA_LINK_[sessionId]) AuthService.requireUser();
+  return sessionId;
+}
+
 /** Every link a facilitator hands out or opens for one session. */
 function captureLinks_(sessionId, config) {
   const pub = capturePublicBase_();
   const board = captureBoardBase_();
   const s = '?session=' + encodeURIComponent(sessionId);
-  return {
+  const f = pub && config.facilitatorKey ? '&session=' + encodeURIComponent(sessionId) + '&f=' + config.facilitatorKey : '';
+  const links = {
     table: pub ? pub + s + '&k=' + config.key + '&page=capture' : '',
     wall: pub ? pub + s + '&k=' + config.key + '&page=wall' : '',
     board: board ? board + '?page=board&session=' + encodeURIComponent(sessionId) : '',
     tableCards: board ? board + '?page=tablecards&session=' + encodeURIComponent(sessionId) : '',
-    dashboard: board || ''
+    dashboard: board || '',
+    facilitator: f ? pub + '?page=run' + f : ''
   };
+  // Someone who came in by the facilitator link gets links that work without signing in.
+  if (CAPTURE_VIA_LINK_[sessionId] && f) { links.board = links.facilitator; links.tableCards = pub + '?page=runcards' + f; links.dashboard = ''; }
+  return links;
 }
 
 /**
@@ -406,8 +447,8 @@ function captureListTemplates() {
   return Object.keys(CAPTURE_TEMPLATES).map(id => ({ id: id, name: CAPTURE_TEMPLATES[id].name }));
 }
 
-function captureAsFacilitator_(stage) {
-  CaptureStore.as(AuthService.email() || 'facilitator', stage);
+function captureAsFacilitator_(stage, sessionId) {
+  CaptureStore.as(sessionId && CAPTURE_VIA_LINK_[sessionId] ? 'Facilitator link' : (AuthService.email() || 'facilitator'), stage);
 }
 
 function captureEnable(sessionId, templateId, tables, title) {
@@ -420,19 +461,17 @@ function captureEnable(sessionId, templateId, tables, title) {
 
 /** The facilitator context for a session: config and template, with the actor set for the audit trail. */
 function captureBoardContext_(sessionId) {
-  AuthService.requireUser();
-  validateSessionId_(sessionId);
+  sessionId = captureFacilitatorAuth_(sessionId);
   const config = CaptureStore.getConfig(sessionId);
   if (!config) throw new Error('Turn on live capture for this session first.');
   const template = captureTemplate_(config.template);
-  captureAsFacilitator_(config.stage);
+  captureAsFacilitator_(config.stage, sessionId);
   return { config: config, template: template };
 }
 
 /** The board's view. fresh: true after the board changed something. */
 function captureGetBoard(sessionId, fresh) {
-  AuthService.requireUser();
-  validateSessionId_(sessionId);
+  sessionId = captureFacilitatorAuth_(sessionId);
   const session = CaptureStore.sessionInfo(sessionId);
   if (!session) throw new Error('Session not found.');
   const config = CaptureStore.getConfig(sessionId);
@@ -449,6 +488,7 @@ function captureGetBoard(sessionId, fresh) {
     sessionId: sessionId,
     sessionName: session.name,
     enabled: true,
+    viaLink: !!CAPTURE_VIA_LINK_[sessionId],
     sheetUrl: String(session.dbUrl || ''),
     config: { title: config.title, tables: config.tables, stage: config.stage, tallyMode: config.tallyMode,
       surveyUrl: config.surveyUrl, publishedAt: config.publishedAt, paperDots: config.paperDots, paperFlipDots: config.paperFlipDots, assign: config.assign },
@@ -472,6 +512,7 @@ function captureGetBoard(sessionId, fresh) {
 }
 
 function captureSetStage(sessionId, stage) {
+  sessionId = captureFacilitatorAuth_(sessionId);
   const ctx = captureBoardContext_(sessionId);
   if (captureStageIds_(ctx.template).indexOf(String(stage)) === -1) throw new Error('Unknown stage.');
   CaptureStore.updateConfig(sessionId, () => ({ stage: String(stage) }),
@@ -480,24 +521,28 @@ function captureSetStage(sessionId, stage) {
 }
 
 function captureSetHidden(sessionId, cardId, hidden) {
+  sessionId = captureFacilitatorAuth_(sessionId);
   const ctx = captureBoardContext_(sessionId);
   CaptureStore.setHidden(sessionId, ctx.template, Number(cardId), !!hidden);
   return captureGetBoard(sessionId, true);
 }
 
 function captureSetSignalHidden(sessionId, id, hidden) {
+  sessionId = captureFacilitatorAuth_(sessionId);
   captureBoardContext_(sessionId);
   CaptureStore.setSignalHidden(sessionId, Number(id), !!hidden);
   return captureGetBoard(sessionId, true);
 }
 
 function captureSetFlipHidden(sessionId, id, hidden) {
+  sessionId = captureFacilitatorAuth_(sessionId);
   const ctx = captureBoardContext_(sessionId);
   CaptureStore.setFlipFlags(sessionId, ctx.template, null, Number(id), { hidden: !!hidden });
   return captureGetBoard(sessionId, true);
 }
 
 function captureSuggestGroups(sessionId) {
+  sessionId = captureFacilitatorAuth_(sessionId);
   const ctx = captureBoardContext_(sessionId);
   const res = CaptureAiService.proposeGroups(ctx.template, CaptureStore.snapshot(sessionId, ctx.template, true).cards);
   CaptureStore.writeGroups(sessionId, res.groups, { action: 'AI suggested groups', model: res.ai.model, tokens: res.ai.tokens, cost: res.ai.cost, detail: res.ai.raw });
@@ -505,6 +550,7 @@ function captureSuggestGroups(sessionId) {
 }
 
 function captureSaveGroups(sessionId, groups) {
+  sessionId = captureFacilitatorAuth_(sessionId);
   const ctx = captureBoardContext_(sessionId);
   const cards = CaptureStore.snapshot(sessionId, ctx.template, true).cards;
   CaptureStore.writeGroups(sessionId, captureNormalizeGroups_(cards, groups, ctx.template).groups, { action: 'Groups edited' });
@@ -516,6 +562,7 @@ function captureSaveGroups(sessionId, groups) {
  * still exist are kept; clearVotes starts the vote over.
  */
 function capturePublish(sessionId, clearVotes) {
+  sessionId = captureFacilitatorAuth_(sessionId);
   const ctx = captureBoardContext_(sessionId);
   const snap = CaptureStore.snapshot(sessionId, ctx.template, true);
   const live = snap.cards.filter(c => !c.hidden);
@@ -531,6 +578,7 @@ function capturePublish(sessionId, clearVotes) {
 
 /** Paper dot counts for one published group, by role (the analog count, typed in). */
 function captureSetPaperDots(sessionId, groupId, counts) {
+  sessionId = captureFacilitatorAuth_(sessionId);
   const ctx = captureBoardContext_(sessionId);
   const ids = (ctx.config.published || []).map(g => g.id);
   if (ids.indexOf(String(groupId)) === -1) throw new Error('Publish the groups first.');
@@ -545,6 +593,7 @@ function captureSetPaperDots(sessionId, groupId, counts) {
 }
 
 function captureSetTallyMode(sessionId, mode) {
+  sessionId = captureFacilitatorAuth_(sessionId);
   captureBoardContext_(sessionId);
   if (['phone', 'paper', 'both'].indexOf(String(mode)) === -1) throw new Error('Choose devices, paper or both.');
   CaptureStore.updateConfig(sessionId, () => ({ tallyMode: String(mode) }),
@@ -554,6 +603,7 @@ function captureSetTallyMode(sessionId, mode) {
 
 /** Assigns a table its priority by hand; an empty groupId goes back to automatic. */
 function captureSetAssignment(sessionId, table, groupId) {
+  sessionId = captureFacilitatorAuth_(sessionId);
   const ctx = captureBoardContext_(sessionId);
   const t = captureValidTable_(table, ctx.config.tables);
   const id = String(groupId || '');
@@ -563,7 +613,26 @@ function captureSetAssignment(sessionId, table, groupId) {
   return captureGetBoard(sessionId, true);
 }
 
+/**
+ * Makes, replaces or turns off the session's facilitator link. Only someone
+ * signed in as the owner or a listed facilitator can do this, never someone
+ * who came in by the link itself. mode: 'new' | 'off'.
+ */
+function captureSetFacilitatorLink(sessionId, mode) {
+  AuthService.requireUser();
+  validateSessionId_(sessionId);
+  if (mode !== 'new' && mode !== 'off') throw new Error('Choose to make a link or turn it off.');
+  captureBoardContext_(sessionId);
+  const key = mode === 'new' ? Utilities.getUuid().replace(/-/g, '') : '';
+  // The audit trail says that the link changed and who changed it, never the key itself.
+  CaptureStore.updateConfig(sessionId, () => ({ facilitatorKey: key }),
+    { action: mode === 'new' ? 'Facilitator link made' : 'Facilitator link turned off', item: 'settings',
+      before: c => (c.facilitatorKey ? 'a link was active; it no longer works' : 'no link'), after: () => (key ? 'a new link is active' : 'no link') });
+  return captureGetBoard(sessionId, true);
+}
+
 function captureSetSurveyUrl(sessionId, url) {
+  sessionId = captureFacilitatorAuth_(sessionId);
   captureBoardContext_(sessionId);
   const clean = String(url || '').trim();
   if (clean && !/^https:\/\/[^\s"'<>]+$/.test(clean)) throw new Error('Use a full https:// link.');
@@ -573,6 +642,7 @@ function captureSetSurveyUrl(sessionId, url) {
 }
 
 function captureMakePosters(sessionId) {
+  sessionId = captureFacilitatorAuth_(sessionId);
   const ctx = captureBoardContext_(sessionId);
   const snap = CaptureStore.snapshot(sessionId, ctx.template, true);
   const groups = captureNormalizeGroups_(snap.cards, snap.groups, ctx.template).groups;
@@ -590,6 +660,7 @@ function captureMakePosters(sessionId) {
  * hints: { student, adult } — how students' and adults' work was marked.
  */
 function captureReadPaper(sessionId, mode, table, base64, mimeType, hints) {
+  sessionId = captureFacilitatorAuth_(sessionId);
   const ctx = captureBoardContext_(sessionId);
   capturePaperMode_(mode);
   const t = CAPTURE_PAPER_MODES_[mode].table ? captureValidTable_(table, ctx.config.tables) : 0;
@@ -611,6 +682,7 @@ function captureReadPaper(sessionId, mode, table, base64, mimeType, hints) {
  * the rows and how they differ from the reading.
  */
 function captureConfirmPaper(sessionId, mode, rows, readingEntry) {
+  sessionId = captureFacilitatorAuth_(sessionId);
   const ctx = captureBoardContext_(sessionId);
   capturePaperMode_(mode);
   const snap = CaptureStore.snapshot(sessionId, ctx.template, true);
@@ -641,6 +713,7 @@ function captureConfirmPaper(sessionId, mode, rows, readingEntry) {
 // ─── Audit and results (facilitators) ───────────────────────────────────────
 
 function captureGetAudit(sessionId) {
+  sessionId = captureFacilitatorAuth_(sessionId);
   captureBoardContext_(sessionId);
   const tail = CaptureStore.auditTail(sessionId, 50);
   const session = CaptureStore.sessionInfo(sessionId);
@@ -650,6 +723,7 @@ function captureGetAudit(sessionId) {
 
 /** Makes the results document from the record and returns its link. */
 function captureMakeReport(sessionId) {
+  sessionId = captureFacilitatorAuth_(sessionId);
   const ctx = captureBoardContext_(sessionId);
   const session = SessionService.getSession(sessionId);
   const snap = CaptureStore.snapshot(sessionId, ctx.template, true);
@@ -681,8 +755,7 @@ function captureMakeReport(sessionId) {
 
 /** What the printable table cards need: one QR link per table. */
 function captureGetTableCardsData(sessionId) {
-  AuthService.requireUser();
-  validateSessionId_(sessionId);
+  sessionId = captureFacilitatorAuth_(sessionId);
   const session = SessionService.getSession(sessionId);
   if (!session) throw new Error('Session not found.');
   const config = CaptureStore.getConfig(sessionId);
@@ -774,6 +847,7 @@ function captureMenuReport() {
 function captureMenuShowLinks_(sessionId, heading) {
   const links = captureLinks_(sessionId, CaptureStore.getConfig(sessionId));
   captureMenuDialog_(heading, [
+    { label: 'Facilitator link', url: links.facilitator, note: 'The one link to hand a facilitator: runs this session’s board with no sign-in. Anyone who has it can run the room.' },
     { label: 'Live board', url: links.board, note: 'Facilitators. Signed in with Google.' },
     { label: 'Printable table cards', url: links.tableCards, note: 'One page per table with a QR code that opens that table.' },
     { label: 'Projector wall', url: links.wall, note: 'Counts and topics only. No sign-in.' },

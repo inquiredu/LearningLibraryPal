@@ -624,9 +624,16 @@
       var b = S.board, l = b.links || {};
       // Each link can be opened, copied whole, or shown as a QR code to scan: nobody has to select text in a box.
       var canQr = typeof qrcode === 'function';
-      body('<section class="panel section stack"><h2>Links</h2>' +
+      // The facilitator link is the one thing to hand over. Only someone signed in can make, replace or turn it off.
+      var hand = '<section class="panel section stack"><h2>Hand this session to a facilitator</h2>' +
+        (l.facilitator ? '<p class="small">One link runs this whole session: the stages, the board, the wall, table cards, paper and results. No Google sign-in. <strong>Anyone who has it can run the room</strong>, so give it only to facilitators.</p>'
+          : '<p class="small">Make one link that runs this whole session with no Google sign-in. Anyone who has it can run the room, so give it only to facilitators. You can replace it or turn it off at any time.</p>') +
+        (b.viaLink ? '' : '<div class="linkbtns">' + (l.facilitator
+          ? '<button type="button" class="btn btn-small" data-flink="new">Replace with a new link</button><button type="button" class="btn btn-small" data-flink="off">Turn the link off</button>'
+          : '<button type="button" class="btn btn-primary" data-flink="new">Make the facilitator link</button>') + '</div>') + '</section>';
+      body((b.viaLink && !l.facilitator ? '' : hand) + '<section class="panel section stack"><h2>Links</h2>' +
         LINKS.map(function (x) {
-          var url = l[x[0]]; if (!url) return '';
+          var url = l[x[0]]; if (!url || (x[0] === 'board' && b.viaLink)) return '';
           return '<div class="linkrow"><div class="linkhead"><strong>' + esc(x[1]) + '</strong><span class="muted small">' + esc(x[2]) + '</span></div>' +
             '<div class="linkbtns"><a class="btn btn-small btn-primary" href="' + esc(url) + '" target="_blank" rel="noopener">Open</a>' +
             '<button type="button" class="btn btn-small" data-copy-link="' + x[0] + '">Copy link</button>' +
@@ -643,7 +650,7 @@
     }
 
     // key, name, who it is for, whether a QR code helps
-    var LINKS = [['table', 'Table and voting link', 'For phones and laptops in the room. No sign-in.', true], ['wall', 'Projector wall', 'Counts and topics only. No sign-in.', true],
+    var LINKS = [['facilitator', 'Facilitator link', 'Runs this session’s board. No sign-in. Facilitators only.', true], ['table', 'Table and voting link', 'For phones and laptops in the room. No sign-in.', true], ['wall', 'Projector wall', 'Counts and topics only. No sign-in.', true],
       ['tableCards', 'Printable table cards', 'One page per table, each with its own QR code. Facilitators.', false], ['board', 'This board', 'Facilitators, signed in with Google.', false]];
     function qrSvg(text) {
       try { var qr = qrcode(0, 'M'); qr.addData(text); qr.make(); return qr.createSvgTag(8, 4); } catch (e) { return ''; }
@@ -860,6 +867,15 @@
       }
       if (t.dataset.tab) { S.tab = t.dataset.tab; S.tabChosen = true; if (t.dataset.tab === 'record') S.audit = null; return renderAll(); }
       if (t.dataset.copyLink) { var cl = LINKS.find(function (x) { return x[0] === t.dataset.copyLink; }), cu = S.board.links && S.board.links[t.dataset.copyLink]; if (cl && cu) copyText(cu, cl[1]); return; }
+      if (t.dataset.flink) {
+        var fm = t.dataset.flink, had = S.board.links && S.board.links.facilitator;
+        if (fm === 'off' && !confirm('Turn the facilitator link off? Anyone using it is locked out of the board straight away.')) return;
+        if (fm === 'new' && had && !confirm('Make a new facilitator link? The current one stops working straight away.')) return;
+        t.disabled = true;
+        return call('captureSetFacilitatorLink', SESSION_ID, fm).then(function () {
+          Capture.toast(fm === 'off' ? 'The facilitator link is off.' : 'Facilitator link ready. Copy it below.');
+        }).catch(function () { t.disabled = false; });
+      }
       if (t.dataset.qr) { S.qr = S.qr === t.dataset.qr ? '' : t.dataset.qr; return renderAll(); }
       if (t.dataset.paperOpen) return openPaper(t.dataset.paperOpen);
       if (t.dataset.paperClose) { if (S.paper && S.paper.rows.length && !confirm('Leave without adding these rows?')) return; S.paper = null; return renderPaper(); }

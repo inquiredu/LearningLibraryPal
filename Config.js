@@ -44,7 +44,7 @@ const CONFIG = {
    * 'capture' (table entry) and 'wall' (projector) are public pages too, but
    * every call they make also requires the session's live-capture table key.
    */
-  PUBLIC_PAGES: ['library', 'capture', 'wall'],
+  PUBLIC_PAGES: ['library', 'capture', 'wall', 'run', 'runcards'],
 
   // ── Display timezone ──────────────────────────────────────────────────────
 

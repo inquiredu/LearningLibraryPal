@@ -700,6 +700,12 @@ test('pages get the session, key and a phone viewport; a table card link presele
   assert.throws(() => c.captureRoute_('capture', { parameter: { session: 'S-abc', k: 'nope' } }), /incomplete/);
   c.captureRoute_('tablecards', { parameter: { session: 'S-abc' } });
   assert.ok(state.html.includes('captureGetTableCardsData'));
+  const FKEY = 'ab'.repeat(16);
+  c.CaptureStore = { getConfig: () => ({ facilitatorKey: FKEY }) };
+  c.captureRoute_('run', { parameter: { session: 'S-abc', f: FKEY, tab: 'record' } });
+  assert.ok(state.html.includes('"S-abc~' + FKEY + '"') && state.html.includes('"record"'), 'the facilitator link\'s page sends its key back with every call');
+  assert.throws(() => c.captureRoute_('run', { parameter: { session: 'S-abc', f: 'cd'.repeat(16) } }), /not active/);
+  assert.throws(() => c.captureRoute_('runcards', { parameter: { session: 'S-abc' } }), /not active/);
 });
 
 test('the dashboard can open the board on a tab, but only a real one, and the board links back to the dashboard', () => {
@@ -726,6 +732,50 @@ test('each live-capture page is self-contained: one inline script that defines C
     const def = inline[0].indexOf('var Capture = (function');
     assert.ok(def > -1 && def < inline[0].search(/Capture\.(run|poll|esc|store|toast)\b/), file + ' defines Capture before using it');
   }
+});
+
+test('one facilitator link runs a session\'s board with no sign-in, and only that', () => {
+  const FKEY = 'ab'.repeat(16);
+  // No link yet, nobody signed in: the board stays shut, with or without a made-up key.
+  const shut = apiContext({ email: '' });
+  assert.throws(() => shut.c.captureGetBoard('S-1'), /Access denied/);
+  assert.throws(() => shut.c.captureGetBoard('S-1~' + FKEY), /not active/, 'no link has been made');
+  assert.throws(() => shut.c.captureSetStage('S-1~', 'vote'), /not active/);
+  // The owner makes the link.
+  const owner = apiContext({ email: 'owner@example.org' });
+  owner.c.Utilities.getUuid = () => 'abababab-abab-abab-abab-abababababab';
+  const made = plain(owner.c.captureSetFacilitatorLink('S-1', 'new'));
+  assert.equal(owner.cfg.facilitatorKey, FKEY);
+  assert.match(made.links.facilitator, new RegExp('\\?page=run&session=S-1&f=' + FKEY + '$'));
+  assert.equal(made.viaLink, false);
+  assert.match(made.links.board, /page=board&session=S-1$/, 'the signed-in owner keeps the signed-in board link');
+  const log = owner.calls.find(x => x[0] === 'config');
+  assert.equal(log[2], 'Facilitator link made');
+  assert.equal(JSON.stringify(log.slice(2)).includes(FKEY), false, 'the audit trail never holds the key');
+  // Someone with the link, not signed in, runs the room.
+  const guest = apiContext({ email: '', config: { facilitatorKey: FKEY } });
+  assert.throws(() => guest.c.captureGetBoard('S-1~' + 'cd'.repeat(16)), /not active/, 'a wrong key');
+  assert.throws(() => guest.c.captureGetBoard('S-1'), /Access denied/, 'the session id alone is not enough');
+  assert.throws(() => guest.c.captureListSessions(), /Access denied/, 'the link opens one session, not the list');
+  assert.throws(() => guest.c.captureEnable('S-1~' + FKEY, 'needCards', 6, 'x'), /Invalid session link|Access denied/);
+  assert.throws(() => guest.c.captureSetFacilitatorLink('S-1~' + FKEY, 'off'), /Access denied/, 'the link can\'t replace or turn off itself');
+  const board = plain(guest.c.captureGetBoard('S-1~' + FKEY));
+  assert.equal(board.viaLink, true);
+  assert.equal(board.links.board, board.links.facilitator, 'its links all work without signing in');
+  assert.match(board.links.tableCards, new RegExp('\\?page=runcards&session=S-1&f=' + FKEY + '$'));
+  assert.equal(board.links.dashboard, '');
+  guest.c.captureSetStage('S-1~' + FKEY, 'vote');
+  assert.equal(guest.cfg.stage, 'vote');
+  assert.deepEqual(guest.actors[guest.actors.length - 1], ['Facilitator link', 'needs'], 'the audit trail says the change came by the link');
+  assert.equal(plain(guest.c.captureGetTableCardsData('S-1~' + FKEY)).tables, 6);
+  // Devices and the wall never see it.
+  const pub = apiContext({ config: { facilitatorKey: FKEY } });
+  assert.equal(JSON.stringify(pub.c.captureGetPhoneState('S-1', KEY, 1, VOTER)).includes(FKEY), false);
+  assert.equal(JSON.stringify(pub.c.captureGetWall('S-1', KEY)).includes(FKEY), false);
+  // Turned off: the old link stops at once.
+  const off = apiContext({ email: 'owner@example.org', config: { facilitatorKey: FKEY } });
+  assert.equal(plain(off.c.captureSetFacilitatorLink('S-1', 'off')).links.facilitator, '');
+  assert.throws(() => apiContext({ email: '', config: { facilitatorKey: '' } }).c.captureGetBoard('S-1~' + FKEY), /not active/);
 });
 
 test('nothing is timed: stages carry no clock times and no page shows one', () => {

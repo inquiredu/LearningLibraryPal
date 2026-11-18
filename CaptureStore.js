@@ -89,7 +89,7 @@ const CaptureStore = {
   // ─── Settings ─────────────────────────────────────────────────────────────
 
   JSON_KEYS: ['published', 'paperDots', 'assign', 'paperFlipDots'],
-  CONFIG_KEYS: ['template', 'tables', 'key', 'title', 'stage', 'published', 'publishedAt', 'paperDots', 'tallyMode', 'assign', 'surveyUrl', 'paperFlipDots'],
+  CONFIG_KEYS: ['template', 'tables', 'key', 'title', 'stage', 'published', 'publishedAt', 'paperDots', 'tallyMode', 'assign', 'surveyUrl', 'paperFlipDots', 'facilitatorKey'],
 
   /**
    * Settings come from the cache when the cached copy is current. Each write
@@ -146,7 +146,9 @@ const CaptureStore = {
       paperFlipDots: json(map.paperFlipDots, {}),
       tallyMode: ['phone', 'paper', 'both'].indexOf(String(map.tallyMode)) !== -1 ? String(map.tallyMode) : 'phone',
       assign: json(map.assign, {}),
-      surveyUrl: /^https:\/\//.test(String(map.surveyUrl || '')) ? String(map.surveyUrl) : ''
+      surveyUrl: /^https:\/\//.test(String(map.surveyUrl || '')) ? String(map.surveyUrl) : '',
+      // Set when the owner makes a facilitator link; empty means there is none.
+      facilitatorKey: /^[a-f0-9]{32}$/.test(String(map.facilitatorKey || '')) ? String(map.facilitatorKey) : ''
     };
   },
 

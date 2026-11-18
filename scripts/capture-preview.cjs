@@ -114,7 +114,7 @@ function mock(sc) {
       config: { title: config.title, tables: config.tables, stage: config.stage, tallyMode: config.tallyMode, surveyUrl: config.surveyUrl, publishedAt: config.publishedAt, paperDots: config.paperDots, paperFlipDots: config.paperFlipDots, assign: config.assign },
       template: pub(),
       paperModes: Object.keys(CAPTURE_PAPER_MODES_).map(function (k) { return { id: k, label: CAPTURE_PAPER_MODES_[k].label, table: CAPTURE_PAPER_MODES_[k].table }; }),
-      ai: { enabled: true, spentToday: spent, budget: 100 }, links: { table: 'https://script.google.com/macros/s/DEMO/exec?session=S-demo&k=${KEY}&page=capture', wall: 'wall-' + config.stage + '.html', tableCards: 'table-cards.html', board: '#' },
+      ai: { enabled: true, spentToday: spent, budget: 100 }, links: { table: 'https://script.google.com/macros/s/DEMO/exec?session=S-demo&k=${KEY}&page=capture', wall: 'wall-' + config.stage + '.html', tableCards: 'table-cards.html', board: '#', facilitator: config.facilitatorKey ? 'https://script.google.com/macros/s/DEMO/exec?page=run&session=S-demo&f=' + config.facilitatorKey : '' },
       signals: signals, flips: flips.map(function (f) { return Object.assign({}, f, { dots: dots[f.id] || {} }); }), cards: cards,
       groups: captureOrderGroups_(tpl, live, n.groups), ungrouped: n.ungrouped, parking: captureParkingLot_(tpl, cards).map(function (c) { return c.id; }),
       published: config.published, voters: voters(), tally: config.published ? captureTally_(tpl, config.published, votes, config.paperDots, config.tallyMode) : {},
@@ -183,6 +183,7 @@ function mock(sc) {
     captureSetTallyMode: function (s, m) { config.tallyMode = m; return board(); },
     captureSetAssignment: function (s, t, id) { if (id) config.assign[t] = id; else delete config.assign[t]; return board(); },
     captureSetSurveyUrl: function (s, u) { config.surveyUrl = u; return board(); },
+    captureSetFacilitatorLink: function (s, mode) { config.facilitatorKey = mode === 'new' ? Array.from({ length: 32 }, function () { return Math.floor(Math.random() * 16).toString(16); }).join('') : ''; return board(); },
     captureMakePosters: function () { return { url: '#posters' }; },
     captureReadPaper: function (s, mode, table) {
       spent += 0.012;

@@ -42,7 +42,7 @@ function doGet(e) {
     }
   }
 
-  if (page === 'capture' || page === 'wall' || page === 'board' || page === 'tablecards') {
+  if (page === 'capture' || page === 'wall' || page === 'board' || page === 'tablecards' || page === 'run' || page === 'runcards') {
     try {
       return captureRoute_(page, e);
     } catch (err) {

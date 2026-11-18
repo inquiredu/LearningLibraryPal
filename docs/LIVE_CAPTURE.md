@@ -68,10 +68,24 @@ Every change writes a row to the session's **Live Audit** tab, in the same lock 
 | Dashboard | `/exec` on the board deployment | Authorized facilitators. Each session's card shows **Before** (library and skills), **During** (live capture and its stage) and **After** (results), and each one opens its place. A live-capture session leads with **Open board**, **Wall**, **Table cards** and **Copy table link**; any other session offers **Turn on live capture**, which opens the board's setup for it. |
 | Board | `/exec?page=board&session=S-…` (`&tab=record` opens Record & results) | Authorized facilitators (`AuthService`). **← Dashboard** goes back. |
 | Table cards | `/exec?page=tablecards&session=S-…` | Authorized facilitators |
+| **Facilitator link** | `/exec?page=run&session=S-…&f=…` on the public deployment | Anyone who has the link. The same board, for this one session, with no sign-in. See [The facilitator link](#the-facilitator-link). |
 | Devices (tables and voting) | `/exec?page=capture&session=S-…&k=…` (`&t=3` chooses table 3) | Anyone with the link |
 | Wall | `/exec?page=wall&session=S-…&k=…` | Anyone with the wall link |
 
 The `k` parameter is a random table key made when capture is turned on. Every table and wall call checks it, so the session's public library link cannot be used to send cards. The board's **Settings & links** tab lists every link with **Open**, **Copy link** and, for the table link and the wall, **Show QR code** (large enough to scan from a laptop held up or a projector). Laptops use the same table link (the board's **Copy table link**).
+
+## The facilitator link
+
+The one address to hand a facilitator. On the board, **Settings & links → Make the facilitator link** creates it; **Copy link** or **Show QR code** hands it over. It opens that session's board with no Google sign-in, and from there everything the facilitator needs: the stage bar, the wall, the table link, printable table cards, paper, results.
+
+Why it exists: the signed-in board only lets in accounts Google names to the script, and Google often withholds the email of someone outside the owner's domain, so a list of facilitator accounts can't be relied on to let someone else run a room.
+
+What it is and isn't:
+
+- **Anyone who has it can run the room**: move stages, hide entries, publish, use AI within the budget, make the results document. Give it only to facilitators. Nothing in the record names a person.
+- It opens **one session**. It does not open the dashboard, other sessions, the Sheet, setup, or turning live capture on.
+- Only someone signed in (the owner or a listed facilitator) can make it. **Replace with a new link** or **Turn the link off** stops the old one at once. Someone who came in by the link can't replace it or turn it off.
+- The key is 32 random characters, stored in the session's Live Capture settings. Devices and the wall never receive it. The audit trail records that a link was made or turned off, never the key, and names changes made through it as "Facilitator link".
 
 ## AI skills
 
@@ -173,7 +187,7 @@ Run `npm run poc` again after any code change. It updates both deployments in pl
 
 - **Tables and anyone else who adds cards:** the table link (or its QR code). No sign-in.
 - **The room:** the wall link. No sign-in. It shows counts and topics only.
-- **Other facilitators:** the board needs a Google account listed in `CONFIG.ALLOWED_EMAILS`. Google may withhold the email of people outside your account's domain, in which case access fails closed (see the README). For the POC, plan to run the board yourself.
+- **Other facilitators:** give them the session's [facilitator link](#the-facilitator-link). The signed-in board instead needs a Google account listed in `CONFIG.ALLOWED_EMAILS`. Google may withhold the email of people outside your account's domain, in which case access fails closed (see the README). For the POC, plan to run the board yourself.
 
 To review the pages without Google:
 
@@ -187,7 +201,7 @@ Then open `capture.html`, `board.html` or `wall.html` from that folder in a brow
 
 Checked here, with stand-ins for Google:
 
-- `npm run check` and `npm test`: 91 tests pass. They cover the agenda rules (cards under their own table's statement or none, columns and **?**, the published snapshot, dots and votes with no per-person caps, tallies from devices and paper, ranking and assignment), that stages lock nothing and voting needs published groups, the key and sign-in boundaries, the audit row each change writes (who, before, after; nothing deleted), paper readings (matching, checking, how confirmed rows differ), the dollar budget, the results document's content and layout, photo filing, the wall never carrying anyone's words, the store reading older sheets by header, the AI calls, page rendering and `scripts/poc.sh`.
+- `npm run check` and `npm test`: 92 tests pass. They cover the agenda rules (cards under their own table's statement or none, columns and **?**, the published snapshot, dots and votes with no per-person caps, tallies from devices and paper, ranking and assignment), that stages lock nothing and voting needs published groups, the key and sign-in boundaries, the audit row each change writes (who, before, after; nothing deleted), paper readings (matching, checking, how confirmed rows differ), the dollar budget, the results document's content and layout, photo filing, the wall never carrying anyone's words, the store reading older sheets by header, the AI calls, page rendering and `scripts/poc.sh`.
 - Every stage's device, board and wall page built by `scripts/capture-preview.cjs`, with no script errors. A scripted click-through covered a late signal and a card with no statement while the room was at Test drive, per-device test-drive notes, 12 gallery dots and 5 votes on one device, Next person, a card photo reading, every **From paper** mode (read, edit, untick, add a row, confirm), the Record & results tab and the results document button.
 
 Not checked, because it needs a real Google run:
